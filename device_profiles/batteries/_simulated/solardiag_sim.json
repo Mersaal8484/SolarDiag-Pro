@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "solardiag.simulated.lfp16.v1",
+  "manufacturer": "SolarDiag",
+  "family": "Deterministic Simulator",
+  "models": ["LFP-16S-SIM"],
+  "firmware_ranges": ["sim-1.x"],
+  "simulated": true,
+  "provenance": {
+    "source": "internal-simulator",
+    "document_id": "SIM-SPEC-001",
+    "retrieved_on": "2026-10-17",
+    "verified_by": "automated-tests"
+  },
+  "transport": {
+    "interface": "simulator",
+    "listen_only_default": true
+  },
+  "capabilities": {
+    "identify": "simulated",
+    "read_live": "simulated",
+    "read_config": "simulated",
+    "write_parameter": "simulated",
+    "calibrate": "researchTarget"
+  },
+  "allowed_read_frames": [769, 770, 771]
+}
