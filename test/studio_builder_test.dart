@@ -85,5 +85,18 @@ void main() {
     expect(find.text('Sessions'), findsOneWidget);
     expect(find.text('Export'), findsOneWidget);
     expect(find.text('REPLAY LOCK'), findsOneWidget);
+
+    await tester.tap(find.text('Capture'));
+    await tester.pumpAndSettle();
+    expect(find.text('Import formats'), findsOneWidget);
+    expect(find.text('.sdcap v1/v2'), findsOneWidget);
+
+    await tester.tap(find.text('Analysis'));
+    await tester.pumpAndSettle();
+    expect(find.text('Protocol evidence'), findsOneWidget);
+
+    await tester.tap(find.text('Differential'));
+    await tester.pumpAndSettle();
+    expect(find.text('A/B/A'), findsWidgets);
   });
 }

@@ -65,7 +65,7 @@ class LocalDatabase implements LifecycleHistoryStore {
   void _migrate() {
     _database.execute('PRAGMA foreign_keys = ON');
     final version = _database.userVersion;
-    if (version > 4) {
+    if (version > 5) {
       throw StateError('Database schema is newer than this application.');
     }
     if (version == 0) {
@@ -151,6 +151,21 @@ class LocalDatabase implements LifecycleHistoryStore {
         BEGIN SELECT RAISE(ABORT, 'lifecycle history is append-only'); END;
       ''');
       _database.userVersion = 4;
+    }
+    if (_database.userVersion < 5) {
+      _database.execute('''
+        CREATE TABLE research_sessions (
+          id TEXT NOT NULL PRIMARY KEY,
+          document_json TEXT NOT NULL
+        ) STRICT;
+      ''');
+      _database.execute('''
+        CREATE TABLE research_findings (
+          id TEXT NOT NULL PRIMARY KEY,
+          document_json TEXT NOT NULL
+        ) STRICT;
+      ''');
+      _database.userVersion = 5;
     }
   }
 
@@ -286,6 +301,48 @@ class LocalDatabase implements LifecycleHistoryStore {
       ''',
       [key, value ? 'true' : 'false'],
     );
+  }
+
+  void saveResearchSessionDocument(String id, String documentJson) {
+    _saveResearchDocument('research_sessions', id, documentJson);
+  }
+
+  String? researchSessionDocument(String id) =>
+      _researchDocument('research_sessions', id);
+
+  void saveResearchFindingDocument(String id, String documentJson) {
+    _saveResearchDocument('research_findings', id, documentJson);
+  }
+
+  List<String> researchFindingDocuments() => [
+    for (final row in _database.select(
+      'SELECT document_json FROM research_findings ORDER BY id ASC',
+    ))
+      row['document_json'] as String,
+  ];
+
+  void _saveResearchDocument(String table, String id, String documentJson) {
+    if (table != 'research_sessions' && table != 'research_findings') {
+      throw ArgumentError.value(table, 'table');
+    }
+    _database.execute(
+      '''
+      INSERT INTO $table (id, document_json) VALUES (?, ?)
+      ON CONFLICT(id) DO UPDATE SET document_json = excluded.document_json
+      ''',
+      [id, documentJson],
+    );
+  }
+
+  String? _researchDocument(String table, String id) {
+    if (table != 'research_sessions' && table != 'research_findings') {
+      throw ArgumentError.value(table, 'table');
+    }
+    final rows = _database.select(
+      'SELECT document_json FROM $table WHERE id = ?',
+      [id],
+    );
+    return rows.isEmpty ? null : rows.single['document_json'] as String;
   }
 
   @override

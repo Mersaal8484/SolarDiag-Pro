@@ -1,3 +1,5 @@
+import 'dart:isolate';
+
 import 'capture_models.dart';
 
 class IdentifierStatistics {
@@ -25,10 +27,16 @@ class CaptureAnalysis {
 
 class CaptureAnalyzer {
   const CaptureAnalyzer();
+  Future<CaptureAnalysis> analyzeInIsolate(CaptureSession session) =>
+      Isolate.run(() => analyze(session));
+
   CaptureAnalysis analyze(CaptureSession session) {
     final groups = <int, List<CaptureFrame>>{};
     for (final frame in session.frames) {
-      (groups[frame.identifier] ??= []).add(frame);
+      final identifier = frame.identifier;
+      if (identifier != null) {
+        (groups[identifier] ??= []).add(frame);
+      }
     }
     final result = <int, IdentifierStatistics>{};
     for (final entry in groups.entries) {
@@ -50,7 +58,9 @@ class CaptureAnalyzer {
           for (final frame in frames)
             offset < frame.payload.length ? frame.payload[offset] : null,
         };
-        if (values.length > 1) changed.add(offset);
+        if (values.length > 1) {
+          changed.add(offset);
+        }
       }
       result[entry.key] = IdentifierStatistics(
         identifier: entry.key,

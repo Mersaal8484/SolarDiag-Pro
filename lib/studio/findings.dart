@@ -139,6 +139,119 @@ class ProtocolFinding {
   final List<FindingPromotion> promotions;
   final FindingEvidenceRules rules;
 
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'title': title,
+    'state': state.name,
+    'confidence': confidence,
+    'evidence': [
+      for (final item in evidence)
+        {
+          'kind': item.kind.name,
+          'reference': item.reference,
+          'summary': item.summary,
+          'weight': item.weight,
+          'capture_id': item.captureId,
+          'repeated_aba': item.repeatedAba,
+        },
+    ],
+    'promotions': [
+      for (final item in promotions)
+        {
+          'from': item.from.name,
+          'to': item.to.name,
+          'actor_id': item.actorId,
+          'role': item.role.name,
+          'at': item.at.toUtc().toIso8601String(),
+          'audit_hash': item.auditHash,
+        },
+    ],
+    'rules': {
+      'independent_capture_weight': rules.independentCaptureWeight,
+      'repeated_aba_weight': rules.repeatedAbaWeight,
+      'hardware_validation_weight': rules.hardwareValidationWeight,
+      'unverified_cap': rules.unverifiedCap,
+    },
+  };
+
+  factory ProtocolFinding.fromJson(Map<String, Object?> json) {
+    final evidenceJson = json['evidence'];
+    final promotionsJson = json['promotions'];
+    final rulesJson = json['rules'];
+    if (evidenceJson is! List ||
+        promotionsJson is! List ||
+        rulesJson is! Map<String, Object?>) {
+      throw const FormatException('Invalid finding document.');
+    }
+    final rules = FindingEvidenceRules(
+      independentCaptureWeight: _number(
+        rulesJson,
+        'independent_capture_weight',
+      ),
+      repeatedAbaWeight: _number(rulesJson, 'repeated_aba_weight'),
+      hardwareValidationWeight: _number(
+        rulesJson,
+        'hardware_validation_weight',
+      ),
+      unverifiedCap: _number(rulesJson, 'unverified_cap'),
+    );
+    final evidence = evidenceJson
+        .map((raw) {
+          if (raw is! Map<String, Object?>) {
+            throw const FormatException('Invalid finding evidence.');
+          }
+          return FindingEvidence(
+            kind: EvidenceKind.values.byName(_string(raw, 'kind')),
+            reference: _string(raw, 'reference'),
+            summary: _string(raw, 'summary'),
+            weight: _number(raw, 'weight'),
+            captureId: raw['capture_id'] as String?,
+            repeatedAba: raw['repeated_aba'] as bool? ?? false,
+          );
+        })
+        .toList(growable: false);
+    final promotions = promotionsJson
+        .map((raw) {
+          if (raw is! Map<String, Object?>) {
+            throw const FormatException('Invalid finding promotion.');
+          }
+          return FindingPromotion(
+            from: FindingState.values.byName(_string(raw, 'from')),
+            to: FindingState.values.byName(_string(raw, 'to')),
+            actorId: _string(raw, 'actor_id'),
+            role: FindingRole.values.byName(_string(raw, 'role')),
+            at: DateTime.parse(_string(raw, 'at')),
+            auditHash: _string(raw, 'audit_hash'),
+          );
+        })
+        .toList(growable: false);
+    return ProtocolFinding._(
+      id: _string(json, 'id'),
+      title: _string(json, 'title'),
+      state: FindingState.values.byName(_string(json, 'state')),
+      confidence: _number(json, 'confidence'),
+      evidence: List.unmodifiable(evidence),
+      promotions: List.unmodifiable(promotions),
+      rules: rules,
+    );
+  }
+
+  static String _string(Map<String, Object?> json, String key) {
+    final value = json[key];
+    if (value is! String) {
+      throw FormatException('Finding field $key must be a string.');
+    }
+    return value;
+  }
+
+  static double _number(Map<String, Object?> json, String key) {
+    final value = json[key];
+    if (value is! num) {
+      throw FormatException('Finding field $key must be numeric.');
+    }
+    return value.toDouble();
+  }
+
   ProtocolFinding advance(
     FindingState next, {
     required FindingEvidence newEvidence,

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solardiag_pro/audit/audit_chain.dart';
 import 'package:solardiag_pro/studio/capture_analysis.dart';
@@ -44,9 +45,76 @@ void main() {
 
   test('.sdcap round trip preserves frames and integrity', () {
     final document = codec.decode(codec.encode(session));
+    expect(document.sourceSchemaVersion, 2);
     expect(document.session.frames, hasLength(3));
     expect(document.session.frames[1].payload, [1, 4, 3]);
     expect(document.payloadHash, hasLength(64));
+    expect(document.session.integrityHash, document.payloadHash);
+    expect(document.session.frames.first.direction, CaptureDirection.rx);
+  });
+  test('.sdcap v1 reader migrates legacy microsecond CAN frames', () {
+    final payload = <String, Object?>{
+      'id': 'legacy',
+      'interface': 'can',
+      'source': 'candump',
+      'started_at': DateTime.utc(2025).toIso8601String(),
+      'synthetic': false,
+      'notes': 'legacy capture',
+      'frames': [
+        {
+          'timestamp_us': 123,
+          'identifier': 0x18ff50e5,
+          'payload': [1, 2],
+          'received': false,
+          'extended': true,
+        },
+      ],
+    };
+    final hash = sha256.convert(utf8.encode(jsonEncode(payload))).toString();
+    final document = codec.decode(
+      jsonEncode({
+        'magic': SdcapCodec.magic,
+        'schema_version': 1,
+        'payload': payload,
+        'sha256': hash,
+      }),
+    );
+    expect(document.sourceSchemaVersion, 1);
+    expect(document.session.frames.single.timestampNanos, 123000);
+    expect(document.session.frames.single.direction, CaptureDirection.tx);
+    expect(document.session.frames.single.extendedIdentifier, isTrue);
+  });
+  test('.sdcap v2 preserves generic serial and network metadata', () {
+    final generic = CaptureSession(
+      id: 'generic-v2',
+      interfaceType: CaptureInterface.rs485,
+      source: CaptureSource.genericText,
+      startedAt: DateTime.utc(2026),
+      frames: const [
+        CapturedFrame(
+          timestampNanos: 99,
+          rawBytes: [1, 3, 0, 0],
+          direction: CaptureDirection.unknown,
+          channel: 'rs485-a',
+          sourceAddress: '1',
+          destinationAddress: 'master',
+          errorFlags: ['truncated'],
+          protocolHint: 'Modbus RTU',
+        ),
+      ],
+      synthetic: true,
+      containsNdaMaterial: false,
+      notes: 'generic frame',
+      serialConfiguration: const {'baud_rate': 9600, 'format': '8N1'},
+      deviceMetadata: const {'model': 'synthetic'},
+      clockSource: 'gateway-monotonic',
+      clockAccuracyNanos: 100,
+    );
+    final decoded = codec.decode(codec.encode(generic)).session;
+    expect(decoded.serialConfiguration['baud_rate'], 9600);
+    expect(decoded.deviceMetadata['model'], 'synthetic');
+    expect(decoded.frames.single.identifier, isNull);
+    expect(decoded.frames.single.errorFlags, ['truncated']);
   });
   test('tampered .sdcap payload is rejected', () {
     final root = jsonDecode(codec.encode(session)) as Map<String, Object?>;

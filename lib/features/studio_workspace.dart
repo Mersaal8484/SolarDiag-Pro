@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../app/theme.dart';
 import '../studio/capture_analysis.dart';
 import '../studio/capture_models.dart';
+import '../studio/differential_analysis.dart';
 import '../studio/findings.dart';
 import '../studio/profile_builder.dart';
+import '../studio/protocol_analysis.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../design/accessibility.dart';
 
@@ -32,6 +34,13 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
   late final CaptureAnalysis analysis = const CaptureAnalyzer().analyze(
     session,
   );
+  late final CaptureSession comparisonSession = _comparisonSession();
+  late final ProtocolAnalysisReport protocolAnalysis =
+      const ProtocolAnalysisEngine().analyze(session);
+  late final SafeDifferentialReport differential =
+      const SafeDifferentialAnalyzer(
+        maximumCandidates: 12,
+      ).compare(session, comparisonSession, baselineRepeat: session);
   late final StudioProfileDraft draft = StudioProfileDraft(
     id: 'studio.synthetic.can.v1',
     manufacturer: 'SolarDiag Research',
@@ -130,12 +139,7 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
       eyebrow: 'PASSIVE CAPTURE',
       title: 'Capture controls',
       subtitle: 'Hardware capture is unavailable in this build.',
-      body: _EmptyInstrument(
-        icon: Icons.sensors_off_outlined,
-        title: 'No gateway connected',
-        detail:
-            'Import or generate synthetic data. Captured frames can never be replayed to hardware.',
-      ),
+      body: _CaptureSourcesView(),
     ),
     StudioSection.frames => _StudioPage(
       key: const ValueKey('frames'),
@@ -150,29 +154,36 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
       title: 'Identifiers & cadence',
       subtitle: 'Frequency, payload length and changing byte positions.',
       body: Column(
-        children: analysis.identifiers.values
-            .map((stats) => _AnalysisRow(stats: stats))
-            .toList(),
+        children: [
+          _ProtocolSummary(report: protocolAnalysis),
+          const SizedBox(height: 14),
+          ...analysis.identifiers.values.map(
+            (stats) => _AnalysisRow(stats: stats),
+          ),
+        ],
       ),
     ),
-    StudioSection.differential => const _StudioPage(
-      key: ValueKey('diff'),
+    StudioSection.differential => _StudioPage(
+      key: const ValueKey('diff'),
       eyebrow: 'DIFFERENTIAL',
-      title: 'Compare controlled captures',
-      subtitle: 'Change one known condition, then compare evidence.',
-      body: _EmptyInstrument(
-        icon: Icons.difference_outlined,
-        title: 'Baseline ready',
-        detail:
-            'A second synthetic capture is required to calculate a differential result.',
-      ),
+      title: '${differential.candidates.length} ranked candidates',
+      subtitle: 'Synthetic A/B/A comparison · observations only',
+      body: _DifferentialView(report: differential),
     ),
     StudioSection.hypotheses => _StudioPage(
       key: const ValueKey('hypotheses'),
       eyebrow: 'FINDINGS',
       title: 'Evidence, not guesses',
       subtitle: 'Every claim carries state, confidence and references.',
-      body: _FindingView(finding: finding),
+      body: Column(
+        children: [
+          _FindingView(finding: finding),
+          for (final item in protocolAnalysis.findings) ...[
+            const SizedBox(height: 12),
+            _FindingView(finding: item),
+          ],
+        ],
+      ),
     ),
     StudioSection.profileBuilder => _StudioPage(
       key: const ValueKey('builder'),
@@ -383,6 +394,165 @@ class _EmptyInstrument extends StatelessWidget {
   );
 }
 
+class _CaptureSourcesView extends StatelessWidget {
+  const _CaptureSourcesView();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const _EmptyInstrument(
+        icon: Icons.sensors_off_outlined,
+        title: 'No gateway connected',
+        detail:
+            'Import or generate synthetic data. Captured frames can never be replayed to hardware.',
+      ),
+      const SizedBox(height: 14),
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _StudioCopy.importFormats,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              const Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  Chip(label: Text(_StudioCopy.sdcap)),
+                  Chip(label: Text(_StudioCopy.candump)),
+                  Chip(label: Text(_StudioCopy.csvMapping)),
+                  Chip(label: Text(_StudioCopy.genericHex)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _StudioCopy.unsupportedFormats,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _ProtocolSummary extends StatelessWidget {
+  const _ProtocolSummary({required this.report});
+
+  final ProtocolAnalysisReport report;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _StudioCopy.protocolEvidence,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _MiniMetric(label: 'Pairs', value: '${report.pairs.length}'),
+              _MiniMetric(
+                label: 'Polling',
+                value: '${report.pollingPatterns.length}',
+              ),
+              _MiniMetric(
+                label: 'Modbus frames',
+                value: '${report.modbusFrames.length}',
+              ),
+              _MiniMetric(
+                label: 'Findings',
+                value: '${report.findings.length}',
+              ),
+              _MiniMetric(
+                label: 'Clusters',
+                value: '${report.clusters.length}',
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _MiniMetric extends StatelessWidget {
+  const _MiniMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: '$label: $value',
+    child: Container(
+      constraints: const BoxConstraints(minWidth: 112),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.labelSmall),
+          const SizedBox(height: 4),
+          TechnicalText(value, style: Theme.of(context).textTheme.titleLarge),
+        ],
+      ),
+    ),
+  );
+}
+
+class _DifferentialView extends StatelessWidget {
+  const _DifferentialView({required this.report});
+
+  final SafeDifferentialReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    if (report.candidates.isEmpty) {
+      return const _EmptyInstrument(
+        icon: Icons.difference_outlined,
+        title: 'No differential candidates',
+        detail: 'The controlled captures have equivalent field distributions.',
+      );
+    }
+    return Column(
+      children: [
+        for (final candidate in report.candidates)
+          Card(
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(16),
+              leading: CircleAvatar(
+                child: TechnicalText('${(candidate.score * 100).round()}'),
+              ),
+              title: TechnicalText(
+                '0x${candidate.identifier.toRadixString(16).toUpperCase()} · byte ${candidate.byteOffset}${candidate.bitIndex == null ? '' : ' · bit ${candidate.bitIndex}'}',
+              ),
+              subtitle: Text(_differentialSummary(candidate)),
+              trailing: candidate.repeatedAba
+                  ? const Chip(label: Text(_StudioCopy.aba))
+                  : const Chip(label: Text(_StudioCopy.ab)),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _FrameTable extends StatelessWidget {
   const _FrameTable({required this.frames});
   final List<CaptureFrame> frames;
@@ -406,7 +576,9 @@ class _FrameTable extends StatelessWidget {
                 DataCell(TechnicalText('${frame.timestampMicros}')),
                 DataCell(
                   TechnicalText(
-                    '0x${frame.identifier.toRadixString(16).toUpperCase()}',
+                    frame.identifier == null
+                        ? frame.protocolHint ?? frame.channel
+                        : '0x${frame.identifier!.toRadixString(16).toUpperCase()}',
                   ),
                 ),
                 DataCell(Text(frame.received ? 'RX' : 'TX')),
@@ -638,6 +810,54 @@ CaptureSession _syntheticSession() => CaptureSession(
   ],
 );
 
+CaptureSession _comparisonSession() => CaptureSession(
+  id: 'synthetic-002',
+  interfaceType: CaptureInterface.can,
+  source: CaptureSource.synthetic,
+  startedAt: DateTime.utc(2026, 1, 2),
+  synthetic: true,
+  containsNdaMaterial: false,
+  notes: 'Controlled synthetic comparison',
+  frames: const [
+    CaptureFrame(
+      timestampMicros: 0,
+      identifier: 0x351,
+      payload: [0x02, 0x30, 0x01],
+      received: true,
+    ),
+    CaptureFrame(
+      timestampMicros: 100000,
+      identifier: 0x351,
+      payload: [0x02, 0x30, 0x02],
+      received: true,
+    ),
+    CaptureFrame(
+      timestampMicros: 200000,
+      identifier: 0x351,
+      payload: [0x02, 0x30, 0x03],
+      received: true,
+    ),
+    CaptureFrame(
+      timestampMicros: 25000,
+      identifier: 0x355,
+      payload: [0x03, 0x14],
+      received: true,
+    ),
+    CaptureFrame(
+      timestampMicros: 125000,
+      identifier: 0x355,
+      payload: [0x03, 0x13],
+      received: true,
+    ),
+    CaptureFrame(
+      timestampMicros: 225000,
+      identifier: 0x355,
+      payload: [0x03, 0x12],
+      received: true,
+    ),
+  ],
+);
+
 String _label(StudioSection section) => switch (section) {
   StudioSection.sessions => 'Sessions',
   StudioSection.capture => 'Capture',
@@ -662,3 +882,21 @@ IconData _icon(StudioSection section) => switch (section) {
   StudioSection.validation => Icons.fact_check_outlined,
   StudioSection.export => Icons.ios_share_outlined,
 };
+
+abstract final class _StudioCopy {
+  static const importFormats = 'Import formats';
+  static const sdcap = '.sdcap v1/v2';
+  static const candump = 'candump';
+  static const csvMapping = 'CSV mapping';
+  static const genericHex = 'Generic HEX';
+  static const unsupportedFormats =
+      'Not implemented: SLCAN, PCAP/PCAPNG Modbus TCP, Vector ASC';
+  static const protocolEvidence = 'Protocol evidence';
+  static const aba = 'A/B/A';
+  static const ab = 'A/B';
+}
+
+String _differentialSummary(DifferentialFieldCandidate candidate) =>
+    'A ${candidate.baselineValues.join('/')} → '
+    'B ${candidate.comparisonValues.join('/')} · '
+    '${candidate.evidence.length} frame references';

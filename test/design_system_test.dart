@@ -55,6 +55,23 @@ void main() {
     expect(offenders, isEmpty);
   });
 
+  test('transport layer never imports Studio capture types', () {
+    final offenders = <String>[];
+    for (final file
+        in Directory('lib/transport')
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((file) => file.path.endsWith('.dart'))) {
+      final source = file.readAsStringSync();
+      if (source.contains('studio/capture_models.dart') ||
+          source.contains('CapturedFrame') ||
+          source.contains('CaptureFrame')) {
+        offenders.add(file.path);
+      }
+    }
+    expect(offenders, isEmpty);
+  });
+
   for (final locale in const [Locale('en'), Locale('ar')]) {
     for (final brightness in Brightness.values) {
       testWidgets(
