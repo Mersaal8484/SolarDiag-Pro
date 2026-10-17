@@ -302,6 +302,19 @@ void main() {
       200,
       scrollable: parametersScroll,
     );
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('compare-latest-backup')),
+      120,
+      scrollable: parametersScroll,
+    );
+    await tester.tap(find.byKey(const Key('compare-latest-backup')));
+    await tester.pumpAndSettle();
+    expect(find.text('Backup comparison'), findsOneWidget);
+    expect(find.text('Changed'), findsOneWidget);
+    expect(find.textContaining('Backup: 55.2 V'), findsOneWidget);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
     await tester.tap(find.byKey(const Key('restore-latest-backup')));
     await tester.pumpAndSettle();
     expect(find.text('Restore configuration backup'), findsOneWidget);
@@ -397,6 +410,22 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Session evidence'), findsOneWidget);
+    expect(find.text('Session timeline'), findsOneWidget);
+    expect(find.text('Session started'), findsOneWidget);
     expect(find.textContaining('"soc"'), findsOneWidget);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(ValueKey('export-${session.history.single.id}')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Engineering report preview'), findsOneWidget);
+    expect(find.text('SIMULATED'), findsOneWidget);
+    expect(find.text('Choose export language'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('report-language-bilingual')),
+      findsOneWidget,
+    );
   });
 }

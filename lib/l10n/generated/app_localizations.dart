@@ -1471,6 +1471,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start diagnostics'**
   String get startDiagnostics;
+
+  /// No description provided for @compareLatestBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare latest backup'**
+  String get compareLatestBackup;
+
+  /// No description provided for @backupComparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup comparison'**
+  String get backupComparison;
+
+  /// No description provided for @backupComparisonValues.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup: {backup} · Current: {current}'**
+  String backupComparisonValues(String backup, String current);
+
+  /// No description provided for @changed.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed'**
+  String get changed;
+
+  /// No description provided for @unchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Unchanged'**
+  String get unchanged;
+
+  /// No description provided for @notAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available'**
+  String get notAvailable;
+
+  /// No description provided for @sessionTimeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Session timeline'**
+  String get sessionTimeline;
+
+  /// No description provided for @noTimelineEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'No timeline events were recorded.'**
+  String get noTimelineEvents;
+
+  /// No description provided for @rawSessionEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw session evidence'**
+  String get rawSessionEvidence;
+
+  /// No description provided for @sessionStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Session started'**
+  String get sessionStarted;
+
+  /// No description provided for @linkStateChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Link state changed'**
+  String get linkStateChanged;
+
+  /// No description provided for @alarmsChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm state changed'**
+  String get alarmsChanged;
+
+  /// No description provided for @sessionEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Session event'**
+  String get sessionEvent;
+
+  /// No description provided for @previewReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview report'**
+  String get previewReport;
+
+  /// No description provided for @reportPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Engineering report preview'**
+  String get reportPreview;
+
+  /// No description provided for @reportContentsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The export includes identification, firmware, profile status, timestamps, readings, alarms, parameters, findings and the verified session hash.'**
+  String get reportContentsDescription;
+
+  /// No description provided for @reportLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose export language'**
+  String get reportLanguage;
+
+  /// No description provided for @bilingual.
+  ///
+  /// In en, this message translates to:
+  /// **'Bilingual'**
+  String get bilingual;
 }
 
 class _AppLocalizationsDelegate

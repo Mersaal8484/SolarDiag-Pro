@@ -104,6 +104,14 @@ class _ParametersScreenState extends State<ParametersScreen> {
               icon: const Icon(Icons.restore),
               label: Text(s.restoreLatestBackup),
             ),
+            OutlinedButton.icon(
+              key: const Key('compare-latest-backup'),
+              onPressed: session.backups.isEmpty
+                  ? null
+                  : () => _compareBackup(session),
+              icon: const Icon(Icons.compare_arrows),
+              label: Text(s.compareLatestBackup),
+            ),
             FilledButton.icon(
               onPressed: null,
               icon: const Icon(Icons.edit_off_outlined),
@@ -169,6 +177,61 @@ class _ParametersScreenState extends State<ParametersScreen> {
       ),
     );
   }
+
+  Future<void> _compareBackup(DeviceSession session) async {
+    final s = AppLocalizations.of(context);
+    final differences = session.backups.first.compare(session.parameters);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(s.backupComparison),
+        content: SizedBox(
+          width: 560,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: differences.length,
+            separatorBuilder: (_, _) => const Divider(),
+            itemBuilder: (context, index) {
+              final difference = differences[index];
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  difference.changed
+                      ? Icons.change_circle_outlined
+                      : Icons.check_circle_outline,
+                ),
+                title: Text(_label(s, difference.parameterId)),
+                subtitle: Text(
+                  s.backupComparisonValues(
+                    _optionalValue(
+                      s,
+                      difference.parameterId,
+                      difference.backupValue,
+                    ),
+                    _optionalValue(
+                      s,
+                      difference.parameterId,
+                      difference.currentValue,
+                    ),
+                  ),
+                ),
+                trailing: Text(difference.changed ? s.changed : s.unchanged),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(s.closeAction),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _optionalValue(AppLocalizations s, String id, num? value) =>
+      value == null ? s.notAvailable : _value(id, value);
 
   Future<void> _editParameter({
     required DeviceSession session,

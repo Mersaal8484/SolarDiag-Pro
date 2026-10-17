@@ -151,6 +151,12 @@ void main() {
     expect(updated.id, first.id);
     expect(updated.snapshotJson, isNot(first.snapshotJson));
     expect(session.history, hasLength(1));
+    expect(session.eventsFor(first.id), hasLength(3));
+    expect(session.eventsFor(first.id).map((event) => event.type), [
+      'session_started',
+      'link_state_changed',
+      'alarms_changed',
+    ]);
   });
 
   test('parameter backups are restored into a later session', () async {

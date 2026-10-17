@@ -25,6 +25,11 @@ locate the platform application-support directory. The database layer owns the
 schema, migrations, parameterized statements, and transactions. Tests use an
 in-memory SQLite database.
 
+Schema v2 adds local application settings for first-run onboarding. Schema v3
+adds ordered diagnostic events linked to sessions with cascading deletion.
+Events are recorded only for meaningful state transitions (session start, link
+state and alarm-set changes), not every telemetry poll, to bound storage growth.
+
 We selected direct SQLite access instead of Drift for this milestone because
 the required queries are small and explicit, and direct access avoids a code
 generator and generated model layer. Repository interfaces keep the storage

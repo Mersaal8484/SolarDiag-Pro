@@ -804,4 +804,61 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get startDiagnostics => 'Start diagnostics';
+
+  @override
+  String get compareLatestBackup => 'Compare latest backup';
+
+  @override
+  String get backupComparison => 'Backup comparison';
+
+  @override
+  String backupComparisonValues(String backup, String current) {
+    return 'Backup: $backup · Current: $current';
+  }
+
+  @override
+  String get changed => 'Changed';
+
+  @override
+  String get unchanged => 'Unchanged';
+
+  @override
+  String get notAvailable => 'Not available';
+
+  @override
+  String get sessionTimeline => 'Session timeline';
+
+  @override
+  String get noTimelineEvents => 'No timeline events were recorded.';
+
+  @override
+  String get rawSessionEvidence => 'Raw session evidence';
+
+  @override
+  String get sessionStarted => 'Session started';
+
+  @override
+  String get linkStateChanged => 'Link state changed';
+
+  @override
+  String get alarmsChanged => 'Alarm state changed';
+
+  @override
+  String get sessionEvent => 'Session event';
+
+  @override
+  String get previewReport => 'Preview report';
+
+  @override
+  String get reportPreview => 'Engineering report preview';
+
+  @override
+  String get reportContentsDescription =>
+      'The export includes identification, firmware, profile status, timestamps, readings, alarms, parameters, findings and the verified session hash.';
+
+  @override
+  String get reportLanguage => 'Choose export language';
+
+  @override
+  String get bilingual => 'Bilingual';
 }

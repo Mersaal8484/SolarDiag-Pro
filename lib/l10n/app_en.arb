@@ -204,4 +204,23 @@
   "onboardingConnect": "Connect an isolated gateway",
   "onboardingConnectDetail": "Verify the interface, connector pinout and termination from trusted documentation before connecting hardware.",
   "startDiagnostics": "Start diagnostics"
+  ,"compareLatestBackup": "Compare latest backup",
+  "backupComparison": "Backup comparison",
+  "backupComparisonValues": "Backup: {backup} · Current: {current}",
+  "@backupComparisonValues": {"placeholders": {"backup": {"type": "String"}, "current": {"type": "String"}}},
+  "changed": "Changed",
+  "unchanged": "Unchanged",
+  "notAvailable": "Not available"
+  ,"sessionTimeline": "Session timeline",
+  "noTimelineEvents": "No timeline events were recorded.",
+  "rawSessionEvidence": "Raw session evidence",
+  "sessionStarted": "Session started",
+  "linkStateChanged": "Link state changed",
+  "alarmsChanged": "Alarm state changed",
+  "sessionEvent": "Session event"
+  ,"previewReport": "Preview report",
+  "reportPreview": "Engineering report preview",
+  "reportContentsDescription": "The export includes identification, firmware, profile status, timestamps, readings, alarms, parameters, findings and the verified session hash.",
+  "reportLanguage": "Choose export language",
+  "bilingual": "Bilingual"
 }

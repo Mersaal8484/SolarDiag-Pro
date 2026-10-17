@@ -64,6 +64,9 @@ class DeviceSession extends ChangeNotifier {
   Object? _lastError;
   late String _sessionId;
   late DateTime _sessionStartedAt;
+  bool _sessionStartedEventSaved = false;
+  DeviceSessionLinkState? _persistedLinkState;
+  Set<String>? _persistedAlarmCodes;
 
   SimulationScenario get scenario => _scenario;
   TelemetrySnapshot get snapshot => _snapshot;
@@ -79,6 +82,8 @@ class DeviceSession extends ChangeNotifier {
   bool get simulated => true;
   InverterTelemetrySnapshot? get inverterSnapshot => _inverterSnapshot;
   List<DiagnosticSessionRecord> get history => database?.listSessions() ?? [];
+  List<DiagnosticEventRecord> eventsFor(String sessionId) =>
+      database?.listEvents(sessionId) ?? [];
 
   static const parameterDefinitions = <String, ParameterDefinition>{
     'charge_limit': ParameterDefinition(
@@ -189,6 +194,9 @@ class DeviceSession extends ChangeNotifier {
   void _beginSession() {
     _sessionStartedAt = DateTime.now().toUtc();
     _sessionId = 'sim-${_sessionStartedAt.microsecondsSinceEpoch}';
+    _sessionStartedEventSaved = false;
+    _persistedLinkState = null;
+    _persistedAlarmCodes = null;
   }
 
   void start() {
@@ -344,6 +352,7 @@ class DeviceSession extends ChangeNotifier {
     } catch (error) {
       _linkState = DeviceSessionLinkState.unavailable;
       _lastError = error;
+      _persistStateEvents();
     } finally {
       _adapter.advance();
       _polling = false;
@@ -397,7 +406,49 @@ class DeviceSession extends ChangeNotifier {
         dataHash: sha256.convert(utf8.encode(snapshotJson)).toString(),
       ),
     );
+    _persistStateEvents();
   }
+
+  void _persistStateEvents() {
+    final store = database;
+    if (store == null) return;
+    final now = DateTime.now().toUtc();
+    if (!_sessionStartedEventSaved) {
+      if (store.listSessions().any((record) => record.id == _sessionId)) {
+        store.saveEvent(
+          sessionId: _sessionId,
+          occurredAt: _sessionStartedAt,
+          type: 'session_started',
+          payload: {'scenario': _scenario.name, 'simulated': true},
+        );
+        _sessionStartedEventSaved = true;
+      } else {
+        return;
+      }
+    }
+    if (_persistedLinkState != _linkState) {
+      store.saveEvent(
+        sessionId: _sessionId,
+        occurredAt: now,
+        type: 'link_state_changed',
+        payload: {'state': _linkState.name},
+      );
+      _persistedLinkState = _linkState;
+    }
+    if (_persistedAlarmCodes == null ||
+        !_sameSet(_persistedAlarmCodes!, _alarmCodes)) {
+      store.saveEvent(
+        sessionId: _sessionId,
+        occurredAt: now,
+        type: 'alarms_changed',
+        payload: {'codes': _alarmCodes.toList()..sort()},
+      );
+      _persistedAlarmCodes = Set.of(_alarmCodes);
+    }
+  }
+
+  static bool _sameSet(Set<String> first, Set<String> second) =>
+      first.length == second.length && first.containsAll(second);
 
   static Map<String, Object?> _measurementJson(Measurement measurement) => {
     'value': measurement.value,

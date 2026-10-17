@@ -204,4 +204,23 @@
   "onboardingConnect": "صِل بوابة معزولة",
   "onboardingConnectDetail": "تحقق من الواجهة وأطراف الموصل والمقاومة الطرفية من وثائق موثوقة قبل توصيل العتاد.",
   "startDiagnostics": "بدء التشخيص"
+  ,"compareLatestBackup": "مقارنة أحدث نسخة احتياطية",
+  "backupComparison": "مقارنة النسخة الاحتياطية",
+  "backupComparisonValues": "النسخة: {backup} · الحالية: {current}",
+  "@backupComparisonValues": {"placeholders": {"backup": {"type": "String"}, "current": {"type": "String"}}},
+  "changed": "متغيّر",
+  "unchanged": "دون تغيير",
+  "notAvailable": "غير متاح"
+  ,"sessionTimeline": "الخط الزمني للجلسة",
+  "noTimelineEvents": "لم تُسجل أحداث في الخط الزمني.",
+  "rawSessionEvidence": "أدلة الجلسة الخام",
+  "sessionStarted": "بدأت الجلسة",
+  "linkStateChanged": "تغيرت حالة الاتصال",
+  "alarmsChanged": "تغيرت حالة الإنذارات",
+  "sessionEvent": "حدث في الجلسة"
+  ,"previewReport": "معاينة التقرير",
+  "reportPreview": "معاينة التقرير الهندسي",
+  "reportContentsDescription": "يتضمن التصدير التعريف والبرنامج الثابت وحالة الملف والتوقيتات والقراءات والإنذارات والمعلمات والنتائج وبصمة الجلسة المتحقق منها.",
+  "reportLanguage": "اختر لغة التصدير",
+  "bilingual": "ثنائي اللغة"
 }

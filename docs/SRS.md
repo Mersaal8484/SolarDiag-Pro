@@ -27,6 +27,9 @@
   health, service restrictions, reports and parallel-bank availability.
 - Persistent three-step onboarding, named deep links, five-destination phone
   navigation and complete desktop navigation.
+- Configuration-backup comparison before restore, ordered diagnostic event
+  timelines, and an in-app engineering-report preview with explicit
+  English/Arabic/bilingual export choice.
 
 ## Traceability
 
@@ -40,5 +43,5 @@ The automated suite is organized by domain: `domain_test`, `protocol_test`,
 
 Real gateway firmware, real-device profiles, asymmetric production signing,
 cloud backend, persistence for the research repository and lifecycle records,
-report preview polish, dedicated backup comparison, hardware validation,
-Android hardware transport, and production legal approval remain open.
+hardware validation, Android hardware transport, complete physical-device
+profiles, and production legal approval remain open.

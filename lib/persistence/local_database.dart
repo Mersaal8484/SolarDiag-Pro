@@ -26,6 +26,22 @@ class DiagnosticSessionRecord {
   final String dataHash;
 }
 
+class DiagnosticEventRecord {
+  const DiagnosticEventRecord({
+    required this.id,
+    required this.sessionId,
+    required this.occurredAt,
+    required this.type,
+    required this.payloadJson,
+  });
+
+  final int id;
+  final String sessionId;
+  final DateTime occurredAt;
+  final String type;
+  final String payloadJson;
+}
+
 class LocalDatabase {
   LocalDatabase._(this._database) {
     _migrate();
@@ -48,7 +64,7 @@ class LocalDatabase {
   void _migrate() {
     _database.execute('PRAGMA foreign_keys = ON');
     final version = _database.userVersion;
-    if (version > 2) {
+    if (version > 3) {
       throw StateError('Database schema is newer than this application.');
     }
     if (version == 0) {
@@ -89,6 +105,24 @@ class LocalDatabase {
       ''');
       _database.userVersion = 2;
     }
+    if (_database.userVersion < 3) {
+      _database.execute('''
+        CREATE TABLE diagnostic_events (
+          id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+          session_id TEXT NOT NULL,
+          occurred_at TEXT NOT NULL,
+          type TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          FOREIGN KEY (session_id) REFERENCES diagnostic_sessions(id)
+            ON DELETE CASCADE
+        ) STRICT;
+      ''');
+      _database.execute('''
+        CREATE INDEX diagnostic_events_session_time
+        ON diagnostic_events(session_id, occurred_at ASC, id ASC);
+      ''');
+      _database.userVersion = 3;
+    }
   }
 
   void saveSession(DiagnosticSessionRecord record) {
@@ -128,6 +162,45 @@ class LocalDatabase {
         simulated: row['simulated'] == 1,
         snapshotJson: row['snapshot_json'] as String,
         dataHash: row['data_hash'] as String,
+      ),
+  ];
+
+  void saveEvent({
+    required String sessionId,
+    required DateTime occurredAt,
+    required String type,
+    Map<String, Object?> payload = const {},
+  }) {
+    _database.execute(
+      '''
+      INSERT INTO diagnostic_events (
+        session_id, occurred_at, type, payload_json
+      ) VALUES (?, ?, ?, ?)
+      ''',
+      [
+        sessionId,
+        occurredAt.toUtc().toIso8601String(),
+        type,
+        jsonEncode(payload),
+      ],
+    );
+  }
+
+  List<DiagnosticEventRecord> listEvents(String sessionId) => [
+    for (final row in _database.select(
+      '''
+      SELECT * FROM diagnostic_events
+      WHERE session_id = ?
+      ORDER BY occurred_at ASC, id ASC
+      ''',
+      [sessionId],
+    ))
+      DiagnosticEventRecord(
+        id: row['id'] as int,
+        sessionId: row['session_id'] as String,
+        occurredAt: DateTime.parse(row['occurred_at'] as String),
+        type: row['type'] as String,
+        payloadJson: row['payload_json'] as String,
       ),
   ];
 

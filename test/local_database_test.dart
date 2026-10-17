@@ -67,4 +67,39 @@ void main() {
     database.setBool('onboarding_complete', true);
     expect(database.getBool('onboarding_complete'), isTrue);
   });
+
+  test('SQLite stores ordered diagnostic timeline events', () {
+    final database = LocalDatabase.inMemory();
+    addTearDown(database.close);
+    final now = DateTime.utc(2026, 10, 18, 10);
+    database.saveSession(
+      DiagnosticSessionRecord(
+        id: 'timeline-session',
+        startedAt: now,
+        updatedAt: now,
+        scenario: 'healthy',
+        simulated: true,
+        snapshotJson: '{}',
+        dataHash: 'hash',
+      ),
+    );
+    database.saveEvent(
+      sessionId: 'timeline-session',
+      occurredAt: now,
+      type: 'session_started',
+    );
+    database.saveEvent(
+      sessionId: 'timeline-session',
+      occurredAt: now.add(const Duration(seconds: 1)),
+      type: 'link_state_changed',
+      payload: const {'state': 'online'},
+    );
+
+    final events = database.listEvents('timeline-session');
+    expect(events.map((event) => event.type), [
+      'session_started',
+      'link_state_changed',
+    ]);
+    expect(events.last.payloadJson, contains('online'));
+  });
 }

@@ -1,6 +1,19 @@
 import 'dart:convert';
 import 'parameter_models.dart';
 
+class ParameterDifference {
+  const ParameterDifference({
+    required this.parameterId,
+    required this.backupValue,
+    required this.currentValue,
+  });
+
+  final String parameterId;
+  final num? backupValue;
+  final num? currentValue;
+  bool get changed => backupValue != currentValue;
+}
+
 class ParameterBackup {
   const ParameterBackup({
     required this.schemaVersion,
@@ -70,5 +83,17 @@ class ParameterBackup {
             requestedValue: entry.value,
           ),
     ];
+  }
+
+  List<ParameterDifference> compare(Map<String, num> currentValues) {
+    final ids = {...values.keys, ...currentValues.keys}.toList()..sort();
+    return List.unmodifiable([
+      for (final id in ids)
+        ParameterDifference(
+          parameterId: id,
+          backupValue: values[id],
+          currentValue: currentValues[id],
+        ),
+    ]);
   }
 }

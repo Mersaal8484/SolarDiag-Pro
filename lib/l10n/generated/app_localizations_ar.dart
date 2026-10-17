@@ -801,4 +801,61 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get startDiagnostics => 'بدء التشخيص';
+
+  @override
+  String get compareLatestBackup => 'مقارنة أحدث نسخة احتياطية';
+
+  @override
+  String get backupComparison => 'مقارنة النسخة الاحتياطية';
+
+  @override
+  String backupComparisonValues(String backup, String current) {
+    return 'النسخة: $backup · الحالية: $current';
+  }
+
+  @override
+  String get changed => 'متغيّر';
+
+  @override
+  String get unchanged => 'دون تغيير';
+
+  @override
+  String get notAvailable => 'غير متاح';
+
+  @override
+  String get sessionTimeline => 'الخط الزمني للجلسة';
+
+  @override
+  String get noTimelineEvents => 'لم تُسجل أحداث في الخط الزمني.';
+
+  @override
+  String get rawSessionEvidence => 'أدلة الجلسة الخام';
+
+  @override
+  String get sessionStarted => 'بدأت الجلسة';
+
+  @override
+  String get linkStateChanged => 'تغيرت حالة الاتصال';
+
+  @override
+  String get alarmsChanged => 'تغيرت حالة الإنذارات';
+
+  @override
+  String get sessionEvent => 'حدث في الجلسة';
+
+  @override
+  String get previewReport => 'معاينة التقرير';
+
+  @override
+  String get reportPreview => 'معاينة التقرير الهندسي';
+
+  @override
+  String get reportContentsDescription =>
+      'يتضمن التصدير التعريف والبرنامج الثابت وحالة الملف والتوقيتات والقراءات والإنذارات والمعلمات والنتائج وبصمة الجلسة المتحقق منها.';
+
+  @override
+  String get reportLanguage => 'اختر لغة التصدير';
+
+  @override
+  String get bilingual => 'ثنائي اللغة';
 }

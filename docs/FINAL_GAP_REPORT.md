@@ -23,12 +23,14 @@ simulated output in JSON metadata and on every PDF page.
 - No manufacturer profile is verified from authoritative documents or hardware.
 - No real battery, inverter, CAN, RS485, RS232, UART or BLE test was run.
 - No production backend, reviewer console, KMS/HSM signing, asymmetric trust root, account system or cloud distribution exists.
-- SQLite currently persists diagnostic sessions and parameter backups only;
-  audit-chain, lifecycle, last-known-good library and Studio research persistence
-  still require schema extensions.
+- SQLite currently persists diagnostic sessions, state-transition events,
+  parameter backups and local application settings; audit-chain, lifecycle,
+  last-known-good library and Studio research persistence still require schema
+  extensions.
 - The F2 screen inventory, deep-linkable routing, onboarding and adaptive
-  navigation are substantially implemented. Dedicated backup comparison,
-  richer history timelines and report-preview polish remain open.
+  navigation are substantially implemented. Backup comparison, ordered
+  state-transition timelines and report preview are implemented; broader
+  real-device workflows remain dependent on verified hardware profiles.
 - HMAC signing is mock-only and unsuitable as the production profile trust model.
 - No legal approval has been obtained for privacy, contributor terms or reverse-engineering workflows.
 - Visual screenshot/golden review has not yet been completed on representative Android devices.
