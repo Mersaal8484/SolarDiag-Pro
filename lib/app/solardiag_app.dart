@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import '../config/feature_flags.dart';
 import '../data/simulated_bms.dart';
 import '../features/advanced_diagnostics.dart';
 import '../features/design_lab.dart';
@@ -7,7 +8,8 @@ import '../features/workspace_shell.dart';
 import 'theme.dart';
 
 class SolarDiagApp extends StatefulWidget {
-  const SolarDiagApp({super.key});
+  const SolarDiagApp({super.key, this.flags = const FeatureFlags()});
+  final FeatureFlags flags;
   @override
   State<SolarDiagApp> createState() => _SolarDiagAppState();
 }
@@ -61,6 +63,7 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
               builder: (_) => AdvancedDiagnosticsScreen(snapshot: snapshot),
             ),
           ),
+          studioEnabled: widget.flags.studioEnabled,
         );
       },
     ),

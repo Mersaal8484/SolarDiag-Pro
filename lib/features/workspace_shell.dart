@@ -7,6 +7,7 @@ import 'device_library.dart';
 import 'gateway_screen.dart';
 import 'link_screen.dart';
 import 'parameters_screen.dart';
+import 'studio_workspace.dart';
 
 class WorkspaceShell extends StatefulWidget {
   const WorkspaceShell({
@@ -17,6 +18,7 @@ class WorkspaceShell extends StatefulWidget {
     required this.onToggleContrast,
     required this.onOpenDesignLab,
     required this.onOpenDiagnostics,
+    required this.studioEnabled,
   });
   final BatterySnapshot snapshot;
   final VoidCallback onToggleLocale;
@@ -24,6 +26,7 @@ class WorkspaceShell extends StatefulWidget {
   final VoidCallback onToggleContrast;
   final VoidCallback onOpenDesignLab;
   final VoidCallback onOpenDiagnostics;
+  final bool studioEnabled;
   @override
   State<WorkspaceShell> createState() => _WorkspaceShellState();
 }
@@ -48,6 +51,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
       const LinkScreen(),
       const GatewayScreen(),
       const ParametersScreen(),
+      if (widget.studioEnabled) const StudioWorkspace(),
     ];
     final destinations = [
       (Icons.grid_view, s.overview),
@@ -55,6 +59,8 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
       (Icons.link, s.pick('Link', 'الرابط')),
       (Icons.cable, s.gateway),
       (Icons.tune, s.pick('Parameters', 'المعلمات')),
+      if (widget.studioEnabled)
+        (Icons.science_outlined, s.pick('Studio', 'الاستوديو')),
     ];
     return Scaffold(
       body: SafeArea(

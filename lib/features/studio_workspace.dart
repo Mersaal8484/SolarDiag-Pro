@@ -1,0 +1,649 @@
+import 'package:flutter/material.dart';
+import '../app/theme.dart';
+import '../studio/capture_analysis.dart';
+import '../studio/capture_models.dart';
+import '../studio/findings.dart';
+import '../studio/profile_builder.dart';
+
+enum StudioSection {
+  sessions,
+  capture,
+  frames,
+  analysis,
+  differential,
+  hypotheses,
+  profileBuilder,
+  mapping,
+  validation,
+  export,
+}
+
+class StudioWorkspace extends StatefulWidget {
+  const StudioWorkspace({super.key});
+  @override
+  State<StudioWorkspace> createState() => _StudioWorkspaceState();
+}
+
+class _StudioWorkspaceState extends State<StudioWorkspace> {
+  StudioSection section = StudioSection.sessions;
+  late final CaptureSession session = _syntheticSession();
+  late final CaptureAnalysis analysis = const CaptureAnalyzer().analyze(
+    session,
+  );
+  late final StudioProfileDraft draft = StudioProfileDraft(
+    id: 'studio.synthetic.can.v1',
+    manufacturer: 'SolarDiag Research',
+    family: 'Synthetic CAN',
+    referenceIds: const ['solardiag-simulator-spec-001'],
+    mappings: const [
+      FieldMapping(
+        field: 'state_of_charge',
+        frameIdentifier: 0x355,
+        offset: 0,
+        length: 2,
+        dataType: FieldDataType.unsigned16,
+        scale: .1,
+        unit: '%',
+        evidenceReferences: ['synthetic-001:frames:4-6'],
+      ),
+    ],
+  );
+  late final ProtocolFinding finding = const ProtocolFinding(
+    id: 'finding-soc',
+    title: 'Bytes 0–1 may encode state of charge',
+    state: FindingState.hypothesis,
+    confidence: .46,
+    evidence: [
+      FindingEvidence(
+        kind: EvidenceKind.captureFrame,
+        reference: 'synthetic-001:4',
+        summary: 'Value changes with scripted SOC',
+      ),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Protocol Discovery Studio'),
+        actions: [const _ReplayLockBadge(), const SizedBox(width: 14)],
+      ),
+      body: Row(
+        children: [
+          if (wide)
+            SizedBox(
+              width: 238,
+              child: _SectionList(
+                selected: section,
+                onSelected: (value) => setState(() => section = value),
+              ),
+            ),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: _section(context, section),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: !wide
+          ? NavigationBar(
+              selectedIndex: section.index.clamp(0, 4),
+              onDestinationSelected: (value) =>
+                  setState(() => section = StudioSection.values[value]),
+              destinations: StudioSection.values
+                  .take(5)
+                  .map(
+                    (item) => NavigationDestination(
+                      icon: Icon(_icon(item)),
+                      label: _label(item),
+                    ),
+                  )
+                  .toList(),
+            )
+          : null,
+    );
+  }
+
+  Widget _section(BuildContext context, StudioSection value) => switch (value) {
+    StudioSection.sessions => _StudioPage(
+      key: const ValueKey('sessions'),
+      eyebrow: 'RESEARCH SESSION',
+      title: 'Synthetic CAN study',
+      subtitle: 'One isolated session · no hardware attached',
+      body: Wrap(
+        spacing: 14,
+        runSpacing: 14,
+        children: [
+          _Stat(label: 'Frames', value: '${session.frames.length}'),
+          _Stat(label: 'Identifiers', value: '${analysis.identifiers.length}'),
+          const _Stat(label: 'Source', value: 'SYNTHETIC'),
+          const _Stat(label: 'TX', value: 'LOCKED'),
+        ],
+      ),
+    ),
+    StudioSection.capture => const _StudioPage(
+      key: ValueKey('capture'),
+      eyebrow: 'PASSIVE CAPTURE',
+      title: 'Capture controls',
+      subtitle: 'Hardware capture is unavailable in this build.',
+      body: _EmptyInstrument(
+        icon: Icons.sensors_off_outlined,
+        title: 'No gateway connected',
+        detail:
+            'Import or generate synthetic data. Captured frames can never be replayed to hardware.',
+      ),
+    ),
+    StudioSection.frames => _StudioPage(
+      key: const ValueKey('frames'),
+      eyebrow: 'FRAME EXPLORER',
+      title: '${session.frames.length} timestamped frames',
+      subtitle: 'Raw values remain raw until evidence supports a mapping.',
+      body: _FrameTable(frames: session.frames),
+    ),
+    StudioSection.analysis => _StudioPage(
+      key: const ValueKey('analysis'),
+      eyebrow: 'SIGNAL ANALYSIS',
+      title: 'Identifiers & cadence',
+      subtitle: 'Frequency, payload length and changing byte positions.',
+      body: Column(
+        children: analysis.identifiers.values
+            .map((stats) => _AnalysisRow(stats: stats))
+            .toList(),
+      ),
+    ),
+    StudioSection.differential => const _StudioPage(
+      key: ValueKey('diff'),
+      eyebrow: 'DIFFERENTIAL',
+      title: 'Compare controlled captures',
+      subtitle: 'Change one known condition, then compare evidence.',
+      body: _EmptyInstrument(
+        icon: Icons.difference_outlined,
+        title: 'Baseline ready',
+        detail:
+            'A second synthetic capture is required to calculate a differential result.',
+      ),
+    ),
+    StudioSection.hypotheses => _StudioPage(
+      key: const ValueKey('hypotheses'),
+      eyebrow: 'FINDINGS',
+      title: 'Evidence, not guesses',
+      subtitle: 'Every claim carries state, confidence and references.',
+      body: _FindingView(finding: finding),
+    ),
+    StudioSection.profileBuilder => _StudioPage(
+      key: const ValueKey('builder'),
+      eyebrow: 'PROFILE BUILDER',
+      title: draft.id,
+      subtitle: 'Engineering-only draft · read-only',
+      body: _IdentityCard(draft: draft),
+    ),
+    StudioSection.mapping => _StudioPage(
+      key: const ValueKey('mapping'),
+      eyebrow: 'PARAMETER MAPPING',
+      title: 'Telemetry map',
+      subtitle: 'Offsets and scaling remain tied to capture evidence.',
+      body: Column(
+        children: draft.mappings
+            .map((mapping) => _MappingRow(mapping: mapping))
+            .toList(),
+      ),
+    ),
+    StudioSection.validation => _StudioPage(
+      key: const ValueKey('validation'),
+      eyebrow: 'OFFLINE VALIDATION',
+      title: 'Draft checks',
+      subtitle: 'No real bus is involved.',
+      body: _ValidationView(result: const ProfileBuilder().validate(draft)),
+    ),
+    StudioSection.export => _StudioPage(
+      key: const ValueKey('export'),
+      eyebrow: 'EXPORT',
+      title: 'Studio draft only',
+      subtitle: 'Never loadable in technician mode.',
+      body: _ExportView(json: const ProfileBuilder().exportStudioDraft(draft)),
+    ),
+  };
+}
+
+class _SectionList extends StatelessWidget {
+  const _SectionList({required this.selected, required this.onSelected});
+  final StudioSection selected;
+  final ValueChanged<StudioSection> onSelected;
+  @override
+  Widget build(BuildContext context) => Material(
+    color: SolarColors.deep,
+    child: ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(12, 12, 12, 18),
+          child: Text(
+            'STUDIO / ENGINEERING',
+            style: TextStyle(
+              color: SolarColors.lime,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        for (final item in StudioSection.values)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: ListTile(
+              selected: selected == item,
+              selectedTileColor: SolarColors.lime,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              leading: Icon(
+                _icon(item),
+                color: selected == item ? SolarColors.deep : Colors.white60,
+              ),
+              title: Text(
+                _label(item),
+                style: TextStyle(
+                  color: selected == item ? SolarColors.deep : Colors.white70,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+              onTap: () => onSelected(item),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+class _StudioPage extends StatelessWidget {
+  const _StudioPage({
+    super.key,
+    required this.eyebrow,
+    required this.title,
+    required this.subtitle,
+    required this.body,
+  });
+  final String eyebrow;
+  final String title;
+  final String subtitle;
+  final Widget body;
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(28),
+    children: [
+      Text(
+        eyebrow,
+        style: const TextStyle(
+          color: SolarColors.green,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.3,
+          fontSize: 11,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(title, style: Theme.of(context).textTheme.displaySmall),
+      const SizedBox(height: 6),
+      Text(
+        subtitle,
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
+      const SizedBox(height: 28),
+      body,
+    ],
+  );
+}
+
+class _ReplayLockBadge extends StatelessWidget {
+  const _ReplayLockBadge();
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+    decoration: BoxDecoration(
+      color: SolarColors.lime,
+      borderRadius: BorderRadius.circular(99),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.lock_outline, size: 15, color: SolarColors.deep),
+        SizedBox(width: 6),
+        Text(
+          'REPLAY LOCK',
+          style: TextStyle(
+            color: SolarColors.deep,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.label, required this.value});
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 180,
+    height: 112,
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Spacer(),
+            Text(value, style: Theme.of(context).textTheme.headlineSmall),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _EmptyInstrument extends StatelessWidget {
+  const _EmptyInstrument({
+    required this.icon,
+    required this.title,
+    required this.detail,
+  });
+  final IconData icon;
+  final String title;
+  final String detail;
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        children: [
+          Icon(icon, size: 42, color: SolarColors.green),
+          const SizedBox(height: 14),
+          Text(title, style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 6),
+          Text(detail, textAlign: TextAlign.center),
+        ],
+      ),
+    ),
+  );
+}
+
+class _FrameTable extends StatelessWidget {
+  const _FrameTable({required this.frames});
+  final List<CaptureFrame> frames;
+  @override
+  Widget build(BuildContext context) => Card(
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('TIME µs')),
+          DataColumn(label: Text('ID')),
+          DataColumn(label: Text('DIRECTION')),
+          DataColumn(label: Text('PAYLOAD')),
+        ],
+        rows: [
+          for (final frame in frames)
+            DataRow(
+              cells: [
+                DataCell(Text('${frame.timestampMicros}')),
+                DataCell(
+                  Text('0x${frame.identifier.toRadixString(16).toUpperCase()}'),
+                ),
+                DataCell(Text(frame.received ? 'RX' : 'TX')),
+                DataCell(
+                  Text(
+                    frame.payload
+                        .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+                        .join(' ')
+                        .toUpperCase(),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _AnalysisRow extends StatelessWidget {
+  const _AnalysisRow({required this.stats});
+  final IdentifierStatistics stats;
+  @override
+  Widget build(BuildContext context) => Card(
+    child: ListTile(
+      contentPadding: const EdgeInsets.all(18),
+      leading: const Icon(Icons.memory),
+      title: Text('0x${stats.identifier.toRadixString(16).toUpperCase()}'),
+      subtitle: Text(
+        '${stats.frameCount} frames · ${stats.averagePeriodMicros?.toStringAsFixed(0) ?? '—'} µs period',
+      ),
+      trailing: Text(
+        'Δ [${stats.changedByteOffsets.join(', ')}]',
+        style: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+    ),
+  );
+}
+
+class _FindingView extends StatelessWidget {
+  const _FindingView({required this.finding});
+  final ProtocolFinding finding;
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Chip(label: Text(finding.state.name.toUpperCase())),
+              const Spacer(),
+              Text('${(finding.confidence * 100).round()}% confidence'),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(finding.title, style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 16),
+          for (final evidence in finding.evidence)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.link),
+              title: Text(evidence.reference),
+              subtitle: Text(evidence.summary),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _IdentityCard extends StatelessWidget {
+  const _IdentityCard({required this.draft});
+  final StudioProfileDraft draft;
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Chip(label: Text('STUDIO-DRAFT')),
+          const SizedBox(height: 12),
+          Text(
+            '${draft.manufacturer} / ${draft.family}',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${draft.mappings.length} evidenced mapping · ${draft.referenceIds.length} reference',
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _MappingRow extends StatelessWidget {
+  const _MappingRow({required this.mapping});
+  final FieldMapping mapping;
+  @override
+  Widget build(BuildContext context) => Card(
+    child: ListTile(
+      contentPadding: const EdgeInsets.all(18),
+      leading: const Icon(Icons.account_tree_outlined),
+      title: Text(mapping.field),
+      subtitle: Text(
+        '0x${mapping.frameIdentifier.toRadixString(16)} · offset ${mapping.offset} · ${mapping.dataType.name} · ×${mapping.scale} ${mapping.unit}',
+      ),
+      trailing: const Icon(Icons.verified_outlined, color: SolarColors.green),
+    ),
+  );
+}
+
+class _ValidationView extends StatelessWidget {
+  const _ValidationView({required this.result});
+  final DraftValidationResult result;
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        children: [
+          Icon(
+            result.isValid ? Icons.check_circle : Icons.error_outline,
+            color: result.isValid
+                ? SolarColors.green
+                : Theme.of(context).colorScheme.error,
+            size: 36,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              result.isValid
+                  ? 'Offline schema and evidence checks passed.'
+                  : result.issues.map((item) => item.message).join('\n'),
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _ExportView extends StatelessWidget {
+  const _ExportView({required this.json});
+  final String json;
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: SolarColors.deep,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: SelectableText(
+          json,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontFamily: 'monospace',
+            height: 1.45,
+          ),
+        ),
+      ),
+      const SizedBox(height: 14),
+      const FilledButton(
+        onPressed: null,
+        child: Text('TECHNICIAN PUBLICATION DISABLED'),
+      ),
+    ],
+  );
+}
+
+CaptureSession _syntheticSession() => CaptureSession(
+  id: 'synthetic-001',
+  interfaceType: CaptureInterface.can,
+  source: CaptureSource.synthetic,
+  startedAt: DateTime.utc(2026),
+  synthetic: true,
+  containsNdaMaterial: false,
+  notes: 'Studio demo',
+  frames: const [
+    CaptureFrame(
+      timestampMicros: 0,
+      identifier: 0x351,
+      payload: [0x02, 0x28, 0x01],
+      received: true,
+    ),
+    CaptureFrame(
+      timestampMicros: 100000,
+      identifier: 0x351,
+      payload: [0x02, 0x28, 0x02],
+      received: true,
+    ),
+    CaptureFrame(
+      timestampMicros: 200000,
+      identifier: 0x351,
+      payload: [0x02, 0x28, 0x03],
+      received: true,
+    ),
+    CaptureFrame(
+      timestampMicros: 25000,
+      identifier: 0x355,
+      payload: [0x03, 0x0C],
+      received: true,
+    ),
+    CaptureFrame(
+      timestampMicros: 125000,
+      identifier: 0x355,
+      payload: [0x03, 0x0B],
+      received: true,
+    ),
+    CaptureFrame(
+      timestampMicros: 225000,
+      identifier: 0x355,
+      payload: [0x03, 0x0A],
+      received: true,
+    ),
+  ],
+);
+
+String _label(StudioSection section) => switch (section) {
+  StudioSection.sessions => 'Sessions',
+  StudioSection.capture => 'Capture',
+  StudioSection.frames => 'Frame explorer',
+  StudioSection.analysis => 'Analysis',
+  StudioSection.differential => 'Differential',
+  StudioSection.hypotheses => 'Hypotheses',
+  StudioSection.profileBuilder => 'Profile builder',
+  StudioSection.mapping => 'Mapping editor',
+  StudioSection.validation => 'Validation',
+  StudioSection.export => 'Export',
+};
+IconData _icon(StudioSection section) => switch (section) {
+  StudioSection.sessions => Icons.folder_open_outlined,
+  StudioSection.capture => Icons.sensors_outlined,
+  StudioSection.frames => Icons.table_rows_outlined,
+  StudioSection.analysis => Icons.analytics_outlined,
+  StudioSection.differential => Icons.difference_outlined,
+  StudioSection.hypotheses => Icons.lightbulb_outline,
+  StudioSection.profileBuilder => Icons.build_outlined,
+  StudioSection.mapping => Icons.account_tree_outlined,
+  StudioSection.validation => Icons.fact_check_outlined,
+  StudioSection.export => Icons.ios_share_outlined,
+};
