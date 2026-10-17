@@ -3,6 +3,7 @@ import '../app/strings.dart';
 import '../app/theme.dart';
 import '../core/battery_models.dart';
 import 'dashboard.dart';
+import 'contribution_screen.dart';
 import 'device_library.dart';
 import 'gateway_screen.dart';
 import 'link_screen.dart';
@@ -19,6 +20,7 @@ class WorkspaceShell extends StatefulWidget {
     required this.onOpenDesignLab,
     required this.onOpenDiagnostics,
     required this.studioEnabled,
+    required this.contributionsEnabled,
   });
   final BatterySnapshot snapshot;
   final VoidCallback onToggleLocale;
@@ -27,6 +29,7 @@ class WorkspaceShell extends StatefulWidget {
   final VoidCallback onOpenDesignLab;
   final VoidCallback onOpenDiagnostics;
   final bool studioEnabled;
+  final bool contributionsEnabled;
   @override
   State<WorkspaceShell> createState() => _WorkspaceShellState();
 }
@@ -52,6 +55,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
       const GatewayScreen(),
       const ParametersScreen(),
       if (widget.studioEnabled) const StudioWorkspace(),
+      if (widget.contributionsEnabled) const ContributionScreen(),
     ];
     final destinations = [
       (Icons.grid_view, s.overview),
@@ -61,6 +65,8 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
       (Icons.tune, s.pick('Parameters', 'المعلمات')),
       if (widget.studioEnabled)
         (Icons.science_outlined, s.pick('Studio', 'الاستوديو')),
+      if (widget.contributionsEnabled)
+        (Icons.volunteer_activism_outlined, s.pick('Contribute', 'ساهم')),
     ];
     return Scaffold(
       body: SafeArea(

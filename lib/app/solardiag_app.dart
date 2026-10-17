@@ -64,6 +64,7 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
             ),
           ),
           studioEnabled: widget.flags.studioEnabled,
+          contributionsEnabled: widget.flags.contributionsEnabled,
         );
       },
     ),
