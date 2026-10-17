@@ -1,5 +1,6 @@
 import '../core/battery_models.dart';
 import 'capabilities.dart';
+import '../parameters/write_pipeline.dart';
 
 class IdentificationResult {
   const IdentificationResult({
@@ -27,8 +28,11 @@ class LinkHealth {
 
 abstract interface class BmsAdapter {
   Future<IdentificationResult> identify();
-  Future<BatterySnapshot> readTelemetry();
-  Future<List<double>> readCellVoltages();
+  Future<TelemetrySnapshot> readTelemetry();
+  Future<List<Measurement>> readCellVoltages();
+  Future<Set<String>> readAlarms();
+  Future<Map<String, num>> readParameters();
+  ParameterTransport parameterTransport();
   Future<CapabilitySet> capabilities();
   Future<LinkHealth> health();
 }

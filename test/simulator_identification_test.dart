@@ -14,9 +14,9 @@ import 'package:solardiag_pro/transport/safe_frame_transport.dart';
 void main() {
   group('deterministic simulator', () {
     test('same scenario and tick produce identical measurements', () {
-      final first = ScenarioFactory.create(SimulationScenario.nominal, tick: 4);
+      final first = ScenarioFactory.create(SimulationScenario.healthy, tick: 4);
       final second = ScenarioFactory.create(
-        SimulationScenario.nominal,
+        SimulationScenario.healthy,
         tick: 4,
       );
       expect(first.snapshot.voltage.value, second.snapshot.voltage.value);
@@ -25,24 +25,28 @@ void main() {
     });
     test('missing temperature carries an explicit reason', () {
       final frame = ScenarioFactory.create(
-        SimulationScenario.missingTemperature,
+        SimulationScenario.communicationFaults,
+        tick: 2,
       );
       expect(frame.snapshot.temperature.value, isNull);
       expect(
         frame.snapshot.temperature.absenceReason,
-        DataAbsenceReason.notReported,
+        DataAbsenceReason.readFailed,
       );
     });
     test('intermittent link fails only on deterministic odd ticks', () async {
       final adapter = SimulatedBmsAdapter(
-        scenario: SimulationScenario.intermittentLink,
+        scenario: SimulationScenario.communicationFaults,
       );
       expect((await adapter.readTelemetry()).voltage.value, isNotNull);
       adapter.advance();
       expect(adapter.readTelemetry, throwsA(isA<LinkUnavailableException>()));
     });
     test('imbalanced scenario exposes a meaningful cell delta', () {
-      final frame = ScenarioFactory.create(SimulationScenario.imbalancedCells);
+      final frame = ScenarioFactory.create(
+        SimulationScenario.gradualImbalance,
+        tick: 10,
+      );
       expect(frame.snapshot.cellDelta, greaterThan(.05));
     });
   });

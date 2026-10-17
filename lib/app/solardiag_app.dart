@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import '../config/feature_flags.dart';
-import '../data/simulated_bms.dart';
+import '../simulator/simulation_scenario.dart';
 import '../features/advanced_diagnostics.dart';
 import '../features/design_lab.dart';
 import '../features/workspace_shell.dart';
@@ -18,6 +18,7 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
   Locale _locale = const Locale('en');
   ThemeMode _themeMode = ThemeMode.light;
   bool _highContrast = false;
+  SimulationScenario _scenario = SimulationScenario.communicationFaults;
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
@@ -40,9 +41,14 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
     ),
     home: Builder(
       builder: (context) {
-        final snapshot = const SimulatedBms().snapshot();
+        final snapshot = ScenarioFactory.create(
+          _scenario,
+          tick: _scenario == SimulationScenario.communicationFaults ? 2 : 0,
+        ).snapshot;
         return WorkspaceShell(
           snapshot: snapshot,
+          scenario: _scenario,
+          onScenarioChanged: (scenario) => setState(() => _scenario = scenario),
           onToggleLocale: () => setState(
             () => _locale = _locale.languageCode == 'en'
                 ? const Locale('ar')

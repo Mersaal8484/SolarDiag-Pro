@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../app/strings.dart';
 import '../app/theme.dart';
 import '../core/battery_models.dart';
+import '../integration/compatibility_engine.dart';
+import '../integration/compatibility_models.dart';
+import '../integration/link_diagnostics.dart';
+import '../simulator/simulation_scenario.dart';
 import 'dashboard.dart';
 import 'contribution_screen.dart';
 import 'device_library.dart';
@@ -14,6 +18,8 @@ class WorkspaceShell extends StatefulWidget {
   const WorkspaceShell({
     super.key,
     required this.snapshot,
+    required this.scenario,
+    required this.onScenarioChanged,
     required this.onToggleLocale,
     required this.onToggleTheme,
     required this.onToggleContrast,
@@ -23,6 +29,8 @@ class WorkspaceShell extends StatefulWidget {
     required this.contributionsEnabled,
   });
   final BatterySnapshot snapshot;
+  final SimulationScenario scenario;
+  final ValueChanged<SimulationScenario> onScenarioChanged;
   final VoidCallback onToggleLocale;
   final VoidCallback onToggleTheme;
   final VoidCallback onToggleContrast;
@@ -40,9 +48,69 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
     final wide = MediaQuery.sizeOf(context).width >= 900;
+    final battery = BatteryIntegrationProfile(
+      chargeVoltageWindow: widget.snapshot.chargeVoltageLimit.value == null
+          ? const SourcedValue.unavailable('not_reported')
+          : SourcedValue.reported(
+              VoltageWindow(
+                minimum: widget.snapshot.voltage.value ?? 0,
+                maximum: widget.snapshot.chargeVoltageLimit.value!,
+              ),
+              EvidenceSource.deviceReported,
+            ),
+      dischargeVoltageWindow: const SourcedValue.unavailable('not_reported'),
+      maximumChargeCurrent: widget.snapshot.chargeCurrentLimit.value == null
+          ? const SourcedValue.unavailable('not_reported')
+          : SourcedValue.reported(
+              widget.snapshot.chargeCurrentLimit.value!,
+              EvidenceSource.deviceReported,
+            ),
+      maximumDischargeCurrent:
+          widget.snapshot.dischargeCurrentLimit.value == null
+          ? const SourcedValue.unavailable('not_reported')
+          : SourcedValue.reported(
+              widget.snapshot.dischargeCurrentLimit.value!,
+              EvidenceSource.deviceReported,
+            ),
+      chemistry: const SourcedValue.unavailable('profile_required'),
+      spokenProtocols: const {},
+    );
+    const inverter = InverterIntegrationProfile(
+      configuredChargeVoltage: SourcedValue.unavailable(
+        'inverter_not_connected',
+      ),
+      configuredLowVoltageCutoff: SourcedValue.unavailable(
+        'inverter_not_connected',
+      ),
+      configuredChargeCurrent: SourcedValue.unavailable(
+        'inverter_not_connected',
+      ),
+      configuredDischargeCurrent: SourcedValue.unavailable(
+        'inverter_not_connected',
+      ),
+      supportedChemistries: {},
+      supportedBatteryProtocols: {},
+    );
+    final assessment = const CompatibilityEngine().assess(
+      battery: battery,
+      inverter: inverter,
+    );
+    final link = const LinkDiagnostics().analyze(
+      LinkObservation(
+        window: Duration.zero,
+        expectedMessages: 0,
+        receivedMessages: 0,
+        timeouts: 0,
+        crcFailures: 0,
+        inverterSoc: SourcedValue.unavailable('inverter_not_connected'),
+        batterySoc: SourcedValue.unavailable('inverter_not_connected'),
+      ),
+    );
     final pages = <Widget>[
       Dashboard(
         snapshot: widget.snapshot,
+        scenario: widget.scenario,
+        onScenarioChanged: widget.onScenarioChanged,
         onToggleLocale: widget.onToggleLocale,
         onToggleTheme: widget.onToggleTheme,
         onToggleContrast: widget.onToggleContrast,
@@ -51,7 +119,14 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
         embedded: true,
       ),
       const DeviceLibraryScreen(),
-      const LinkScreen(),
+      LinkScreen(
+        assessment: assessment,
+        link: link,
+        recommendations: const CompatibilityEngine().recommendations(
+          assessment,
+        ),
+        simulated: true,
+      ),
       const GatewayScreen(),
       const ParametersScreen(),
       if (widget.studioEnabled) const StudioWorkspace(),

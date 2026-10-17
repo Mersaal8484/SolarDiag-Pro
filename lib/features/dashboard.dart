@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import '../app/strings.dart';
 import '../app/theme.dart';
 import '../core/battery_models.dart';
+import '../simulator/simulation_scenario.dart';
 
 class Dashboard extends StatelessWidget {
   const Dashboard({
     super.key,
     required this.snapshot,
+    required this.scenario,
+    required this.onScenarioChanged,
     required this.onToggleLocale,
     required this.onToggleTheme,
     required this.onToggleContrast,
@@ -15,6 +18,8 @@ class Dashboard extends StatelessWidget {
     this.embedded = false,
   });
   final BatterySnapshot snapshot;
+  final SimulationScenario scenario;
+  final ValueChanged<SimulationScenario> onScenarioChanged;
   final VoidCallback onToggleLocale;
   final VoidCallback onToggleTheme;
   final VoidCallback onToggleContrast;
@@ -48,6 +53,28 @@ class Dashboard extends StatelessWidget {
                           onToggleContrast: onToggleContrast,
                         ),
                         const SizedBox(height: 32),
+                        DropdownButtonFormField<SimulationScenario>(
+                          key: const Key('scenario-selector'),
+                          initialValue: scenario,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: s.pick(
+                              'Simulated scenario',
+                              'سيناريو المحاكاة',
+                            ),
+                          ),
+                          items: [
+                            for (final item in SimulationScenario.values)
+                              DropdownMenuItem(
+                                value: item,
+                                child: Text(item.name),
+                              ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) onScenarioChanged(value);
+                          },
+                        ),
+                        const SizedBox(height: 16),
                         _Hero(snapshot: snapshot),
                         const SizedBox(height: 14),
                         Align(

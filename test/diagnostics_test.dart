@@ -8,14 +8,17 @@ void main() {
   const diagnostics = BatteryDiagnostics();
   test('never invents state of health', () {
     final assessment = diagnostics.analyze(
-      ScenarioFactory.create(SimulationScenario.nominal).snapshot,
+      ScenarioFactory.create(SimulationScenario.healthy).snapshot,
     );
     expect(assessment.stateOfHealth, isNull);
     expect(assessment.reason, 'SOH_NOT_REPORTED_OR_DERIVABLE');
   });
   test('detects cell imbalance from reported raw values', () {
     final assessment = diagnostics.analyze(
-      ScenarioFactory.create(SimulationScenario.imbalancedCells).snapshot,
+      ScenarioFactory.create(
+        SimulationScenario.gradualImbalance,
+        tick: 10,
+      ).snapshot,
     );
     final finding = assessment.findings.singleWhere(
       (item) => item.code == 'CELL_DELTA',
@@ -26,18 +29,31 @@ void main() {
   });
   test('missing temperature remains unavailable', () {
     final assessment = diagnostics.analyze(
-      ScenarioFactory.create(SimulationScenario.missingTemperature).snapshot,
+      ScenarioFactory.create(
+        SimulationScenario.communicationFaults,
+        tick: 2,
+      ).snapshot,
     );
     final finding = assessment.findings.singleWhere(
       (item) => item.code == 'TEMPERATURE_UNAVAILABLE',
     );
     expect(finding.confidence, DiagnosticConfidence.unavailable);
-    expect(finding.evidence['reason'], DataAbsenceReason.notReported.name);
+    expect(finding.evidence['reason'], DataAbsenceReason.readFailed.name);
   });
   test('known raw alarm is interpreted without losing raw evidence', () {
     final assessment = diagnostics.analyze(
-      ScenarioFactory.create(SimulationScenario.activeAlarm).snapshot,
+      ScenarioFactory.create(SimulationScenario.electricalEvents).snapshot,
       rawAlarmCodes: const {'CELL_OVERVOLTAGE'},
+      faultDictionary: const {
+        'CELL_OVERVOLTAGE': FaultDefinition(
+          code: 'CELL_OVERVOLTAGE',
+          severity: DiagnosticSeverity.critical,
+          titleEn: 'Cell overvoltage',
+          titleAr: 'ارتفاع جهد الخلية',
+          suggestedChecksEn: ['Check charger limits'],
+          suggestedChecksAr: ['تحقق من حدود الشاحن'],
+        ),
+      },
     );
     final finding = assessment.findings.singleWhere(
       (item) => item.code == 'CELL_OVERVOLTAGE',
@@ -47,7 +63,7 @@ void main() {
   });
   test('unknown raw alarm is preserved and never guessed', () {
     final assessment = diagnostics.analyze(
-      ScenarioFactory.create(SimulationScenario.nominal).snapshot,
+      ScenarioFactory.create(SimulationScenario.healthy).snapshot,
       rawAlarmCodes: const {'VENDOR_BIT_12'},
     );
     final finding = assessment.findings.singleWhere(

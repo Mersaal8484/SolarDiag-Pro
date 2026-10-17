@@ -33,6 +33,20 @@ class CompatibilityEngine {
     ]),
   );
 
+  List<IntegrationRecommendation> recommendations(
+    CompatibilityAssessment assessment,
+  ) => [
+    for (final finding in assessment.findings)
+      if (finding.state == CompatibilityState.incompatible)
+        IntegrationRecommendation(
+          device: 'inverter',
+          setting: finding.code,
+          menu: 'manufacturer-documented menu required',
+          suggestedValue: 'within verified battery profile',
+          reason: finding.message,
+        ),
+  ];
+
   CompatibilityFinding _withinWindow({
     required String code,
     required SourcedValue<double> configured,

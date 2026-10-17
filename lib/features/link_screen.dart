@@ -1,25 +1,30 @@
 import 'package:flutter/material.dart';
 import '../app/strings.dart';
 import '../app/theme.dart';
-import '../integration/compatibility_engine.dart';
 import '../integration/compatibility_models.dart';
 import '../integration/link_diagnostics.dart';
 
 class LinkScreen extends StatelessWidget {
-  const LinkScreen({super.key});
+  const LinkScreen({
+    required this.assessment,
+    required this.link,
+    required this.recommendations,
+    required this.simulated,
+    super.key,
+  });
+  final CompatibilityAssessment assessment;
+  final LinkDiagnosticResult link;
+  final List<IntegrationRecommendation> recommendations;
+  final bool simulated;
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
-    final assessment = const CompatibilityEngine().assess(
-      battery: _battery,
-      inverter: _inverter,
-    );
-    final link = const LinkDiagnostics().analyze(_observation);
+    final delivery = link.messageDeliveryRatio;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         Text(
-          s.pick('Inverter ↔ Battery', 'الإنفرتر ↔ البطارية'),
+          s.pick('Inverter ↔ Battery', 'العاكس ↔ البطارية'),
           style: Theme.of(context).textTheme.displaySmall,
         ),
         const SizedBox(height: 8),
@@ -45,7 +50,7 @@ class LinkScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      s.pick('Simulated link · Healthy', 'رابط محاكى · سليم'),
+                      '${simulated ? s.simulated : s.pick('Live', 'مباشر')} · ${assessment.verdict.name}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
@@ -53,7 +58,12 @@ class LinkScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${(link.messageDeliveryRatio! * 100).toStringAsFixed(0)}% ${s.pick('message delivery', 'تسليم الرسائل')}',
+                      delivery == null
+                          ? s.pick(
+                              'Message delivery unavailable',
+                              'تسليم الرسائل غير متاح',
+                            )
+                          : '${(delivery * 100).toStringAsFixed(0)}% ${s.pick('message delivery', 'تسليم الرسائل')}',
                       style: const TextStyle(color: Colors.white70),
                     ),
                   ],
@@ -62,13 +72,28 @@ class LinkScreen extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        Text(assessment.explanation),
         const SizedBox(height: 18),
         ...assessment.findings.map((finding) => _FindingTile(finding: finding)),
+        if (recommendations.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          for (final item in recommendations)
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.tips_and_updates_outlined),
+                title: Text('${item.device}: ${item.setting}'),
+                subtitle: Text(
+                  '${item.suggestedValue} · ${item.menu}\n${item.reason}',
+                ),
+              ),
+            ),
+        ],
         const SizedBox(height: 12),
         Text(
           s.pick(
-            'No automatic reconfiguration is available.',
-            'لا تتوفر إعادة تهيئة تلقائية.',
+            'Recommendations are never applied automatically.',
+            'لا تُطبّق التوصيات تلقائيًا.',
           ),
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -104,53 +129,3 @@ class _FindingTile extends StatelessWidget {
     );
   }
 }
-
-const _battery = BatteryIntegrationProfile(
-  chargeVoltageWindow: SourcedValue.reported(
-    VoltageWindow(minimum: 52, maximum: 56.8),
-    EvidenceSource.verifiedProfile,
-  ),
-  dischargeVoltageWindow: SourcedValue.reported(
-    VoltageWindow(minimum: 44.8, maximum: 56.8),
-    EvidenceSource.verifiedProfile,
-  ),
-  maximumChargeCurrent: SourcedValue.reported(
-    100,
-    EvidenceSource.verifiedProfile,
-  ),
-  maximumDischargeCurrent: SourcedValue.reported(
-    120,
-    EvidenceSource.verifiedProfile,
-  ),
-  chemistry: SourcedValue.reported('LiFePO4', EvidenceSource.verifiedProfile),
-  spokenProtocols: {'CAN-SIM'},
-);
-const _inverter = InverterIntegrationProfile(
-  configuredChargeVoltage: SourcedValue.reported(
-    55.2,
-    EvidenceSource.deviceReported,
-  ),
-  configuredLowVoltageCutoff: SourcedValue.reported(
-    47,
-    EvidenceSource.deviceReported,
-  ),
-  configuredChargeCurrent: SourcedValue.reported(
-    80,
-    EvidenceSource.deviceReported,
-  ),
-  configuredDischargeCurrent: SourcedValue.reported(
-    100,
-    EvidenceSource.deviceReported,
-  ),
-  supportedChemistries: {'LiFePO4'},
-  supportedBatteryProtocols: {'CAN-SIM'},
-);
-const _observation = LinkObservation(
-  window: Duration(seconds: 10),
-  expectedMessages: 100,
-  receivedMessages: 99,
-  timeouts: 0,
-  crcFailures: 0,
-  inverterSoc: SourcedValue.reported(79, EvidenceSource.deviceReported),
-  batterySoc: SourcedValue.reported(78, EvidenceSource.deviceReported),
-);

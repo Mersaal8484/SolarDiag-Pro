@@ -1,5 +1,6 @@
 import '../core/battery_models.dart';
 import 'diagnostic_models.dart';
+import '../simulator/simulation_scenario.dart';
 
 class DiagnosticThresholds {
   const DiagnosticThresholds({
@@ -21,11 +22,14 @@ class BatteryDiagnostics {
   HealthAssessment analyze(
     BatterySnapshot snapshot, {
     Set<String> rawAlarmCodes = const {},
+    Map<String, FaultDefinition> faultDictionary = const {},
   }) {
     final findings = <DiagnosticFinding>[
       _cellBalance(snapshot),
       _temperature(snapshot),
-      ...rawAlarmCodes.map(FaultInterpreter.interpret),
+      ...rawAlarmCodes.map(
+        (code) => FaultInterpreter.interpret(code, faultDictionary),
+      ),
     ];
     return HealthAssessment(
       stateOfHealth: null,
@@ -107,25 +111,11 @@ class BatteryDiagnostics {
 }
 
 abstract final class FaultInterpreter {
-  static const _known = <String, (DiagnosticSeverity, String, String)>{
-    'CELL_OVERVOLTAGE': (
-      DiagnosticSeverity.critical,
-      'cell_overvoltage',
-      'cell_overvoltage_detail',
-    ),
-    'CELL_UNDERVOLTAGE': (
-      DiagnosticSeverity.critical,
-      'cell_undervoltage',
-      'cell_undervoltage_detail',
-    ),
-    'PACK_OVERTEMPERATURE': (
-      DiagnosticSeverity.critical,
-      'pack_overtemperature',
-      'pack_overtemperature_detail',
-    ),
-  };
-  static DiagnosticFinding interpret(String rawCode) {
-    final definition = _known[rawCode];
+  static DiagnosticFinding interpret(
+    String rawCode,
+    Map<String, FaultDefinition> dictionary,
+  ) {
+    final definition = dictionary[rawCode];
     if (definition == null) {
       return DiagnosticFinding(
         code: rawCode,
@@ -138,11 +128,189 @@ abstract final class FaultInterpreter {
     }
     return DiagnosticFinding(
       code: rawCode,
-      severity: definition.$1,
-      titleKey: definition.$2,
-      detailKey: definition.$3,
-      evidence: {'raw_code': rawCode},
+      severity: definition.severity,
+      titleKey: definition.titleEn,
+      detailKey: definition.titleAr,
+      evidence: {
+        'raw_code': rawCode,
+        'checks_en': definition.suggestedChecksEn.join('|'),
+        'checks_ar': definition.suggestedChecksAr.join('|'),
+      },
       confidence: DiagnosticConfidence.high,
     );
+  }
+}
+
+extension CompletedBatteryDiagnostics on BatteryDiagnostics {
+  double? cellStandardDeviation(TelemetrySnapshot snapshot) {
+    final cells = snapshot.cellVoltages;
+    if (cells.length < 2) return null;
+    final mean = cells.reduce((a, b) => a + b) / cells.length;
+    final variance =
+        cells
+            .map((value) => (value - mean) * (value - mean))
+            .reduce((a, b) => a + b) /
+        cells.length;
+    return variance <= 0 ? 0 : _sqrt(variance);
+  }
+
+  Set<int> persistentOutliers(
+    List<TelemetrySnapshot> samples, {
+    double threshold = .025,
+  }) {
+    if (samples.isEmpty) return const {};
+    Set<int>? persistent;
+    for (final sample in samples) {
+      final cells = sample.cellVoltages;
+      if (cells.isEmpty) return const {};
+      final mean = cells.reduce((a, b) => a + b) / cells.length;
+      final current = {
+        for (var i = 0; i < cells.length; i++)
+          if ((cells[i] - mean).abs() >= threshold) i,
+      };
+      persistent = persistent == null
+          ? current
+          : persistent.intersection(current);
+    }
+    return persistent ?? const {};
+  }
+
+  TemperatureDistribution temperatureDistribution(TelemetrySnapshot snapshot) {
+    final available = snapshot.temperatureSensors
+        .where((sensor) => sensor.measurement.value != null)
+        .toList();
+    if (available.isEmpty) {
+      return const TemperatureDistribution(
+        minimum: null,
+        maximum: null,
+        gradient: null,
+        hottestLabel: null,
+        availableSensors: 0,
+      );
+    }
+    available.sort(
+      (a, b) => a.measurement.value!.compareTo(b.measurement.value!),
+    );
+    return TemperatureDistribution(
+      minimum: available.first.measurement.value,
+      maximum: available.last.measurement.value,
+      gradient:
+          available.last.measurement.value! -
+          available.first.measurement.value!,
+      hottestLabel: available.last.label,
+      availableSensors: available.length,
+    );
+  }
+
+  ParallelDiagnosticResult analyzeParallel(List<SimulatedModule> modules) {
+    if (modules.isEmpty) {
+      return const ParallelDiagnosticResult(
+        socSpread: null,
+        currentSpread: null,
+        duplicateAddresses: {},
+        masterCount: 0,
+        findings: [],
+      );
+    }
+    final counts = <int, int>{};
+    for (final module in modules) {
+      counts[module.address] = (counts[module.address] ?? 0) + 1;
+    }
+    final duplicates = {
+      for (final entry in counts.entries)
+        if (entry.value > 1) entry.key,
+    };
+    final socs = modules.map((e) => e.soc).toList()..sort();
+    final currents = modules.map((e) => e.current).toList()..sort();
+    final masters = modules.where((e) => e.role == 'master').length;
+    final findings = <DiagnosticFinding>[];
+    if (duplicates.isNotEmpty) {
+      findings.add(
+        DiagnosticFinding(
+          code: 'DUPLICATE_ADDRESS',
+          severity: DiagnosticSeverity.critical,
+          titleKey: 'duplicate_address',
+          detailKey: 'duplicate_address_detail',
+          evidence: {'addresses': duplicates.join(',')},
+          confidence: DiagnosticConfidence.high,
+        ),
+      );
+    }
+    if (masters != 1) {
+      findings.add(
+        DiagnosticFinding(
+          code: 'MASTER_ROLE',
+          severity: DiagnosticSeverity.critical,
+          titleKey: 'master_role',
+          detailKey: 'master_role_detail',
+          evidence: {'master_count': masters},
+          confidence: DiagnosticConfidence.high,
+        ),
+      );
+    }
+    return ParallelDiagnosticResult(
+      socSpread: socs.last - socs.first,
+      currentSpread: currents.last - currents.first,
+      duplicateAddresses: duplicates,
+      masterCount: masters,
+      findings: List.unmodifiable(findings),
+    );
+  }
+
+  List<SnapshotDifference> compare(
+    TelemetrySnapshot before,
+    TelemetrySnapshot after,
+  ) => [
+    _difference('voltage', before.voltage, after.voltage),
+    _difference('current', before.current, after.current),
+    _difference('soc', before.soc, after.soc),
+    _difference('temperature', before.temperature, after.temperature),
+  ];
+
+  HealthTrend capacityTrend(List<TelemetrySnapshot> samples) {
+    final reported = samples
+        .map((sample) => sample.fullChargeCapacity.value)
+        .whereType<double>()
+        .toList();
+    if (reported.length < 2) {
+      return const HealthTrend(
+        capacityChange: null,
+        methodNote:
+            'At least two device-reported full-charge capacity samples are required.',
+        uncertainty: null,
+        available: false,
+      );
+    }
+    final change = reported.last - reported.first;
+    return HealthTrend(
+      capacityChange: change,
+      methodNote:
+          'Difference of first and last device-reported full-charge capacity; not an SOH estimate.',
+      uncertainty: cellStandardDeviation(samples.last),
+      available: true,
+    );
+  }
+
+  SnapshotDifference _difference(
+    String field,
+    Measurement before,
+    Measurement after,
+  ) {
+    final available = before.value != null && after.value != null;
+    return SnapshotDifference(
+      field: field,
+      before: before.value,
+      after: after.value,
+      delta: available ? after.value! - before.value! : null,
+      available: available,
+    );
+  }
+
+  double _sqrt(double value) {
+    var estimate = value;
+    for (var i = 0; i < 12; i++) {
+      estimate = (estimate + value / estimate) / 2;
+    }
+    return estimate;
   }
 }

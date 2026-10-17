@@ -1,5 +1,12 @@
 enum CompatibilityState { compatible, attention, incompatible, unknown }
 
+enum IntegrationVerdict {
+  compatible,
+  compatibleWithLimits,
+  incompatibleProfile,
+  cannotDetermine,
+}
+
 enum EvidenceSource {
   deviceReported,
   verifiedProfile,
@@ -89,4 +96,36 @@ class CompatibilityAssessment {
     }
     return CompatibilityState.compatible;
   }
+
+  IntegrationVerdict get verdict => switch (overall) {
+    CompatibilityState.compatible => IntegrationVerdict.compatible,
+    CompatibilityState.attention => IntegrationVerdict.compatibleWithLimits,
+    CompatibilityState.incompatible => IntegrationVerdict.incompatibleProfile,
+    CompatibilityState.unknown => IntegrationVerdict.cannotDetermine,
+  };
+  String get explanation => switch (verdict) {
+    IntegrationVerdict.compatible =>
+      'All available verified evidence is compatible.',
+    IntegrationVerdict.compatibleWithLimits =>
+      'The profiles can operate together only within the listed limits.',
+    IntegrationVerdict.incompatibleProfile =>
+      'At least one available profile constraint is incompatible.',
+    IntegrationVerdict.cannotDetermine =>
+      'Required evidence is unavailable; compatibility cannot be claimed.',
+  };
+}
+
+class IntegrationRecommendation {
+  const IntegrationRecommendation({
+    required this.device,
+    required this.setting,
+    required this.menu,
+    required this.suggestedValue,
+    required this.reason,
+  });
+  final String device;
+  final String setting;
+  final String menu;
+  final String suggestedValue;
+  final String reason;
 }
