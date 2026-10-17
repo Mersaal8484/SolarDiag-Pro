@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import '../contribution/lifecycle.dart';
 import '../parameters/parameter_backup.dart';
 
 class DiagnosticSessionRecord {
@@ -42,7 +43,7 @@ class DiagnosticEventRecord {
   final String payloadJson;
 }
 
-class LocalDatabase {
+class LocalDatabase implements LifecycleHistoryStore {
   LocalDatabase._(this._database) {
     _migrate();
   }
@@ -64,7 +65,7 @@ class LocalDatabase {
   void _migrate() {
     _database.execute('PRAGMA foreign_keys = ON');
     final version = _database.userVersion;
-    if (version > 3) {
+    if (version > 4) {
       throw StateError('Database schema is newer than this application.');
     }
     if (version == 0) {
@@ -122,6 +123,34 @@ class LocalDatabase {
         ON diagnostic_events(session_id, occurred_at ASC, id ASC);
       ''');
       _database.userVersion = 3;
+    }
+    if (_database.userVersion < 4) {
+      _database.execute('''
+        CREATE TABLE contribution_lifecycle_history (
+          id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+          contribution_id TEXT NOT NULL,
+          stage TEXT NOT NULL,
+          actor_id TEXT NOT NULL,
+          role TEXT NOT NULL,
+          occurred_at TEXT NOT NULL,
+          reason TEXT
+        ) STRICT;
+      ''');
+      _database.execute('''
+        CREATE INDEX contribution_lifecycle_order
+        ON contribution_lifecycle_history(contribution_id, id ASC);
+      ''');
+      _database.execute('''
+        CREATE TRIGGER contribution_lifecycle_no_update
+        BEFORE UPDATE ON contribution_lifecycle_history
+        BEGIN SELECT RAISE(ABORT, 'lifecycle history is append-only'); END;
+      ''');
+      _database.execute('''
+        CREATE TRIGGER contribution_lifecycle_no_delete
+        BEFORE DELETE ON contribution_lifecycle_history
+        BEGIN SELECT RAISE(ABORT, 'lifecycle history is append-only'); END;
+      ''');
+      _database.userVersion = 4;
     }
   }
 
@@ -258,6 +287,45 @@ class LocalDatabase {
       [key, value ? 'true' : 'false'],
     );
   }
+
+  @override
+  void appendLifecycleRecord(String contributionId, ReviewRecord record) {
+    _database.execute(
+      '''
+      INSERT INTO contribution_lifecycle_history (
+        contribution_id, stage, actor_id, role, occurred_at, reason
+      ) VALUES (?, ?, ?, ?, ?, ?)
+      ''',
+      [
+        contributionId,
+        record.stage.name,
+        record.actorId,
+        record.role.name,
+        record.at.toUtc().toIso8601String(),
+        record.reason,
+      ],
+    );
+  }
+
+  @override
+  List<ReviewRecord> loadLifecycleRecords(String contributionId) => [
+    for (final row in _database.select(
+      '''
+      SELECT stage, actor_id, role, occurred_at, reason
+      FROM contribution_lifecycle_history
+      WHERE contribution_id = ?
+      ORDER BY id ASC
+      ''',
+      [contributionId],
+    ))
+      ReviewRecord(
+        stage: ContributionStage.values.byName(row['stage'] as String),
+        actorId: row['actor_id'] as String,
+        role: ReviewRole.values.byName(row['role'] as String),
+        at: DateTime.parse(row['occurred_at'] as String),
+        reason: row['reason'] as String?,
+      ),
+  ];
 
   void close() => _database.close();
 }

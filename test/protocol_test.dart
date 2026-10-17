@@ -5,7 +5,9 @@ import 'package:solardiag_pro/core/battery_models.dart';
 import 'package:solardiag_pro/protocol/capabilities.dart';
 import 'package:solardiag_pro/protocol/device_profile.dart';
 import 'package:solardiag_pro/protocol/profile_registry.dart';
+import 'package:solardiag_pro/trust/profile_integrity.dart';
 import 'package:solardiag_pro/transport/safe_frame_transport.dart';
+import 'support/test_signer.dart';
 
 void main() {
   late String simulatorProfile;
@@ -59,6 +61,34 @@ void main() {
       throwsFormatException,
     );
   });
+
+  test(
+    'developer mode admits unsigned physical profile as read-only',
+    () async {
+      final json = jsonDecode(simulatorProfile) as Map<String, Object?>
+        ..['simulated'] = false;
+      final capabilities = Map<String, Object?>.from(
+        json['capabilities']! as Map,
+      )..updateAll((_, _) => 'researchTarget');
+      json['capabilities'] = capabilities;
+      final document = jsonEncode(json);
+      final signer = await TestSigner.create(21);
+      final registry = await ProfileRegistry.fromSignedDocuments(
+        [
+          SignedProfileDocument(
+            document: document,
+            contentHash: sha256Hex(document),
+            signature: base64Encode(List<int>.filled(64, 0)),
+          ),
+        ],
+        verifier: Ed25519TrustVerifier(signer.publicKeyBytes),
+        technicianMode: false,
+        developerMode: true,
+      );
+      expect(registry.profiles, hasLength(1));
+      expect(registry.profileCanWrite('solardiag.simulated.lfp16.v2'), isFalse);
+    },
+  );
 
   group('transmission guard', () {
     const readFrame = BusFrame(identifier: 0x301, payload: [1, 2]);

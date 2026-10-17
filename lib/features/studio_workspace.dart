@@ -50,16 +50,15 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
       ),
     ],
   );
-  late final ProtocolFinding finding = const ProtocolFinding(
+  late final ProtocolFinding finding = ProtocolFinding.observation(
     id: 'finding-soc',
     title: 'Bytes 0–1 may encode state of charge',
-    state: FindingState.hypothesis,
-    confidence: .46,
     evidence: [
-      FindingEvidence(
+      const FindingEvidence(
         kind: EvidenceKind.captureFrame,
         reference: 'synthetic-001:4',
         summary: 'Value changes with scripted SOC',
+        captureId: 'synthetic-001',
       ),
     ],
   );

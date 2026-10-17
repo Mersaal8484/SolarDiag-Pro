@@ -1,6 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solardiag_pro/contribution/lifecycle.dart';
 import 'package:solardiag_pro/parameters/parameter_backup.dart';
 import 'package:solardiag_pro/persistence/local_database.dart';
+import 'package:solardiag_pro/protocol/device_profile.dart';
 
 void main() {
   test('SQLite persists and updates diagnostic session records', () {
@@ -101,5 +106,39 @@ void main() {
       'link_state_changed',
     ]);
     expect(events.last.payloadJson, contains('online'));
+  });
+
+  test('SQLite persists append-only contribution lifecycle history', () {
+    final database = LocalDatabase.inMemory();
+    addTearDown(database.close);
+    final profile = DeviceProfile.fromJson(
+      jsonDecode(
+            File(
+              'device_profiles/batteries/_simulated/solardiag_sim.json',
+            ).readAsStringSync(),
+          )
+          as Map<String, Object?>,
+    );
+    final lifecycle = ContributionLifecycle(
+      contributionId: 'contribution-1',
+      profile: profile,
+      contributor: AuthenticatedActor.mock('author', ReviewRole.contributor),
+      createdAt: DateTime.utc(2026),
+      historyStore: database,
+    );
+    lifecycle.advance(
+      to: ContributionStage.submitted,
+      actor: AuthenticatedActor.mock('author', ReviewRole.contributor),
+      at: DateTime.utc(2026, 1, 2),
+    );
+
+    final restored = ContributionLifecycle.restore(
+      contributionId: 'contribution-1',
+      profile: profile,
+      historyStore: database,
+    );
+    expect(restored.stage, ContributionStage.submitted);
+    expect(restored.records, hasLength(2));
+    expect(restored.records.first.actorId, 'author');
   });
 }

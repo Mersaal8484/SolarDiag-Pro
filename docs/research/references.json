@@ -1,1 +1,40 @@
-{"references":[{"id":"solardiag-simulator-spec-001","title":"SolarDiag deterministic simulator specification","source":"internal","license":"project-internal","notice_required":false,"nda_restricted":false},{"id":"frecon-pv100-pv200-user-manual","title":"FRECON PV100/PV200 platform user manual","type":"manufacturer-document","source":"user-supplied","retrieved_on":"2026-10-17","version":"revision not stated in supplied document","license":"LicenseRef-FRECON-Proprietary","obligations":"Do not redistribute the supplied PDF","scope":"RS485 settings only; no register or fault-code map was available","used_for":["transport settings","connection checklist"],"derived_artifacts":["device_profiles/inverters/frecon/pv100_pv200.json"],"verification_status":"user-supplied-document","legal_review":true,"notice_required":false,"nda_restricted":false,"pdf_committed":false}]}
+{
+  "references": [
+    {
+      "id": "solardiag-simulator-spec-001",
+      "title": "SolarDiag deterministic simulator specification",
+      "type": "internal",
+      "url": "internal://docs/simulator-specification",
+      "retrieved_on": "2026-10-17",
+      "exact_version": "repository commit tracked by Git",
+      "license": "LicenseRef-SolarDiag-Internal",
+      "obligations": ["Internal project use only"],
+      "scope": "Deterministic simulator behavior and test vectors",
+      "used_for": ["simulator profile", "automated tests"],
+      "derived_artifacts": ["device_profiles/batteries/_simulated/solardiag_sim.json"],
+      "profile_document_ids": ["SIM-SPEC-001"],
+      "verification_status": "internal-test-specification",
+      "legal_review": false,
+      "notice_required": false,
+      "nda_restricted": false
+    },
+    {
+      "id": "frecon-pv100-pv200-user-manual",
+      "title": "FRECON PV100/PV200 platform user manual",
+      "type": "manufacturer-document",
+      "url": "user-supplied://frecon/pv100-pv200-user-manual",
+      "retrieved_on": "2026-10-17",
+      "exact_version": "revision not stated in supplied document",
+      "license": "LicenseRef-FRECON-Proprietary",
+      "obligations": ["Do not redistribute the supplied PDF", "Legal review required before distribution"],
+      "scope": "RS485 settings only; no register or fault-code map was available",
+      "used_for": ["transport settings", "connection checklist"],
+      "derived_artifacts": ["device_profiles/inverters/frecon/pv100_pv200.json"],
+      "profile_document_ids": ["FRECON-PV100-PV200-USER-MANUAL"],
+      "verification_status": "user-supplied-document",
+      "legal_review": true,
+      "notice_required": false,
+      "nda_restricted": false
+    }
+  ]
+}

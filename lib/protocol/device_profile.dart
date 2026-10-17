@@ -121,6 +121,16 @@ class DeviceProfile {
   final List<LocalizedText> connectionChecklist;
   final bool simulated;
 
+  bool get hasWriteCapability =>
+      capabilities.statusOf(DeviceCapability.writeParameter) ==
+          VerificationStatus.verifiedHardware ||
+      capabilities.statusOf(DeviceCapability.calibrate) ==
+          VerificationStatus.verifiedHardware ||
+      parameters.any((parameter) {
+        final access = parameter.access.toLowerCase();
+        return access.contains('write') || access.contains('calibrat');
+      });
+
   static Map<String, Object?> migrateV1ToV2(Map<String, Object?> source) =>
       source['schema_version'] != 1
       ? Map.of(source)

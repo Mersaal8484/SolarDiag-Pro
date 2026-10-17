@@ -21,6 +21,7 @@ jobs:
       - run: git diff --exit-code lib/design/tokens.g.dart lib/design/solar_icons.g.dart assets/icons
       - run: flutter gen-l10n
       - run: dart run tool/profile_check.dart
+      - run: dart run tool/reference_check.dart --check
       - run: dart run tool/generate_capability_matrix.dart
       - run: git diff --exit-code docs/CAPABILITY_MATRIX.md
       - run: flutter analyze

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solardiag_pro/audit/audit_chain.dart';
 import 'package:solardiag_pro/studio/capture_analysis.dart';
 import 'package:solardiag_pro/studio/capture_models.dart';
 import 'package:solardiag_pro/studio/findings.dart';
@@ -125,12 +126,15 @@ void main() {
   test(
     'finding cannot jump states or become verified without hardware evidence',
     () {
-      const finding = ProtocolFinding(
+      final audit = AuditChain(clock: () => DateTime.utc(2026));
+      final finding = ProtocolFinding.observation(
         id: 'f1',
         title: 'Counter candidate',
-        state: FindingState.observation,
-        confidence: .2,
-        evidence: [],
+      );
+      const analyst = FindingActor(
+        id: 'analyst-1',
+        role: FindingRole.analyst,
+        authenticated: true,
       );
       expect(
         () => finding.advance(
@@ -140,6 +144,9 @@ void main() {
             reference: 'capture-1:1',
             summary: 'changed',
           ),
+          actor: analyst,
+          at: DateTime.utc(2026),
+          audit: audit,
         ),
         throwsStateError,
       );
@@ -149,7 +156,11 @@ void main() {
           kind: EvidenceKind.captureFrame,
           reference: 'capture-1:1',
           summary: 'changed',
+          captureId: 'capture-1',
         ),
+        actor: analyst,
+        at: DateTime.utc(2026, 1, 2),
+        audit: audit,
       );
       final candidate = hypothesis.advance(
         FindingState.candidate,
@@ -158,6 +169,9 @@ void main() {
           reference: 'diff-1',
           summary: 'correlated',
         ),
+        actor: analyst,
+        at: DateTime.utc(2026, 1, 3),
+        audit: audit,
       );
       final confirmed = candidate.advance(
         FindingState.confirmed,
@@ -166,7 +180,11 @@ void main() {
           reference: 'ref-1',
           summary: 'documented',
         ),
+        actor: analyst,
+        at: DateTime.utc(2026, 1, 4),
+        audit: audit,
       );
+      expect(confirmed.confidence, hypothesis.confidence);
       expect(
         () => confirmed.advance(
           FindingState.verified,
@@ -175,25 +193,80 @@ void main() {
             reference: 'ref-2',
             summary: 'more docs',
           ),
+          actor: const FindingActor(
+            id: 'engineer-1',
+            role: FindingRole.approvalEngineer,
+            authenticated: true,
+          ),
+          at: DateTime.utc(2026, 1, 5),
+          audit: audit,
         ),
         throwsStateError,
       );
+      final verified = confirmed.advance(
+        FindingState.verified,
+        newEvidence: const FindingEvidence(
+          kind: EvidenceKind.hardwareValidation,
+          reference: 'hardware-run-1',
+          summary: 'Validated on isolated hardware',
+        ),
+        actor: const FindingActor(
+          id: 'engineer-1',
+          role: FindingRole.approvalEngineer,
+          authenticated: true,
+        ),
+        at: DateTime.utc(2026, 1, 5),
+        audit: audit,
+      );
+      expect(verified.state, FindingState.verified);
+      expect(verified.promotions.last.auditHash, audit.head);
     },
   );
   test('research repository stores sessions and findings', () async {
     final repository = InMemoryResearchRepository();
     await repository.saveSession(session);
     await repository.saveFinding(
-      const ProtocolFinding(
-        id: 'f1',
-        title: 'Observation',
-        state: FindingState.observation,
-        confidence: .2,
-        evidence: [],
-      ),
+      ProtocolFinding.observation(id: 'f1', title: 'Observation'),
     );
     expect((await repository.session('capture-1'))!.frames, hasLength(3));
     expect(await repository.findings(), hasLength(1));
+  });
+  test('finding rejection is terminal and audited', () {
+    final audit = AuditChain(clock: () => DateTime.utc(2026));
+    final rejected =
+        ProtocolFinding.observation(
+          id: 'rejected-finding',
+          title: 'Unsupported mapping',
+        ).reject(
+          actor: const FindingActor(
+            id: 'analyst-1',
+            role: FindingRole.analyst,
+            authenticated: true,
+          ),
+          at: DateTime.utc(2026),
+          reason: 'A/B/A capture contradicted the hypothesis',
+          audit: audit,
+        );
+    expect(rejected.state, FindingState.rejected);
+    expect(rejected.promotions.single.auditHash, audit.head);
+    expect(
+      () => rejected.advance(
+        FindingState.verified,
+        newEvidence: const FindingEvidence(
+          kind: EvidenceKind.hardwareValidation,
+          reference: 'hardware-1',
+          summary: 'late evidence',
+        ),
+        actor: const FindingActor(
+          id: 'engineer-1',
+          role: FindingRole.approvalEngineer,
+          authenticated: true,
+        ),
+        at: DateTime.utc(2026, 1, 2),
+        audit: audit,
+      ),
+      throwsStateError,
+    );
   });
   test('reference registry rejects unknown and NDA exports', () {
     final registry = ReferenceRegistry.fromJson(
@@ -204,6 +277,16 @@ void main() {
       returnsNormally,
     );
     expect(() => registry.validateExport(['missing']), throwsFormatException);
+    expect(
+      registry.thirdPartyNotices(),
+      contains('LicenseRef-FRECON-Proprietary'),
+    );
+  });
+  test('reference registry reports malformed fields as format errors', () {
+    expect(
+      () => ReferenceRegistry.fromJson('{"references":[{"id":7}]}'),
+      throwsFormatException,
+    );
   });
   test(
     'analyzes one million frames within desktop budget',
