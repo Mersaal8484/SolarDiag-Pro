@@ -7,6 +7,7 @@ Simulator vertical slice, safe nullable telemetry, profile validation, allow-lis
 ## Not implemented or not validated
 
 - No ESP32 firmware or physical multi-interface gateway exists in this repository.
+- The host-side gateway contract is implemented for passive negotiation, but no USB/BLE/TCP connector or hardware attestation exists.
 - No manufacturer profile is verified from authoritative documents or hardware.
 - No real battery, inverter, CAN, RS485, RS232, UART or BLE test was run.
 - No production backend, reviewer console, KMS/HSM signing, asymmetric trust root, account system or cloud distribution exists.

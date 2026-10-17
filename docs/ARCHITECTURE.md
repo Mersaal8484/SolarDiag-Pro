@@ -4,4 +4,6 @@ The Flutter application follows one-way dependencies: features consume domain/se
 
 Major modules: `core`, `protocol`, `transport`, `identification`, `simulator`, `diagnostics`, `parameters`, `integration`, `studio`, `contribution`, `trust`, `audit`, `features`, and `app`.
 
+The `gateway` module defines the bounded, replay-resistant host contract and fail-closed passive-session negotiation for a future isolated gateway. It contains no hardware connector and cannot enable transmission; see `GATEWAY_PROTOCOL.md`.
+
 Safety boundaries are `TransmissionGuard`, `VerifiedWritePipeline`, `ReplayLock`, `ProfileRegistry`, contribution lifecycle gates, and signed-token validation. Current project layout is a single Flutter package; extraction into independent workspace packages remains a scaling refactor, not a functional claim.
