@@ -1,12 +1,15 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solardiag_pro/audit/audit_chain.dart';
 import 'package:solardiag_pro/core/battery_models.dart';
 import 'package:solardiag_pro/identification/identification_state_machine.dart';
+import 'package:solardiag_pro/gateway/gateway_contract.dart';
 import 'package:solardiag_pro/protocol/bms_adapter.dart';
 import 'package:solardiag_pro/protocol/device_profile.dart';
 import 'package:solardiag_pro/protocol/profile_registry.dart';
 import 'package:solardiag_pro/simulator/simulated_bms_adapter.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
+import 'package:solardiag_pro/transport/safe_frame_transport.dart';
 
 void main() {
   group('deterministic simulator', () {
@@ -55,12 +58,13 @@ void main() {
       ], technicianMode: true).profiles.single;
     });
     test(
-      'confirms a unique passive observation without transmitting',
+      'single passive observation needs confirmation without transmitting',
       () async {
         var queries = 0;
         final machine = IdentificationStateMachine(
           profiles: [profile],
-          query: (_) async {
+          transport: _transport(GatewayOperatingMode.listenOnly),
+          parseResponse: (_) async {
             queries++;
             return const IdentificationResult(
               confidence: 0,
@@ -76,7 +80,7 @@ void main() {
             observedIdentifiers: {769},
           ),
         );
-        expect(outcome.confirmed, isTrue);
+        expect(outcome.state, IdentificationState.needsConfirmation);
         expect(queries, 0);
         expect(machine.history, contains(IdentificationState.passiveObserve));
         expect(machine.history, isNot(contains(IdentificationState.safeQuery)));
@@ -88,7 +92,8 @@ void main() {
         int? queriedIdentifier;
         final machine = IdentificationStateMachine(
           profiles: [profile],
-          query: (frame) async {
+          transport: _transport(GatewayOperatingMode.activeRead),
+          parseResponse: (frame) async {
             queriedIdentifier = frame.identifier;
             return IdentificationResult(
               confidence: .98,
@@ -121,7 +126,8 @@ void main() {
     test('stops when gateway is unavailable', () async {
       final machine = IdentificationStateMachine(
         profiles: [profile],
-        query: (_) => throw StateError('must not query'),
+        transport: _transport(GatewayOperatingMode.listenOnly),
+        parseResponse: (_) => throw StateError('must not query'),
       );
       final outcome = await machine.run(
         const GatewayObservation(
@@ -137,7 +143,8 @@ void main() {
       var queried = false;
       final machine = IdentificationStateMachine(
         profiles: [profile],
-        query: (_) async {
+        transport: _transport(GatewayOperatingMode.listenOnly),
+        parseResponse: (_) async {
           queried = true;
           return const IdentificationResult(
             confidence: 1,
@@ -156,5 +163,69 @@ void main() {
       expect(outcome.state, IdentificationState.unsupported);
       expect(queried, isFalse);
     });
+
+    test('manual selection is exact and explicitly flagged', () {
+      final machine = IdentificationStateMachine(
+        profiles: [profile],
+        transport: _transport(GatewayOperatingMode.listenOnly),
+        parseResponse: (_) => throw StateError('must not query'),
+      );
+      final outcome = machine.selectManually(
+        manufacturer: profile.manufacturer,
+        family: profile.family,
+        model: profile.models.first,
+        firmware: profile.firmwareRanges.first,
+      );
+      expect(outcome.confirmed, isTrue);
+      expect(outcome.manuallySelected, isTrue);
+      expect(outcome.evidence, contains('manual-selection'));
+    });
+
+    test('query timeout honors bounded retries', () async {
+      var attempts = 0;
+      final machine = IdentificationStateMachine(
+        profiles: [profile],
+        transport: _transport(GatewayOperatingMode.activeRead),
+        queryTimeout: const Duration(milliseconds: 5),
+        maxRetries: 1,
+        globalBudget: const Duration(milliseconds: 100),
+        parseResponse: (_) async {
+          attempts++;
+          await Future<void>.delayed(const Duration(milliseconds: 30));
+          return const IdentificationResult(
+            confidence: 0,
+            evidence: [],
+            candidateProfileIds: [],
+          );
+        },
+      );
+      final outcome = await machine.run(
+        const GatewayObservation(
+          available: true,
+          interfaces: {InterfaceType.simulator},
+          observedIdentifiers: {},
+        ),
+      );
+      expect(outcome.state, IdentificationState.unsupported);
+      expect(attempts, 2);
+      expect(
+        outcome.evidence.where((e) => e.startsWith('query-timeout')),
+        hasLength(2),
+      );
+    });
   });
 }
+
+LoopbackGatewayTransport _transport(GatewayOperatingMode mode) =>
+    LoopbackGatewayTransport(
+      mode: mode,
+      guard: const TransmissionGuard(
+        allowedReadIdentifiers: {769},
+        allowedWriteIdentifiers: {},
+        activeSession: true,
+        profileVerifiedForHardware: false,
+      ),
+      maxFramesPerSecond: 4,
+      busLoadCap: .1,
+      audit: AuditChain(),
+    );

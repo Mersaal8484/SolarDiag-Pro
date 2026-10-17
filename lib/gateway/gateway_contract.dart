@@ -1,8 +1,9 @@
 import '../protocol/device_profile.dart';
+import '../core/battery_models.dart';
 
 const gatewayProtocolVersion = 1;
 
-enum GatewayOperatingMode { listenOnly }
+enum GatewayOperatingMode { listenOnly, activeRead, write }
 
 class GatewayInterfaceDescriptor {
   const GatewayInterfaceDescriptor({
@@ -103,7 +104,7 @@ class GatewaySessionPlan {
   final int? bitrate;
   final int? baudRate;
 
-  bool get transmissionEnabled => false;
+  bool get transmissionEnabled => mode != GatewayOperatingMode.listenOnly;
 }
 
 class GatewayContractException implements Exception {
@@ -163,6 +164,55 @@ class GatewaySessionNegotiator {
       mode: GatewayOperatingMode.listenOnly,
       bitrate: requirement.bitrate,
       baudRate: requirement.baudRate,
+    );
+  }
+
+  GatewaySessionPlan negotiateActiveRead(
+    GatewayDescriptor gateway,
+    TransportRequirement requirement, {
+    required VerificationStatus capabilityStatus,
+    required bool explicitlyStarted,
+    required int maxFramesPerSecond,
+    required double busLoadCap,
+  }) {
+    final passive = negotiatePassive(gateway, requirement);
+    final verified =
+        capabilityStatus == VerificationStatus.verifiedDocument ||
+        capabilityStatus == VerificationStatus.verifiedHardware;
+    if (!verified ||
+        !explicitlyStarted ||
+        maxFramesPerSecond <= 0 ||
+        busLoadCap <= 0 ||
+        busLoadCap > 1) {
+      throw const GatewayContractException(
+        'Active read requires verified capability, consent, and declared limits.',
+      );
+    }
+    return GatewaySessionPlan(
+      interfaceType: passive.interfaceType,
+      mode: GatewayOperatingMode.activeRead,
+      bitrate: passive.bitrate,
+      baudRate: passive.baudRate,
+    );
+  }
+
+  GatewaySessionPlan negotiateWrite(
+    GatewayDescriptor gateway,
+    TransportRequirement requirement, {
+    required bool writeVerifiedOnHardware,
+    required bool explicitlyStarted,
+  }) {
+    final passive = negotiatePassive(gateway, requirement);
+    if (!writeVerifiedOnHardware || !explicitlyStarted) {
+      throw const GatewayContractException(
+        'Write mode requires verified hardware capability and explicit start.',
+      );
+    }
+    return GatewaySessionPlan(
+      interfaceType: passive.interfaceType,
+      mode: GatewayOperatingMode.write,
+      bitrate: passive.bitrate,
+      baudRate: passive.baudRate,
     );
   }
 }

@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solardiag_pro/audit/audit_chain.dart';
+import 'package:solardiag_pro/core/battery_models.dart';
 import 'package:solardiag_pro/gateway/gateway_contract.dart';
 import 'package:solardiag_pro/gateway/gateway_wire_protocol.dart';
 import 'package:solardiag_pro/protocol/device_profile.dart';
+import 'package:solardiag_pro/transport/safe_frame_transport.dart';
 
 void main() {
   GatewayDescriptor gateway({
@@ -39,6 +42,30 @@ void main() {
       expect(plan.mode, GatewayOperatingMode.listenOnly);
       expect(plan.transmissionEnabled, isFalse);
       expect(plan.bitrate, 500000);
+    });
+
+    test('active read requires verified capability and explicit start', () {
+      final plan = const GatewaySessionNegotiator().negotiateActiveRead(
+        gateway(),
+        requirement,
+        capabilityStatus: VerificationStatus.verifiedDocument,
+        explicitlyStarted: true,
+        maxFramesPerSecond: 4,
+        busLoadCap: .1,
+      );
+      expect(plan.mode, GatewayOperatingMode.activeRead);
+      expect(plan.transmissionEnabled, isTrue);
+      expect(
+        () => const GatewaySessionNegotiator().negotiateActiveRead(
+          gateway(),
+          requirement,
+          capabilityStatus: VerificationStatus.researchTarget,
+          explicitlyStarted: true,
+          maxFramesPerSecond: 4,
+          busLoadCap: .1,
+        ),
+        throwsA(isA<GatewayContractException>()),
+      );
     });
 
     test('rejects an unisolated interface', () {
@@ -122,6 +149,80 @@ void main() {
           const GatewayMessage(sequence: 1, type: 'frame', payload: {}),
         ),
         throwsFormatException,
+      );
+    });
+  });
+
+  group('guard-owned frame transport', () {
+    LoopbackGatewayTransport transport(GatewayOperatingMode mode) =>
+        LoopbackGatewayTransport(
+          mode: mode,
+          guard: const TransmissionGuard(
+            allowedReadIdentifiers: {0x301},
+            allowedWriteIdentifiers: {},
+            activeSession: true,
+            profileVerifiedForHardware: false,
+          ),
+          maxFramesPerSecond: 1,
+          busLoadCap: .1,
+          audit: AuditChain(),
+        );
+
+    test('passive and disallowed frames never reach the wire', () async {
+      final passive = transport(GatewayOperatingMode.listenOnly);
+      await expectLater(
+        passive.send(
+          const BusFrame(identifier: 0x301, payload: []),
+          TransmissionPurpose.documentedRead,
+        ),
+        throwsStateError,
+      );
+      expect(passive.wire, isEmpty);
+      final active = transport(GatewayOperatingMode.activeRead);
+      await expectLater(
+        active.send(
+          const BusFrame(identifier: 0x777, payload: []),
+          TransmissionPurpose.documentedRead,
+        ),
+        throwsStateError,
+      );
+      expect(active.wire, isEmpty);
+    });
+
+    test('rate cap backs off and transitions are auditable', () async {
+      final active = transport(GatewayOperatingMode.activeRead);
+      await active.send(
+        const BusFrame(identifier: 0x301, payload: []),
+        TransmissionPurpose.documentedRead,
+      );
+      await expectLater(
+        active.send(
+          const BusFrame(identifier: 0x301, payload: []),
+          TransmissionPurpose.documentedRead,
+        ),
+        throwsStateError,
+      );
+      expect(active.wire, hasLength(1));
+      expect(
+        active.audit.entries.map((entry) => entry.action),
+        containsAll(['gateway_mode_started', 'frame_sent', 'frame_backoff']),
+      );
+    });
+
+    test('error frame forces back-off before the next send', () async {
+      final active = transport(GatewayOperatingMode.activeRead);
+      active.receive(const BusFrame(identifier: 0, payload: [], isError: true));
+      await expectLater(
+        active.send(
+          const BusFrame(identifier: 0x301, payload: []),
+          TransmissionPurpose.documentedRead,
+        ),
+        throwsStateError,
+      );
+      expect(active.wire, isEmpty);
+      expect(
+        active.audit.entries.map((entry) => entry.action),
+        contains('gateway_error_backoff'),
       );
     });
   });

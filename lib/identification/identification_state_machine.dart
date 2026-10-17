@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../protocol/bms_adapter.dart';
 import '../protocol/device_profile.dart';
 import '../transport/safe_frame_transport.dart';
@@ -11,6 +12,7 @@ enum IdentificationState {
   safeQuery,
   parseIdentity,
   matchProfile,
+  needsConfirmation,
   confirm,
   ambiguous,
   unsupported,
@@ -22,10 +24,12 @@ class GatewayObservation {
     required this.available,
     required this.interfaces,
     required this.observedIdentifiers,
+    this.payloadFingerprintProfileIds = const {},
   });
   final bool available;
   final Set<InterfaceType> interfaces;
   final Set<int> observedIdentifiers;
+  final Set<String> payloadFingerprintProfileIds;
 }
 
 class IdentificationOutcome {
@@ -33,41 +37,87 @@ class IdentificationOutcome {
     required this.state,
     required this.profile,
     required this.evidence,
+    required this.manuallySelected,
     this.message,
   });
   final IdentificationState state;
   final DeviceProfile? profile;
   final List<String> evidence;
+  final bool manuallySelected;
   final String? message;
   bool get confirmed => state == IdentificationState.confirm;
 }
 
-typedef ReadOnlyQuery = Future<IdentificationResult> Function(BusFrame frame);
+typedef IdentityResponseParser =
+    Future<IdentificationResult> Function(BusFrame frame);
 
 class IdentificationStateMachine {
-  IdentificationStateMachine({required this.profiles, required this.query});
+  IdentificationStateMachine({
+    required this.profiles,
+    required this.transport,
+    required this.parseResponse,
+    this.queryTimeout = const Duration(milliseconds: 500),
+    this.maxRetries = 2,
+    this.globalBudget = const Duration(seconds: 3),
+  });
   final List<DeviceProfile> profiles;
-  final ReadOnlyQuery query;
+  final FrameTransport transport;
+  final IdentityResponseParser parseResponse;
+  final Duration queryTimeout;
+  final int maxRetries;
+  final Duration globalBudget;
   final List<IdentificationState> _history = [IdentificationState.idle];
   List<IdentificationState> get history => List.unmodifiable(_history);
 
+  IdentificationOutcome selectManually({
+    required String manufacturer,
+    required String family,
+    required String model,
+    required String firmware,
+  }) {
+    final matches = profiles
+        .where(
+          (p) =>
+              p.manufacturer == manufacturer &&
+              p.family == family &&
+              p.models.contains(model) &&
+              p.firmwareRanges.contains(firmware),
+        )
+        .toList();
+    if (matches.length != 1) {
+      return _finish(
+        IdentificationState.unsupported,
+        null,
+        const [],
+        false,
+        'Manual selection did not exactly match one profile.',
+      );
+    }
+    return _finish(
+      IdentificationState.confirm,
+      matches.single,
+      const ['manual-selection'],
+      true,
+      'Manual selection can produce incorrect decoding if the device identity is wrong.',
+    );
+  }
+
   Future<IdentificationOutcome> run(GatewayObservation gateway) async {
+    final deadline = DateTime.now().add(globalBudget);
     _move(IdentificationState.detectGateway);
     if (!gateway.available) {
       return _finish(
         IdentificationState.failed,
         null,
         const [],
+        false,
         'Gateway is unavailable.',
       );
     }
     _move(IdentificationState.enumerateInterfaces);
     _move(IdentificationState.passiveObserve);
     final candidates = profiles
-        .where(
-          (profile) =>
-              gateway.interfaces.contains(profile.transport.interfaceType),
-        )
+        .where((p) => gateway.interfaces.contains(p.transport.interfaceType))
         .toList();
     _move(IdentificationState.selectCandidates);
     if (candidates.isEmpty) {
@@ -75,62 +125,106 @@ class IdentificationStateMachine {
         IdentificationState.unsupported,
         null,
         const [],
+        false,
         'No profile matches the observed interface.',
       );
     }
-    final passiveMatches = candidates
-        .where(
-          (profile) => profile.allowedReadFrames.any(
-            gateway.observedIdentifiers.contains,
-          ),
-        )
+    final scored = <DeviceProfile, List<String>>{};
+    for (final profile in candidates) {
+      final evidence = <String>[];
+      if (profile.allowedReadFrames.any(gateway.observedIdentifiers.contains)) {
+        evidence.add('identifier-fingerprint');
+      }
+      if (gateway.payloadFingerprintProfileIds.contains(profile.id)) {
+        evidence.add('payload-structure-periodicity');
+      }
+      if (evidence.isNotEmpty) scored[profile] = evidence;
+    }
+    final passiveConfirmed = scored.entries
+        .where((e) => e.value.length >= 2)
         .toList();
-    if (passiveMatches.length == 1) {
-      return _finish(IdentificationState.confirm, passiveMatches.single, const [
-        'passive-frame-match',
-      ]);
+    if (passiveConfirmed.length == 1) {
+      return _finish(
+        IdentificationState.confirm,
+        passiveConfirmed.single.key,
+        passiveConfirmed.single.value,
+        false,
+      );
+    }
+    if (passiveConfirmed.length > 1) {
+      return _finish(
+        IdentificationState.ambiguous,
+        null,
+        passiveConfirmed.expand((e) => e.value).toList(),
+        false,
+        'Multiple profiles match independent passive evidence.',
+      );
+    }
+    if (scored.length == 1) {
+      return _finish(
+        IdentificationState.needsConfirmation,
+        scored.keys.single,
+        scored.values.single,
+        false,
+        'One passive evidence type is insufficient for auto-confirmation.',
+      );
     }
 
-    final evidence = <String>[];
     final identified = <DeviceProfile>[];
+    final allEvidence = <String>[];
     for (final profile in candidates) {
-      if (profile.allowedReadFrames.isEmpty) continue;
-      final identifier = profile.allowedReadFrames.first;
-      final guard = TransmissionGuard(
-        allowedReadIdentifiers: profile.allowedReadFrames,
-        allowedWriteIdentifiers: const {},
-        activeSession: true,
-        profileVerifiedForHardware: false,
-      );
-      final frame = BusFrame(identifier: identifier, payload: const []);
-      if (!guard.evaluate(frame, TransmissionPurpose.documentedRead).allowed) {
-        continue;
+      if (profile.allowedReadFrames.isEmpty ||
+          DateTime.now().isAfter(deadline)) {
+        break;
       }
-      _move(IdentificationState.safeQuery);
-      final result = await query(frame);
-      _move(IdentificationState.parseIdentity);
-      evidence.addAll(result.evidence);
-      if (result.candidateProfileIds.contains(profile.id) &&
-          result.confidence >= .9) {
-        identified.add(profile);
+      final frame = BusFrame(
+        identifier: profile.allowedReadFrames.first,
+        payload: const [],
+      );
+      for (
+        var attempt = 0;
+        attempt <= maxRetries && DateTime.now().isBefore(deadline);
+        attempt++
+      ) {
+        try {
+          _move(IdentificationState.safeQuery);
+          await transport.send(frame, TransmissionPurpose.documentedRead);
+          final result = await parseResponse(frame).timeout(queryTimeout);
+          _move(IdentificationState.parseIdentity);
+          allEvidence.addAll(result.evidence);
+          if (result.candidateProfileIds.contains(profile.id) &&
+              result.evidence.isNotEmpty) {
+            identified.add(profile);
+          }
+          break;
+        } on TimeoutException {
+          allEvidence.add('query-timeout-${attempt + 1}');
+        }
       }
     }
     _move(IdentificationState.matchProfile);
     if (identified.length == 1) {
-      return _finish(IdentificationState.confirm, identified.single, evidence);
+      return _finish(
+        IdentificationState.confirm,
+        identified.single,
+        {...allEvidence, 'documented-identity-response'}.toList(),
+        false,
+      );
     }
     if (identified.length > 1) {
       return _finish(
         IdentificationState.ambiguous,
         null,
-        evidence,
+        allEvidence,
+        false,
         'Multiple profiles match; user confirmation is required.',
       );
     }
     return _finish(
       IdentificationState.unsupported,
       null,
-      evidence,
+      allEvidence,
+      false,
       'No verified profile matched the identity response.',
     );
   }
@@ -139,7 +233,8 @@ class IdentificationStateMachine {
   IdentificationOutcome _finish(
     IdentificationState state,
     DeviceProfile? profile,
-    List<String> evidence, [
+    List<String> evidence,
+    bool manual, [
     String? message,
   ]) {
     _move(state);
@@ -147,6 +242,7 @@ class IdentificationStateMachine {
       state: state,
       profile: profile,
       evidence: List.unmodifiable(evidence),
+      manuallySelected: manual,
       message: message,
     );
   }

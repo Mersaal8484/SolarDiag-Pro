@@ -5,72 +5,91 @@ class ParameterValidator {
   ValidationResult validate({
     required ParameterChange change,
     required ParameterSnapshot current,
-    required AuthorizationTier authorization,
+    required AuthorizationSession authorization,
     required bool safetyAcknowledged,
-    required bool simulatedSession,
+    required TransportKind transportKind,
+    required DeviceWriteContext context,
+    required DateTime now,
   }) {
-    final definition = change.definition;
+    final d = change.definition;
     final value = change.requestedValue;
     final issues = <ValidationIssue>[];
-    if (value < definition.minimum) {
-      issues.add(
-        const ValidationIssue(
-          ValidationCode.belowMinimum,
-          'Value is below the verified minimum.',
-        ),
+    void add(ValidationCode code, String message) =>
+        issues.add(ValidationIssue(code, message));
+    if (!context.exactIdentityMatch) {
+      add(
+        ValidationCode.identityMismatch,
+        'Exact model and firmware do not match.',
       );
     }
-    if (value > definition.maximum) {
-      issues.add(
-        const ValidationIssue(
-          ValidationCode.aboveMaximum,
-          'Value is above the verified maximum.',
-        ),
+    if (!context.linkHealthy) {
+      add(ValidationCode.unhealthyLink, 'The device link is not healthy.');
+    }
+    if (context.writeLocked) {
+      add(ValidationCode.writeLocked, 'The device write lock is active.');
+    }
+    if (context.state == DeviceWriteState.unknownVerify) {
+      add(
+        ValidationCode.unknownDeviceState,
+        'Device state is unknown and must be verified.',
       );
     }
-    final steps = (value - definition.minimum) / definition.step;
-    if ((steps - steps.round()).abs() > 0.0000001) {
-      issues.add(
-        const ValidationIssue(
-          ValidationCode.invalidStep,
-          'Value does not align with the allowed step.',
-        ),
+    if (value < d.minimum) {
+      add(ValidationCode.belowMinimum, 'Value is below the verified minimum.');
+    }
+    if (value > d.maximum) {
+      add(ValidationCode.aboveMaximum, 'Value is above the verified maximum.');
+    }
+    if (!d.codec.isStepAligned(value, d.minimum)) {
+      add(
+        ValidationCode.invalidStep,
+        'Value does not align with the allowed step.',
       );
     }
-    if (authorization.index < definition.requiredAuthorization.index) {
-      issues.add(
-        const ValidationIssue(
-          ValidationCode.insufficientAuthorization,
-          'The active identity tier cannot change this parameter.',
-        ),
+    if (!authorization.isValidAt(now)) {
+      add(ValidationCode.expiredAuthorization, 'Authorization has expired.');
+    }
+    if (authorization.tier.index < d.requiredAuthorization.index) {
+      add(
+        ValidationCode.insufficientAuthorization,
+        'The active identity tier cannot change this parameter.',
       );
     }
-    if (!simulatedSession && !definition.writeVerifiedOnHardware) {
-      issues.add(
-        const ValidationIssue(
-          ValidationCode.unverifiedWrite,
-          'Write behavior is not verified on physical hardware.',
-        ),
+    if (transportKind == TransportKind.physical && !d.writeVerifiedOnHardware) {
+      add(
+        ValidationCode.unverifiedWrite,
+        'Write behavior is not verified on physical hardware.',
       );
     }
-    if (definition.riskTier != ParameterRiskTier.standard &&
-        !safetyAcknowledged) {
-      issues.add(
-        const ValidationIssue(
-          ValidationCode.acknowledgementRequired,
-          'Explicit safety acknowledgement is required.',
-        ),
+    if (d.riskTier != ParameterRiskTier.standard && !safetyAcknowledged) {
+      add(
+        ValidationCode.acknowledgementRequired,
+        'Explicit safety acknowledgement is required.',
       );
     }
-    for (final dependency in definition.dependencies) {
+    for (final dependency in d.dependencies) {
       final currentValue = current.values[dependency.parameterId];
       if (currentValue == null ||
           !dependency.allowedValues.contains(currentValue)) {
-        issues.add(
-          ValidationIssue(
-            ValidationCode.unmetDependency,
-            'Dependency ${dependency.parameterId} is not satisfied.',
-          ),
+        add(
+          ValidationCode.unmetDependency,
+          'Dependency ${dependency.parameterId} is not satisfied.',
+        );
+      }
+    }
+    for (final constraint in d.constraints) {
+      final other = current.values[constraint.otherParameterId];
+      final limit = other == null ? null : other * constraint.multiplier;
+      final satisfied =
+          limit != null &&
+          switch (constraint.relation) {
+            ConstraintRelation.greaterThan => value > limit,
+            ConstraintRelation.lessThanOrEqual => value <= limit,
+          };
+      if (!satisfied) {
+        add(
+          ValidationCode.crossParameterConstraint,
+          'Cross-parameter constraint against ${constraint.otherParameterId} is not satisfied.',
         );
       }
     }

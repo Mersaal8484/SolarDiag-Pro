@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../app/strings.dart';
 import '../app/theme.dart';
+import '../identification/identification_state_machine.dart';
+import 'identification_evidence_panel.dart';
 
 class GatewayScreen extends StatelessWidget {
-  const GatewayScreen({super.key});
+  const GatewayScreen({this.identificationOutcome, super.key});
+  final IdentificationOutcome? identificationOutcome;
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
@@ -79,6 +82,10 @@ class GatewayScreen extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 18),
+        if (identificationOutcome case final outcome?) ...[
+          IdentificationEvidencePanel(outcome: outcome),
+          const SizedBox(height: 18),
+        ],
         Wrap(
           spacing: 10,
           runSpacing: 10,
