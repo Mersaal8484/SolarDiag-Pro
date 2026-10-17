@@ -9,3 +9,11 @@ Requested evidence template: protocol document version; applicable models/firmwa
 Arabic draft: نطلب وثائق واجهة الاتصال الرسمية للموديل وإصدارات البرنامج المحددة، مع مخطط الأطراف ومستويات الإشارة وأوامر القراءة وتعريف القياسات والإنذارات وإجراءات المعلمات الآمنة، إضافة إلى إذن واضح بالتنفيذ والاختبار.
 
 English draft: We request the official communication-interface documentation for the specified model and firmware range, including pinout, electrical levels, read commands, telemetry/alarm definitions, safe parameter procedures, and explicit implementation/testing permission.
+# FRECON register-map request
+
+The supplied PV100/PV200 document establishes RS485 configuration options but
+does not provide a register map or fault-code dictionary. Request an official,
+redistributable Modbus register map, supported firmware ranges, scaling rules,
+exception behavior, and read-only test vectors. Until received, every capability
+remains `researchTarget`, the connection tester stays disabled, and no register
+address is shipped.

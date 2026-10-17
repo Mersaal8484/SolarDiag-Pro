@@ -2,12 +2,16 @@ import 'dart:convert';
 import 'dart:io';
 
 void main() {
-  final root = Directory('device_profiles/batteries');
+  final root = Directory('device_profiles');
   final files = root.existsSync()
       ? root
             .listSync(recursive: true)
             .whereType<File>()
-            .where((file) => file.path.endsWith('.json'))
+            .where(
+              (file) =>
+                  file.path.endsWith('.json') &&
+                  !file.path.endsWith('profile.schema.json'),
+            )
             .toList()
       : <File>[];
   final rows = <String>[];

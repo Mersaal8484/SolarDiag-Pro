@@ -19,7 +19,7 @@ void main() {
     final registry = ProfileRegistry.fromJsonDocuments([
       simulatorProfile,
     ], technicianMode: true);
-    final profile = registry.byId('solardiag.simulated.lfp16.v1');
+    final profile = registry.byId('solardiag.simulated.lfp16.v2');
     expect(profile, isNotNull);
     expect(profile!.simulated, isTrue);
     expect(profile.transport.interfaceType, InterfaceType.simulator);

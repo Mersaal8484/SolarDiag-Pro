@@ -42,6 +42,23 @@ class DeviceLibraryScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 18),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.solar_power_outlined),
+            title: const Text('FRECON PV100 / PV200'),
+            subtitle: Text(
+              s.pick(
+                'Register map required from manufacturer.',
+                'يلزم الحصول على خريطة السجلات من الشركة المصنعة.',
+              ),
+            ),
+            trailing: _Badge(
+              text: s.pick('RESEARCH', 'قيد البحث'),
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
         Text(
           s.pick('Research targets', 'أهداف البحث'),
           style: Theme.of(context).textTheme.headlineSmall,

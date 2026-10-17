@@ -19,7 +19,7 @@ class SimulatedBmsAdapter implements BmsAdapter {
   Future<IdentificationResult> identify() async => const IdentificationResult(
     confidence: 1,
     evidence: ['simulator:deterministic-id'],
-    candidateProfileIds: ['solardiag.simulated.lfp16.v1'],
+    candidateProfileIds: ['solardiag.simulated.lfp16.v2'],
   );
   @override
   Future<TelemetrySnapshot> readTelemetry() async {
