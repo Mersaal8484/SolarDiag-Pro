@@ -1,0 +1,23 @@
+name: quality
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.1
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test tool
+      - run: dart run tool/generate_capability_matrix.dart
+      - run: git diff --exit-code docs/CAPABILITY_MATRIX.md
+      - run: flutter analyze
+      - run: flutter test --coverage
+      - run: flutter build apk --debug

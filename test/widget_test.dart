@@ -47,4 +47,20 @@ void main() {
     expect(find.text('Pylontech'), findsOneWidget);
     expect(find.text('SolarDiag deterministic BMS'), findsOneWidget);
   });
+
+  testWidgets('mobile layout tolerates large accessibility text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 900);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpWidget(const SolarDiagApp());
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Energy, made legible.'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
+  });
 }
