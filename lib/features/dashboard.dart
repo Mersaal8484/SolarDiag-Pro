@@ -11,12 +11,14 @@ class Dashboard extends StatelessWidget {
     required this.onToggleTheme,
     required this.onToggleContrast,
     required this.onOpenDesignLab,
+    required this.onOpenDiagnostics,
   });
   final BatterySnapshot snapshot;
   final VoidCallback onToggleLocale;
   final VoidCallback onToggleTheme;
   final VoidCallback onToggleContrast;
   final VoidCallback onOpenDesignLab;
+  final VoidCallback onOpenDiagnostics;
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
@@ -45,6 +47,20 @@ class Dashboard extends StatelessWidget {
                         ),
                         const SizedBox(height: 32),
                         _Hero(snapshot: snapshot),
+                        const SizedBox(height: 14),
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: FilledButton.icon(
+                            onPressed: onOpenDiagnostics,
+                            icon: const Icon(Icons.monitor_heart_outlined),
+                            label: Text(
+                              s.pick(
+                                'Open advanced diagnostics',
+                                'فتح التشخيص المتقدم',
+                              ),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 20),
                         _Metrics(snapshot: snapshot),
                         const SizedBox(height: 20),

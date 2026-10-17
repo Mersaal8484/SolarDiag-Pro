@@ -28,4 +28,14 @@ void main() {
       Brightness.dark,
     );
   });
+
+  testWidgets('opens evidence-based advanced diagnostics', (tester) async {
+    await tester.pumpWidget(const SolarDiagApp());
+    await tester.tap(find.text('Open advanced diagnostics'));
+    await tester.pumpAndSettle();
+    expect(find.text('Advanced diagnostics'), findsOneWidget);
+    expect(find.text('State of health: not available'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Temperature unavailable'), 250);
+    expect(find.text('Temperature unavailable'), findsOneWidget);
+  });
 }

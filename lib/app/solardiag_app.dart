@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import '../data/simulated_bms.dart';
+import '../features/advanced_diagnostics.dart';
 import '../features/dashboard.dart';
 import '../features/design_lab.dart';
 import 'theme.dart';
@@ -36,23 +37,32 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
       highContrast: _highContrast,
     ),
     home: Builder(
-      builder: (context) => Dashboard(
-        snapshot: const SimulatedBms().snapshot(),
-        onToggleLocale: () => setState(
-          () => _locale = _locale.languageCode == 'en'
-              ? const Locale('ar')
-              : const Locale('en'),
-        ),
-        onToggleTheme: () => setState(
-          () => _themeMode = _themeMode == ThemeMode.light
-              ? ThemeMode.dark
-              : ThemeMode.light,
-        ),
-        onToggleContrast: () => setState(() => _highContrast = !_highContrast),
-        onOpenDesignLab: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute<void>(builder: (_) => const DesignLab())),
-      ),
+      builder: (context) {
+        final snapshot = const SimulatedBms().snapshot();
+        return Dashboard(
+          snapshot: snapshot,
+          onToggleLocale: () => setState(
+            () => _locale = _locale.languageCode == 'en'
+                ? const Locale('ar')
+                : const Locale('en'),
+          ),
+          onToggleTheme: () => setState(
+            () => _themeMode = _themeMode == ThemeMode.light
+                ? ThemeMode.dark
+                : ThemeMode.light,
+          ),
+          onToggleContrast: () =>
+              setState(() => _highContrast = !_highContrast),
+          onOpenDesignLab: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const DesignLab())),
+          onOpenDiagnostics: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => AdvancedDiagnosticsScreen(snapshot: snapshot),
+            ),
+          ),
+        );
+      },
     ),
   );
 }
