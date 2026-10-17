@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 
 import '../audit/audit_chain.dart';
 import '../core/battery_models.dart';
+import '../core/inverter_models.dart';
 import '../integration/compatibility_engine.dart';
 import '../integration/compatibility_models.dart';
 import '../integration/link_diagnostics.dart';
@@ -15,6 +16,7 @@ import '../parameters/write_pipeline.dart';
 import '../persistence/local_database.dart';
 import '../protocol/bms_adapter.dart';
 import '../simulator/simulated_bms_adapter.dart';
+import '../simulator/simulated_inverter_adapter.dart';
 import '../simulator/simulation_scenario.dart';
 
 enum DeviceSessionMode { readOnly, writeAuthorized }
@@ -46,6 +48,8 @@ class DeviceSession extends ChangeNotifier {
   SimulationScenario _scenario;
   TelemetrySnapshot _snapshot;
   SimulatedBmsAdapter _adapter;
+  final SimulatedInverterAdapter _inverterAdapter = SimulatedInverterAdapter();
+  InverterTelemetrySnapshot? _inverterSnapshot;
   Timer? _pollTimer;
   bool _polling = false;
   bool _disposed = false;
@@ -73,6 +77,7 @@ class DeviceSession extends ChangeNotifier {
   WriteResult? get lastWriteResult => _lastWriteResult;
   Object? get lastError => _lastError;
   bool get simulated => true;
+  InverterTelemetrySnapshot? get inverterSnapshot => _inverterSnapshot;
   List<DiagnosticSessionRecord> get history => database?.listSessions() ?? [];
 
   static const parameterDefinitions = <String, ParameterDefinition>{
@@ -328,6 +333,8 @@ class DeviceSession extends ChangeNotifier {
       final next = await _adapter.readTelemetry();
       final health = await _adapter.health();
       final alarms = await _adapter.readAlarms();
+      _inverterSnapshot = await _inverterAdapter.readTelemetry();
+      _inverterAdapter.tick++;
       _snapshot = next;
       _linkHealth = health;
       _alarmCodes = Set.unmodifiable(alarms);

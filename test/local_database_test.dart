@@ -58,4 +58,13 @@ void main() {
     expect(backups.single.values['charge_limit'], 55.2);
     expect(backups.single.values['service_mode'], 1);
   });
+
+  test('SQLite persists boolean application settings', () {
+    final database = LocalDatabase.inMemory();
+    addTearDown(database.close);
+
+    expect(database.getBool('onboarding_complete'), isFalse);
+    database.setBool('onboarding_complete', true);
+    expect(database.getBool('onboarding_complete'), isTrue);
+  });
 }

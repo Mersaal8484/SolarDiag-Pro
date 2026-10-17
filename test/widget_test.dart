@@ -6,6 +6,47 @@ import 'package:solardiag_pro/simulator/simulation_scenario.dart';
 import 'package:solardiag_pro/persistence/local_database.dart';
 
 void main() {
+  testWidgets('three-step onboarding persists completion locally', (
+    tester,
+  ) async {
+    final database = LocalDatabase.inMemory();
+    await tester.pumpWidget(
+      SolarDiagApp(database: database, showOnboarding: true),
+    );
+
+    expect(find.text('Diagnose energy systems with evidence'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('onboarding-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('Read-only comes first'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('onboarding-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('Connect an isolated gateway'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('onboarding-next')));
+    await tester.pumpAndSettle();
+
+    expect(database.getBool('onboarding_complete'), isTrue);
+    expect(find.byKey(const Key('connection-capsule')), findsOneWidget);
+  });
+
+  testWidgets('named deep link opens battery workspace directly', (
+    tester,
+  ) async {
+    final session = DeviceSession(
+      scenario: SimulationScenario.healthy,
+      autoStart: false,
+    );
+    addTearDown(session.dispose);
+    await session.refresh();
+
+    await tester.pumpWidget(
+      SolarDiagApp(session: session, initialRoute: '/battery'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Battery / BMS diagnostics'), findsOneWidget);
+    expect(find.text('78.0 %'), findsOneWidget);
+  });
+
   testWidgets('shows simulator, read-only mode, and honest missing data', (
     tester,
   ) async {
@@ -13,11 +54,15 @@ void main() {
     expect(find.byKey(const Key('connection-capsule')), findsOneWidget);
     expect(find.text('SIMULATED'), findsOneWidget);
     expect(find.text('READ-ONLY'), findsOneWidget);
-    await tester.drag(
-      find.byType(CustomScrollView).first,
-      const Offset(0, -420),
+    final dashboardScroll = find.descendant(
+      of: find.byType(CustomScrollView).first,
+      matching: find.byType(Scrollable),
     );
-    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Not reported by device'),
+      300,
+      scrollable: dashboardScroll,
+    );
     expect(find.text('Not reported by device'), findsOneWidget);
   });
 
@@ -58,12 +103,101 @@ void main() {
   });
 
   testWidgets('workspace navigation opens device library', (tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(const SolarDiagApp());
-    await tester.tap(find.byIcon(Icons.library_books_outlined));
+    await tester.tap(find.byKey(const ValueKey('workspace-nav-library')));
     await tester.pumpAndSettle();
     expect(find.text('Device library'), findsOneWidget);
     expect(find.text('Pylontech'), findsOneWidget);
     expect(find.text('SolarDiag deterministic BMS'), findsOneWidget);
+  });
+
+  testWidgets('home destination opens adapter-backed inverter diagnostics', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = DeviceSession(
+      scenario: SimulationScenario.healthy,
+      autoStart: false,
+    );
+    addTearDown(session.dispose);
+    await session.refresh();
+    await tester.pumpWidget(SolarDiagApp(session: session));
+
+    final destination = find.byKey(
+      const ValueKey('destination-Inverter diagnostics'),
+    );
+    final dashboardScroll = find.descendant(
+      of: find.byType(CustomScrollView).first,
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      destination,
+      300,
+      scrollable: dashboardScroll,
+    );
+    await tester.tap(destination);
+    await tester.pumpAndSettle();
+
+    expect(find.text('SolarDiag simulated inverter'), findsOneWidget);
+    expect(find.text('230.0 V'), findsOneWidget);
+    expect(
+      find.text('Register map required from manufacturer.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('battery workspace shows live cells and raw alarms', (
+    tester,
+  ) async {
+    final session = DeviceSession(
+      scenario: SimulationScenario.electricalEvents,
+      autoStart: false,
+    );
+    addTearDown(session.dispose);
+    await session.refresh();
+    await tester.pumpWidget(SolarDiagApp(session: session));
+
+    await tester.tap(find.byKey(const ValueKey('workspace-nav-battery')));
+    await tester.pumpAndSettle();
+    expect(find.text('Battery / BMS diagnostics'), findsOneWidget);
+
+    await tester.tap(find.text('Cell monitoring'));
+    await tester.pumpAndSettle();
+    expect(find.text('Minimum cell'), findsOneWidget);
+    expect(find.textContaining('mV'), findsOneWidget);
+
+    final sectionScroll = find.descendant(
+      of: find.byKey(const Key('battery-section-scroll')),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Fault diagnostics'),
+      200,
+      scrollable: sectionScroll,
+    );
+    await tester.tap(find.text('Fault diagnostics'));
+    await tester.pumpAndSettle();
+    expect(find.text('Cell overvoltage alarm'), findsOneWidget);
+    expect(find.textContaining('CELL_OVERVOLTAGE'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Battery health'),
+      200,
+      scrollable: sectionScroll,
+    );
+    await tester.tap(find.text('Battery health'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('does not infer battery health'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('gateway status comes from the live read-only session', (
@@ -254,7 +388,7 @@ void main() {
     await session.refresh();
     await tester.pumpWidget(SolarDiagApp(session: session));
 
-    await tester.tap(find.byIcon(Icons.history));
+    await tester.tap(find.byKey(const ValueKey('workspace-nav-history')));
     await tester.pumpAndSettle();
     expect(find.text('Diagnostic history'), findsOneWidget);
     expect(find.textContaining('SHA-256:'), findsOneWidget);

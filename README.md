@@ -22,4 +22,10 @@ written to `SolarDiag Reports` under the platform application-documents
 directory. Simulator reports are watermarked on every PDF page and marked
 `simulated: true` in JSON.
 
+The adaptive workspace includes a computed six-destination home, live battery
+and simulated-inverter diagnostics, link evidence, device library, diagnostic
+history, gateway state and verified simulator parameter workflows. First run
+uses a locally persisted three-step read-only-first onboarding flow. Major
+screens also expose named routes for desktop and Android deep links.
+
 Studio and contributions are disabled by default through feature flags. See `docs/FINAL_GAP_REPORT.md` and the generated `docs/CAPABILITY_MATRIX.md` for honest scope and verification status.

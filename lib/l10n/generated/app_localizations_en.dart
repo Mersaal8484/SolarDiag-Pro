@@ -591,4 +591,217 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get backupRestoreFailed =>
       'Restore stopped because a write or readback verification failed.';
+
+  @override
+  String get inverter => 'Inverter';
+
+  @override
+  String get inverterDiagnostics => 'Inverter diagnostics';
+
+  @override
+  String get inverterDiagnosticsDescription =>
+      'Adapter-reported simulator telemetry and honest research-profile limitations.';
+
+  @override
+  String get simulatedInverterProfile => 'SolarDiag simulated inverter';
+
+  @override
+  String get simulatedInverterEvidence =>
+      'Deterministic Modbus simulator · simulated evidence';
+
+  @override
+  String get freconResearchProfile => 'FRECON PV100/PV200 · research target';
+
+  @override
+  String get waitingForInverterTelemetry => 'Waiting for inverter telemetry.';
+
+  @override
+  String get dcVoltage => 'DC voltage';
+
+  @override
+  String get dcCurrent => 'DC current';
+
+  @override
+  String get dcPower => 'DC power';
+
+  @override
+  String get acVoltage => 'AC voltage';
+
+  @override
+  String get acCurrent => 'AC current';
+
+  @override
+  String get acPower => 'AC power';
+
+  @override
+  String get frequency => 'Frequency';
+
+  @override
+  String get simulatedTelemetryActive => 'Simulated telemetry active';
+
+  @override
+  String get batteryBmsDiagnostics => 'Battery / BMS diagnostics';
+
+  @override
+  String get liveTelemetryActive => 'Live telemetry active';
+
+  @override
+  String get telemetryUnavailable => 'Telemetry unavailable';
+
+  @override
+  String get linkEvidenceAvailable => 'Communication evidence available';
+
+  @override
+  String get verificationStatusVisible =>
+      'Verification status shown per profile';
+
+  @override
+  String savedSessionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count saved sessions',
+      one: '1 saved session',
+      zero: 'No saved sessions',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recentSessions => 'Recent sessions';
+
+  @override
+  String get batteryWorkspaceDescription =>
+      'Live battery evidence organized for inspection without inferred values.';
+
+  @override
+  String get cellMonitoring => 'Cell monitoring';
+
+  @override
+  String get faultDiagnostics => 'Fault diagnostics';
+
+  @override
+  String get power => 'Power';
+
+  @override
+  String get stateOfHealth => 'State of health';
+
+  @override
+  String get cycleCount => 'Cycle count';
+
+  @override
+  String get noCellReadings => 'No cell readings were reported by the device.';
+
+  @override
+  String get minimumCell => 'Minimum cell';
+
+  @override
+  String get maximumCell => 'Maximum cell';
+
+  @override
+  String cellVoltageValue(int index, String value) {
+    return 'Cell $index: $value V';
+  }
+
+  @override
+  String cellNumber(int index) {
+    return 'Cell $index';
+  }
+
+  @override
+  String rawAlarmCode(String code) {
+    return 'Raw alarm code: $code';
+  }
+
+  @override
+  String get cellBalancing => 'Cell balancing';
+
+  @override
+  String get batteryHealth => 'Battery health';
+
+  @override
+  String get serviceFunctions => 'Service functions';
+
+  @override
+  String get reports => 'Reports';
+
+  @override
+  String get parallelBank => 'Parallel bank';
+
+  @override
+  String get balancingMask => 'Balancing mask';
+
+  @override
+  String get balancingUnavailable => 'Balancing state was not reported';
+
+  @override
+  String get noCellsBalancing => 'No cells are reported as balancing';
+
+  @override
+  String get balancingReportedActive =>
+      'The device reports active cell balancing';
+
+  @override
+  String get balancingEvidenceNote =>
+      'This status is decoded only from the reported balancing bitmask.';
+
+  @override
+  String get fullChargeCapacity => 'Full-charge capacity';
+
+  @override
+  String get healthMethodNote =>
+      'SOH is shown only when device-reported. SolarDiag does not infer battery health from a single snapshot.';
+
+  @override
+  String get configurationParameters => 'Configuration parameters';
+
+  @override
+  String get simulatedWriteOnly =>
+      'Verified writes are available only against the simulator profile.';
+
+  @override
+  String get calibration => 'Calibration';
+
+  @override
+  String get noVerifiedCalibrationProcedure =>
+      'Unavailable: no hardware-verified calibration procedure is bundled.';
+
+  @override
+  String get factoryFunctions => 'Factory functions';
+
+  @override
+  String get factoryFunctionsUnavailable =>
+      'Unavailable: manufacturer authorization and verified documentation are required.';
+
+  @override
+  String get reportsAvailableFromHistory =>
+      'Generate integrity-checked JSON and PDF reports from Diagnostic history.';
+
+  @override
+  String get parallelModuleTelemetryUnavailable =>
+      'Per-module parallel-bank telemetry was not reported by the active adapter.';
+
+  @override
+  String get onboardingPurpose => 'Diagnose energy systems with evidence';
+
+  @override
+  String get onboardingPurposeDetail =>
+      'SolarDiag organizes reported inverter and battery data without inventing unavailable values.';
+
+  @override
+  String get onboardingReadOnly => 'Read-only comes first';
+
+  @override
+  String get onboardingReadOnlyDetail =>
+      'Connections start passive. Any supported change requires authorization, review, confirmation and readback.';
+
+  @override
+  String get onboardingConnect => 'Connect an isolated gateway';
+
+  @override
+  String get onboardingConnectDetail =>
+      'Verify the interface, connector pinout and termination from trusted documentation before connecting hardware.';
+
+  @override
+  String get startDiagnostics => 'Start diagnostics';
 }

@@ -14,6 +14,7 @@ class Dashboard extends StatelessWidget {
     required this.onToggleContrast,
     required this.onOpenDesignLab,
     required this.onOpenDiagnostics,
+    this.onSelectDestination,
     this.embedded = false,
   });
   final VoidCallback onToggleLocale;
@@ -21,6 +22,7 @@ class Dashboard extends StatelessWidget {
   final VoidCallback onToggleContrast;
   final VoidCallback onOpenDesignLab;
   final VoidCallback onOpenDiagnostics;
+  final ValueChanged<int>? onSelectDestination;
   final bool embedded;
   @override
   Widget build(BuildContext context) {
@@ -70,7 +72,14 @@ class Dashboard extends StatelessWidget {
                           },
                         ),
                         const SizedBox(height: 16),
-                        _Hero(snapshot: snapshot),
+                        _Hero(snapshot: snapshot, linkState: session.linkState),
+                        const SizedBox(height: 20),
+                        _DestinationGrid(
+                          session: session,
+                          onSelectDestination: onSelectDestination,
+                        ),
+                        const SizedBox(height: 20),
+                        _RecentSessions(session: session),
                         const SizedBox(height: 14),
                         Align(
                           alignment: AlignmentDirectional.centerStart,
@@ -119,6 +128,173 @@ class Dashboard extends StatelessWidget {
               child: const Icon(Icons.science_outlined),
             )
           : null,
+    );
+  }
+}
+
+class _DestinationGrid extends StatelessWidget {
+  const _DestinationGrid({
+    required this.session,
+    required this.onSelectDestination,
+  });
+
+  final DeviceSession session;
+  final ValueChanged<int>? onSelectDestination;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
+    final online = session.linkState == DeviceSessionLinkState.online;
+    final items = [
+      (
+        s.inverterDiagnostics,
+        s.simulatedTelemetryActive,
+        Icons.solar_power_outlined,
+        () => onSelectDestination?.call(1),
+      ),
+      (
+        s.batteryBmsDiagnostics,
+        online ? s.liveTelemetryActive : s.telemetryUnavailable,
+        Icons.battery_6_bar,
+        () => onSelectDestination?.call(2),
+      ),
+      (
+        s.inverterBatteryLink,
+        online ? s.linkEvidenceAvailable : s.deliveryUnavailable,
+        Icons.link,
+        () => onSelectDestination?.call(4),
+      ),
+      (
+        s.deviceLibrary,
+        s.verificationStatusVisible,
+        Icons.library_books_outlined,
+        () => onSelectDestination?.call(3),
+      ),
+      (
+        s.diagnosticHistory,
+        s.savedSessionCount(session.history.length),
+        Icons.history,
+        () => onSelectDestination?.call(7),
+      ),
+      (
+        s.diagnosticGateway,
+        online ? s.listenOnly : s.linkUnavailable,
+        Icons.cable,
+        () => onSelectDestination?.call(5),
+      ),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 900
+            ? 3
+            : constraints.maxWidth >= 560
+            ? 2
+            : 1;
+        final width = (constraints.maxWidth - (columns - 1) * 12) / columns;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final item in items)
+              SizedBox(
+                width: width,
+                child: Card(
+                  child: InkWell(
+                    key: ValueKey('destination-${item.$1}'),
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: item.$4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        children: [
+                          Icon(item.$3),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.$1,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 5),
+                                Text(item.$2),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _RecentSessions extends StatelessWidget {
+  const _RecentSessions({required this.session});
+
+  final DeviceSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
+    final recent = session.history.take(3).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          s.recentSessions,
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 10),
+        if (recent.isEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Text(s.noSavedSessions),
+            ),
+          )
+        else
+          SizedBox(
+            height: 148,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: recent.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final record = recent[index];
+                return SizedBox(
+                  width: 260,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(s.scenarioValue(record.scenario)),
+                          const Spacer(),
+                          Text(
+                            s.integrityHashValue(
+                              record.dataHash.substring(0, 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }
@@ -226,8 +402,9 @@ class _Header extends StatelessWidget {
 }
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.snapshot});
+  const _Hero({required this.snapshot, required this.linkState});
   final BatterySnapshot snapshot;
+  final DeviceSessionLinkState linkState;
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
@@ -256,10 +433,11 @@ class _Hero extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  s.healthy,
-                  style: const TextStyle(color: SolarColors.onDarkMuted),
-                ),
+                Text(switch (linkState) {
+                  DeviceSessionLinkState.connecting => s.connecting,
+                  DeviceSessionLinkState.online => s.online,
+                  DeviceSessionLinkState.unavailable => s.linkUnavailable,
+                }, style: const TextStyle(color: SolarColors.onDarkMuted)),
               ],
             ),
           ),

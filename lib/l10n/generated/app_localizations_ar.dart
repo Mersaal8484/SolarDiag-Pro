@@ -589,4 +589,216 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get backupRestoreFailed =>
       'توقفت الاستعادة بسبب فشل الكتابة أو التحقق بالقراءة الراجعة.';
+
+  @override
+  String get inverter => 'العاكس';
+
+  @override
+  String get inverterDiagnostics => 'تشخيص العاكس';
+
+  @override
+  String get inverterDiagnosticsDescription =>
+      'بيانات محاكي مبلّغ عنها من المحول وحدود صادقة لملف البحث.';
+
+  @override
+  String get simulatedInverterProfile => 'عاكس SolarDiag المحاكى';
+
+  @override
+  String get simulatedInverterEvidence => 'محاكي Modbus حتمي · دليل محاكى';
+
+  @override
+  String get freconResearchProfile => 'FRECON PV100/PV200 · هدف بحثي';
+
+  @override
+  String get waitingForInverterTelemetry => 'بانتظار بيانات العاكس.';
+
+  @override
+  String get dcVoltage => 'جهد التيار المستمر';
+
+  @override
+  String get dcCurrent => 'تيار مستمر';
+
+  @override
+  String get dcPower => 'قدرة التيار المستمر';
+
+  @override
+  String get acVoltage => 'جهد التيار المتردد';
+
+  @override
+  String get acCurrent => 'تيار متردد';
+
+  @override
+  String get acPower => 'قدرة التيار المتردد';
+
+  @override
+  String get frequency => 'التردد';
+
+  @override
+  String get simulatedTelemetryActive => 'بيانات المحاكاة نشطة';
+
+  @override
+  String get batteryBmsDiagnostics => 'تشخيص البطارية / نظام إدارتها';
+
+  @override
+  String get liveTelemetryActive => 'البيانات المباشرة نشطة';
+
+  @override
+  String get telemetryUnavailable => 'البيانات غير متاحة';
+
+  @override
+  String get linkEvidenceAvailable => 'أدلة الاتصال متاحة';
+
+  @override
+  String get verificationStatusVisible => 'حالة التحقق ظاهرة لكل ملف';
+
+  @override
+  String savedSessionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count جلسة محفوظة',
+      many: '$count جلسة محفوظة',
+      few: '$count جلسات محفوظة',
+      two: 'جلستان محفوظتان',
+      one: 'جلسة محفوظة واحدة',
+      zero: 'لا توجد جلسات محفوظة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recentSessions => 'الجلسات الأخيرة';
+
+  @override
+  String get batteryWorkspaceDescription =>
+      'أدلة بطارية مباشرة منظّمة للفحص دون قيم مستنتجة.';
+
+  @override
+  String get cellMonitoring => 'مراقبة الخلايا';
+
+  @override
+  String get faultDiagnostics => 'تشخيص الأعطال';
+
+  @override
+  String get power => 'القدرة';
+
+  @override
+  String get stateOfHealth => 'حالة صحة البطارية';
+
+  @override
+  String get cycleCount => 'عدد الدورات';
+
+  @override
+  String get noCellReadings => 'لم يبلّغ الجهاز عن قراءات للخلايا.';
+
+  @override
+  String get minimumCell => 'أدنى خلية';
+
+  @override
+  String get maximumCell => 'أعلى خلية';
+
+  @override
+  String cellVoltageValue(int index, String value) {
+    return 'الخلية $index: $value فولت';
+  }
+
+  @override
+  String cellNumber(int index) {
+    return 'الخلية $index';
+  }
+
+  @override
+  String rawAlarmCode(String code) {
+    return 'رمز الإنذار الخام: $code';
+  }
+
+  @override
+  String get cellBalancing => 'موازنة الخلايا';
+
+  @override
+  String get batteryHealth => 'صحة البطارية';
+
+  @override
+  String get serviceFunctions => 'وظائف الخدمة';
+
+  @override
+  String get reports => 'التقارير';
+
+  @override
+  String get parallelBank => 'البنك المتوازي';
+
+  @override
+  String get balancingMask => 'قناع الموازنة';
+
+  @override
+  String get balancingUnavailable => 'لم يبلّغ الجهاز عن حالة الموازنة';
+
+  @override
+  String get noCellsBalancing => 'لا توجد خلايا مبلّغ عن موازنتها';
+
+  @override
+  String get balancingReportedActive => 'يبلّغ الجهاز عن موازنة خلايا نشطة';
+
+  @override
+  String get balancingEvidenceNote =>
+      'تُفك هذه الحالة فقط من قناع بتات الموازنة المبلّغ عنه.';
+
+  @override
+  String get fullChargeCapacity => 'سعة الشحن الكاملة';
+
+  @override
+  String get healthMethodNote =>
+      'تُعرض حالة الصحة فقط عندما يبلّغ عنها الجهاز. لا يستنتج SolarDiag صحة البطارية من لقطة واحدة.';
+
+  @override
+  String get configurationParameters => 'معلمات الإعداد';
+
+  @override
+  String get simulatedWriteOnly => 'الكتابة الموثقة متاحة فقط مع ملف المحاكي.';
+
+  @override
+  String get calibration => 'المعايرة';
+
+  @override
+  String get noVerifiedCalibrationProcedure =>
+      'غير متاحة: لا يوجد إجراء معايرة متحقق على جهاز حقيقي ضمن التطبيق.';
+
+  @override
+  String get factoryFunctions => 'وظائف المصنع';
+
+  @override
+  String get factoryFunctionsUnavailable =>
+      'غير متاحة: يلزم تفويض الشركة المصنعة ووثائق متحقق منها.';
+
+  @override
+  String get reportsAvailableFromHistory =>
+      'أنشئ تقارير JSON وPDF المتحققة من السلامة من سجل التشخيص.';
+
+  @override
+  String get parallelModuleTelemetryUnavailable =>
+      'لم يبلّغ المحول النشط عن بيانات منفصلة لوحدات البنك المتوازي.';
+
+  @override
+  String get onboardingPurpose => 'شخّص أنظمة الطاقة بالأدلة';
+
+  @override
+  String get onboardingPurposeDetail =>
+      'ينظّم SolarDiag بيانات العاكس والبطارية المبلّغ عنها دون اختلاق القيم غير المتاحة.';
+
+  @override
+  String get onboardingReadOnly => 'القراءة فقط أولًا';
+
+  @override
+  String get onboardingReadOnlyDetail =>
+      'تبدأ الاتصالات بصورة سلبية. يتطلب أي تغيير مدعوم تفويضًا ومراجعة وتأكيدًا وقراءة راجعة.';
+
+  @override
+  String get onboardingConnect => 'صِل بوابة معزولة';
+
+  @override
+  String get onboardingConnectDetail =>
+      'تحقق من الواجهة وأطراف الموصل والمقاومة الطرفية من وثائق موثوقة قبل توصيل العتاد.';
+
+  @override
+  String get startDiagnostics => 'بدء التشخيص';
 }

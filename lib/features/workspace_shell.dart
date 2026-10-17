@@ -3,10 +3,12 @@ import '../app/theme.dart';
 import '../design/components.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../session/device_session.dart';
+import 'battery_workspace.dart';
 import 'dashboard.dart';
 import 'contribution_screen.dart';
 import 'device_library.dart';
 import 'gateway_screen.dart';
+import 'inverter_diagnostics_screen.dart';
 import 'link_screen.dart';
 import 'parameters_screen.dart';
 import 'session_history_screen.dart';
@@ -48,8 +50,11 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
         onToggleContrast: widget.onToggleContrast,
         onOpenDesignLab: widget.onOpenDesignLab,
         onOpenDiagnostics: widget.onOpenDiagnostics,
+        onSelectDestination: (value) => setState(() => index = value),
         embedded: true,
       ),
+      const InverterDiagnosticsScreen(),
+      const BatteryWorkspace(),
       const DeviceLibraryScreen(),
       const LinkScreen(),
       const GatewayScreen(),
@@ -59,16 +64,20 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
       if (widget.contributionsEnabled) const ContributionScreen(),
     ];
     final destinations = [
-      (Icons.grid_view, s.overview),
-      (Icons.library_books_outlined, s.library),
-      (Icons.link, s.link),
-      (Icons.cable, s.gateway),
-      (Icons.tune, s.parameters),
-      (Icons.history, s.history),
-      if (widget.studioEnabled) (Icons.science_outlined, s.studio),
+      ('overview', Icons.grid_view, s.overview),
+      ('inverter', Icons.solar_power_outlined, s.inverter),
+      ('battery', Icons.battery_6_bar, s.battery),
+      ('library', Icons.library_books_outlined, s.library),
+      ('link', Icons.link, s.link),
+      ('gateway', Icons.cable, s.gateway),
+      ('parameters', Icons.tune, s.parameters),
+      ('history', Icons.history, s.history),
+      if (widget.studioEnabled) ('studio', Icons.science_outlined, s.studio),
       if (widget.contributionsEnabled)
-        (Icons.volunteer_activism_outlined, s.contribute),
+        ('contributions', Icons.volunteer_activism_outlined, s.contribute),
     ];
+    const mobileDestinationIndices = [0, 2, 5, 6, 7];
+    final mobileSelectedIndex = mobileDestinationIndices.indexOf(index);
     return Scaffold(
       body: SafeArea(
         child: Row(
@@ -97,8 +106,9 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                           horizontal: 10,
                         ),
                         child: _RailButton(
-                          icon: destinations[i].$1,
-                          label: destinations[i].$2,
+                          key: ValueKey('workspace-nav-${destinations[i].$1}'),
+                          icon: destinations[i].$2,
+                          label: destinations[i].$3,
                           selected: index == i,
                           onTap: () => setState(() => index = i),
                         ),
@@ -147,13 +157,17 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
       ),
       bottomNavigationBar: !wide
           ? NavigationBar(
-              selectedIndex: index,
-              onDestinationSelected: (value) => setState(() => index = value),
+              selectedIndex: mobileSelectedIndex < 0 ? 0 : mobileSelectedIndex,
+              onDestinationSelected: (value) =>
+                  setState(() => index = mobileDestinationIndices[value]),
               destinations: [
-                for (final destination in destinations)
+                for (final destinationIndex in mobileDestinationIndices)
                   NavigationDestination(
-                    icon: Icon(destination.$1),
-                    label: destination.$2,
+                    key: ValueKey(
+                      'workspace-nav-${destinations[destinationIndex].$1}',
+                    ),
+                    icon: Icon(destinations[destinationIndex].$2),
+                    label: destinations[destinationIndex].$3,
                   ),
               ],
             )
@@ -171,6 +185,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
 
 class _RailButton extends StatelessWidget {
   const _RailButton({
+    super.key,
     required this.icon,
     required this.label,
     required this.selected,

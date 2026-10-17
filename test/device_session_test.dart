@@ -216,4 +216,23 @@ void main() {
       expect(result.deviceState, DeviceWriteState.unknownVerify);
     },
   );
+
+  test(
+    'session exposes changing inverter telemetry from its adapter',
+    () async {
+      final session = DeviceSession(
+        scenario: SimulationScenario.healthy,
+        autoStart: false,
+      );
+      addTearDown(session.dispose);
+
+      await session.refresh();
+      final first = session.inverterSnapshot;
+      await session.refresh();
+
+      expect(first?.acVoltage.value, 230);
+      expect(first?.dcVoltage.value, 54);
+      expect(session.inverterSnapshot?.dcVoltage.value, closeTo(54.01, 1e-9));
+    },
+  );
 }

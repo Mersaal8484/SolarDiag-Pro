@@ -1105,6 +1105,372 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Restore stopped because a write or readback verification failed.'**
   String get backupRestoreFailed;
+
+  /// No description provided for @inverter.
+  ///
+  /// In en, this message translates to:
+  /// **'Inverter'**
+  String get inverter;
+
+  /// No description provided for @inverterDiagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Inverter diagnostics'**
+  String get inverterDiagnostics;
+
+  /// No description provided for @inverterDiagnosticsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Adapter-reported simulator telemetry and honest research-profile limitations.'**
+  String get inverterDiagnosticsDescription;
+
+  /// No description provided for @simulatedInverterProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'SolarDiag simulated inverter'**
+  String get simulatedInverterProfile;
+
+  /// No description provided for @simulatedInverterEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Deterministic Modbus simulator · simulated evidence'**
+  String get simulatedInverterEvidence;
+
+  /// No description provided for @freconResearchProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'FRECON PV100/PV200 · research target'**
+  String get freconResearchProfile;
+
+  /// No description provided for @waitingForInverterTelemetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for inverter telemetry.'**
+  String get waitingForInverterTelemetry;
+
+  /// No description provided for @dcVoltage.
+  ///
+  /// In en, this message translates to:
+  /// **'DC voltage'**
+  String get dcVoltage;
+
+  /// No description provided for @dcCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'DC current'**
+  String get dcCurrent;
+
+  /// No description provided for @dcPower.
+  ///
+  /// In en, this message translates to:
+  /// **'DC power'**
+  String get dcPower;
+
+  /// No description provided for @acVoltage.
+  ///
+  /// In en, this message translates to:
+  /// **'AC voltage'**
+  String get acVoltage;
+
+  /// No description provided for @acCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'AC current'**
+  String get acCurrent;
+
+  /// No description provided for @acPower.
+  ///
+  /// In en, this message translates to:
+  /// **'AC power'**
+  String get acPower;
+
+  /// No description provided for @frequency.
+  ///
+  /// In en, this message translates to:
+  /// **'Frequency'**
+  String get frequency;
+
+  /// No description provided for @simulatedTelemetryActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Simulated telemetry active'**
+  String get simulatedTelemetryActive;
+
+  /// No description provided for @batteryBmsDiagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery / BMS diagnostics'**
+  String get batteryBmsDiagnostics;
+
+  /// No description provided for @liveTelemetryActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live telemetry active'**
+  String get liveTelemetryActive;
+
+  /// No description provided for @telemetryUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Telemetry unavailable'**
+  String get telemetryUnavailable;
+
+  /// No description provided for @linkEvidenceAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Communication evidence available'**
+  String get linkEvidenceAvailable;
+
+  /// No description provided for @verificationStatusVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification status shown per profile'**
+  String get verificationStatusVisible;
+
+  /// No description provided for @savedSessionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No saved sessions} =1{1 saved session} other{{count} saved sessions}}'**
+  String savedSessionCount(int count);
+
+  /// No description provided for @recentSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent sessions'**
+  String get recentSessions;
+
+  /// No description provided for @batteryWorkspaceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Live battery evidence organized for inspection without inferred values.'**
+  String get batteryWorkspaceDescription;
+
+  /// No description provided for @cellMonitoring.
+  ///
+  /// In en, this message translates to:
+  /// **'Cell monitoring'**
+  String get cellMonitoring;
+
+  /// No description provided for @faultDiagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Fault diagnostics'**
+  String get faultDiagnostics;
+
+  /// No description provided for @power.
+  ///
+  /// In en, this message translates to:
+  /// **'Power'**
+  String get power;
+
+  /// No description provided for @stateOfHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'State of health'**
+  String get stateOfHealth;
+
+  /// No description provided for @cycleCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Cycle count'**
+  String get cycleCount;
+
+  /// No description provided for @noCellReadings.
+  ///
+  /// In en, this message translates to:
+  /// **'No cell readings were reported by the device.'**
+  String get noCellReadings;
+
+  /// No description provided for @minimumCell.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum cell'**
+  String get minimumCell;
+
+  /// No description provided for @maximumCell.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum cell'**
+  String get maximumCell;
+
+  /// No description provided for @cellVoltageValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Cell {index}: {value} V'**
+  String cellVoltageValue(int index, String value);
+
+  /// No description provided for @cellNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Cell {index}'**
+  String cellNumber(int index);
+
+  /// No description provided for @rawAlarmCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw alarm code: {code}'**
+  String rawAlarmCode(String code);
+
+  /// No description provided for @cellBalancing.
+  ///
+  /// In en, this message translates to:
+  /// **'Cell balancing'**
+  String get cellBalancing;
+
+  /// No description provided for @batteryHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery health'**
+  String get batteryHealth;
+
+  /// No description provided for @serviceFunctions.
+  ///
+  /// In en, this message translates to:
+  /// **'Service functions'**
+  String get serviceFunctions;
+
+  /// No description provided for @reports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get reports;
+
+  /// No description provided for @parallelBank.
+  ///
+  /// In en, this message translates to:
+  /// **'Parallel bank'**
+  String get parallelBank;
+
+  /// No description provided for @balancingMask.
+  ///
+  /// In en, this message translates to:
+  /// **'Balancing mask'**
+  String get balancingMask;
+
+  /// No description provided for @balancingUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Balancing state was not reported'**
+  String get balancingUnavailable;
+
+  /// No description provided for @noCellsBalancing.
+  ///
+  /// In en, this message translates to:
+  /// **'No cells are reported as balancing'**
+  String get noCellsBalancing;
+
+  /// No description provided for @balancingReportedActive.
+  ///
+  /// In en, this message translates to:
+  /// **'The device reports active cell balancing'**
+  String get balancingReportedActive;
+
+  /// No description provided for @balancingEvidenceNote.
+  ///
+  /// In en, this message translates to:
+  /// **'This status is decoded only from the reported balancing bitmask.'**
+  String get balancingEvidenceNote;
+
+  /// No description provided for @fullChargeCapacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Full-charge capacity'**
+  String get fullChargeCapacity;
+
+  /// No description provided for @healthMethodNote.
+  ///
+  /// In en, this message translates to:
+  /// **'SOH is shown only when device-reported. SolarDiag does not infer battery health from a single snapshot.'**
+  String get healthMethodNote;
+
+  /// No description provided for @configurationParameters.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration parameters'**
+  String get configurationParameters;
+
+  /// No description provided for @simulatedWriteOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified writes are available only against the simulator profile.'**
+  String get simulatedWriteOnly;
+
+  /// No description provided for @calibration.
+  ///
+  /// In en, this message translates to:
+  /// **'Calibration'**
+  String get calibration;
+
+  /// No description provided for @noVerifiedCalibrationProcedure.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable: no hardware-verified calibration procedure is bundled.'**
+  String get noVerifiedCalibrationProcedure;
+
+  /// No description provided for @factoryFunctions.
+  ///
+  /// In en, this message translates to:
+  /// **'Factory functions'**
+  String get factoryFunctions;
+
+  /// No description provided for @factoryFunctionsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable: manufacturer authorization and verified documentation are required.'**
+  String get factoryFunctionsUnavailable;
+
+  /// No description provided for @reportsAvailableFromHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate integrity-checked JSON and PDF reports from Diagnostic history.'**
+  String get reportsAvailableFromHistory;
+
+  /// No description provided for @parallelModuleTelemetryUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Per-module parallel-bank telemetry was not reported by the active adapter.'**
+  String get parallelModuleTelemetryUnavailable;
+
+  /// No description provided for @onboardingPurpose.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnose energy systems with evidence'**
+  String get onboardingPurpose;
+
+  /// No description provided for @onboardingPurposeDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'SolarDiag organizes reported inverter and battery data without inventing unavailable values.'**
+  String get onboardingPurposeDetail;
+
+  /// No description provided for @onboardingReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Read-only comes first'**
+  String get onboardingReadOnly;
+
+  /// No description provided for @onboardingReadOnlyDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Connections start passive. Any supported change requires authorization, review, confirmation and readback.'**
+  String get onboardingReadOnlyDetail;
+
+  /// No description provided for @onboardingConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect an isolated gateway'**
+  String get onboardingConnect;
+
+  /// No description provided for @onboardingConnectDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify the interface, connector pinout and termination from trusted documentation before connecting hardware.'**
+  String get onboardingConnectDetail;
+
+  /// No description provided for @startDiagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Start diagnostics'**
+  String get startDiagnostics;
 }
 
 class _AppLocalizationsDelegate

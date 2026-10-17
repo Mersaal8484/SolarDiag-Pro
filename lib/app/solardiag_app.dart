@@ -2,7 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import '../config/feature_flags.dart';
 import '../features/advanced_diagnostics.dart';
+import '../features/battery_workspace.dart';
+import '../features/device_library.dart';
 import '../features/design_lab.dart';
+import '../features/gateway_screen.dart';
+import '../features/inverter_diagnostics_screen.dart';
+import '../features/link_screen.dart';
+import '../features/onboarding_screen.dart';
+import '../features/parameters_screen.dart';
+import '../features/session_history_screen.dart';
 import '../features/workspace_shell.dart';
 import '../design/accessibility.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -16,10 +24,14 @@ class SolarDiagApp extends StatefulWidget {
     this.flags = const FeatureFlags(),
     this.session,
     this.database,
+    this.showOnboarding = false,
+    this.initialRoute = '/',
   });
   final FeatureFlags flags;
   final DeviceSession? session;
   final LocalDatabase? database;
+  final bool showOnboarding;
+  final String initialRoute;
   @override
   State<SolarDiagApp> createState() => _SolarDiagAppState();
 }
@@ -32,12 +44,14 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
   Locale _locale = const Locale('en');
   ThemeMode _themeMode = ThemeMode.light;
   bool _highContrast = false;
+  late bool _onboardingVisible;
   @override
   void initState() {
     super.initState();
     _ownsDeviceSession = widget.session == null;
     _ownsDatabase = widget.session == null && widget.database != null;
     _deviceSession = widget.session ?? DeviceSession(database: widget.database);
+    _onboardingVisible = widget.showOnboarding;
   }
 
   @override
@@ -65,6 +79,18 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
           GlobalCupertinoLocalizations.delegate,
         ],
         themeMode: _themeMode,
+        initialRoute: widget.initialRoute,
+        routes: {
+          '/battery': (_) => const BatteryWorkspace(),
+          '/diagnostics': (_) => const AdvancedDiagnosticsScreen(),
+          '/inverter': (_) => const InverterDiagnosticsScreen(),
+          '/link': (_) => const LinkScreen(),
+          '/library': (_) => const DeviceLibraryScreen(),
+          '/history': (_) => const SessionHistoryScreen(),
+          '/gateway': (_) => const GatewayScreen(),
+          '/parameters': (_) => const ParametersScreen(),
+          '/design-lab': (_) => const DesignLab(),
+        },
         theme: solarTheme(
           brightness: Brightness.light,
           highContrast: _highContrast || _designPreferences.outdoorHighContrast,
@@ -77,6 +103,14 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
         ),
         home: Builder(
           builder: (context) {
+            if (_onboardingVisible) {
+              return OnboardingScreen(
+                onComplete: () {
+                  widget.database?.setBool('onboarding_complete', true);
+                  setState(() => _onboardingVisible = false);
+                },
+              );
+            }
             return WorkspaceShell(
               onToggleLocale: () => setState(
                 () => _locale = _locale.languageCode == 'en'
@@ -90,14 +124,10 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
               ),
               onToggleContrast: () =>
                   setState(() => _highContrast = !_highContrast),
-              onOpenDesignLab: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const DesignLab()),
-              ),
-              onOpenDiagnostics: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const AdvancedDiagnosticsScreen(),
-                ),
-              ),
+              onOpenDesignLab: () =>
+                  Navigator.of(context).pushNamed('/design-lab'),
+              onOpenDiagnostics: () =>
+                  Navigator.of(context).pushNamed('/diagnostics'),
               studioEnabled: widget.flags.studioEnabled,
               contributionsEnabled: widget.flags.contributionsEnabled,
             );

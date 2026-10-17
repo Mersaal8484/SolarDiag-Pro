@@ -22,4 +22,10 @@ metadata and stored with a SHA-256 hash. The report service verifies that hash
 before generating JSON or PDF and rejects any report request that mixes real
 and simulated records. See `adr/0003-local-sqlite-persistence.md`.
 
+The schema's second migration adds local application settings. It currently
+stores first-run onboarding completion. The adaptive `WorkspaceShell` keeps a
+five-item phone navigation bar and a complete desktop rail; named routes expose
+battery, inverter, link, library, history, gateway, parameters, diagnostics and
+the Design Lab directly.
+
 Safety boundaries are `TransmissionGuard`, `VerifiedWritePipeline`, `ReplayLock`, `ProfileRegistry`, contribution lifecycle gates, and signed-token validation. Current project layout is a single Flutter package; extraction into independent workspace packages remains a scaling refactor, not a functional claim.

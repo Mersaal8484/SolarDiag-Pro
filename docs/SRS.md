@@ -22,6 +22,11 @@
 - Integrity-checked JSON/PDF engineering reports with device, gateway, profile,
   readings, parameters, alarms, findings and session hash. Simulated PDFs carry
   a watermark on every page, and mixed real/simulated reports are rejected.
+- Computed six-destination home, adapter-backed inverter diagnostics, and a
+  battery workspace covering overview, cells, temperatures, faults, balancing,
+  health, service restrictions, reports and parallel-bank availability.
+- Persistent three-step onboarding, named deep links, five-destination phone
+  navigation and complete desktop navigation.
 
 ## Traceability
 
@@ -35,5 +40,5 @@ The automated suite is organized by domain: `domain_test`, `protocol_test`,
 
 Real gateway firmware, real-device profiles, asymmetric production signing,
 cloud backend, persistence for the research repository and lifecycle records,
-complete production navigation/screens, hardware validation, Android hardware
-transport, and production legal approval remain open.
+report preview polish, dedicated backup comparison, hardware validation,
+Android hardware transport, and production legal approval remain open.

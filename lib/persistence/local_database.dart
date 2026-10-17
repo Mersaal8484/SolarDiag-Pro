@@ -48,7 +48,7 @@ class LocalDatabase {
   void _migrate() {
     _database.execute('PRAGMA foreign_keys = ON');
     final version = _database.userVersion;
-    if (version > 1) {
+    if (version > 2) {
       throw StateError('Database schema is newer than this application.');
     }
     if (version == 0) {
@@ -79,6 +79,15 @@ class LocalDatabase {
         ON parameter_backups(captured_at DESC);
       ''');
       _database.userVersion = 1;
+    }
+    if (_database.userVersion < 2) {
+      _database.execute('''
+        CREATE TABLE app_settings (
+          key TEXT NOT NULL PRIMARY KEY,
+          value TEXT NOT NULL
+        ) STRICT;
+      ''');
+      _database.userVersion = 2;
     }
   }
 
@@ -157,6 +166,25 @@ class LocalDatabase {
         ),
       ),
   ];
+
+  bool getBool(String key, {bool defaultValue = false}) {
+    final rows = _database.select(
+      'SELECT value FROM app_settings WHERE key = ?',
+      [key],
+    );
+    if (rows.isEmpty) return defaultValue;
+    return rows.single['value'] == 'true';
+  }
+
+  void setBool(String key, bool value) {
+    _database.execute(
+      '''
+      INSERT INTO app_settings (key, value) VALUES (?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+      ''',
+      [key, value ? 'true' : 'false'],
+    );
+  }
 
   void close() => _database.close();
 }

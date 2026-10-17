@@ -26,8 +26,9 @@ simulated output in JSON metadata and on every PDF page.
 - SQLite currently persists diagnostic sessions and parameter backups only;
   audit-chain, lifecycle, last-known-good library and Studio research persistence
   still require schema extensions.
-- The complete F2 screen inventory, deep-linkable routing, onboarding and
-  production adaptive navigation are not yet complete.
+- The F2 screen inventory, deep-linkable routing, onboarding and adaptive
+  navigation are substantially implemented. Dedicated backup comparison,
+  richer history timelines and report-preview polish remain open.
 - HMAC signing is mock-only and unsuitable as the production profile trust model.
 - No legal approval has been obtained for privacy, contributor terms or reverse-engineering workflows.
 - Visual screenshot/golden review has not yet been completed on representative Android devices.
