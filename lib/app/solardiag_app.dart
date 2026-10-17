@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import '../data/simulated_bms.dart';
 import '../features/advanced_diagnostics.dart';
-import '../features/dashboard.dart';
 import '../features/design_lab.dart';
+import '../features/workspace_shell.dart';
 import 'theme.dart';
 
 class SolarDiagApp extends StatefulWidget {
@@ -39,7 +39,7 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
     home: Builder(
       builder: (context) {
         final snapshot = const SimulatedBms().snapshot();
-        return Dashboard(
+        return WorkspaceShell(
           snapshot: snapshot,
           onToggleLocale: () => setState(
             () => _locale = _locale.languageCode == 'en'

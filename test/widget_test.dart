@@ -38,4 +38,13 @@ void main() {
     await tester.scrollUntilVisible(find.text('Temperature unavailable'), 250);
     expect(find.text('Temperature unavailable'), findsOneWidget);
   });
+
+  testWidgets('workspace navigation opens device library', (tester) async {
+    await tester.pumpWidget(const SolarDiagApp());
+    await tester.tap(find.byIcon(Icons.library_books_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text('Device library'), findsOneWidget);
+    expect(find.text('Pylontech'), findsOneWidget);
+    expect(find.text('SolarDiag deterministic BMS'), findsOneWidget);
+  });
 }

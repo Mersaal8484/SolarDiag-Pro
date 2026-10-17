@@ -12,6 +12,7 @@ class Dashboard extends StatelessWidget {
     required this.onToggleContrast,
     required this.onOpenDesignLab,
     required this.onOpenDiagnostics,
+    this.embedded = false,
   });
   final BatterySnapshot snapshot;
   final VoidCallback onToggleLocale;
@@ -19,6 +20,7 @@ class Dashboard extends StatelessWidget {
   final VoidCallback onToggleContrast;
   final VoidCallback onOpenDesignLab;
   final VoidCallback onOpenDiagnostics;
+  final bool embedded;
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
@@ -27,7 +29,7 @@ class Dashboard extends StatelessWidget {
       body: SafeArea(
         child: Row(
           children: [
-            if (wide) _Rail(onOpenDesignLab: onOpenDesignLab),
+            if (wide && !embedded) _Rail(onOpenDesignLab: onOpenDesignLab),
             Expanded(
               child: CustomScrollView(
                 slivers: [
@@ -74,7 +76,7 @@ class Dashboard extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: !wide
+      bottomNavigationBar: !wide && !embedded
           ? NavigationBar(
               selectedIndex: 0,
               destinations: [
@@ -93,7 +95,7 @@ class Dashboard extends StatelessWidget {
               ],
             )
           : null,
-      floatingActionButton: !wide
+      floatingActionButton: !wide && !embedded
           ? FloatingActionButton.small(
               onPressed: onOpenDesignLab,
               tooltip: s.designLab,
