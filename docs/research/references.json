@@ -1,0 +1,12 @@
+{
+  "references": [
+    {
+      "id": "solardiag-simulator-spec-001",
+      "title": "SolarDiag deterministic simulator specification",
+      "source": "internal",
+      "license": "project-internal",
+      "notice_required": false,
+      "nda_restricted": false
+    }
+  ]
+}
