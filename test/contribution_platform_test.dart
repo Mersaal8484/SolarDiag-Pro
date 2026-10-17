@@ -314,7 +314,7 @@ void main() {
     await tester.tap(find.byTooltip('Contribute'));
     await tester.pumpAndSettle();
     expect(find.text('Contribute safely'), findsOneWidget);
-    expect(find.text('Redaction Preview'), findsOneWidget);
+    expect(find.text('Redaction preview'), findsOneWidget);
     expect(find.text('Mock portal only'), findsOneWidget);
   });
 }

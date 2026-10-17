@@ -1,0 +1,4 @@
+{
+  "directional": ["current-flow", "restore", "export", "share"],
+  "icons": ["home","inverter","battery","link-diagnostics","library","history","gateway","can-bus","rs485","rs232","uart","ble","usb","wifi","cell","cell-grid","soc-ring","soh","cycle","balancing","mosfet","contactor","temperature","thermal-map","current-flow","parallel-bank","master-slave","healthy","warning","critical","stale","offline","locked","unlocked-verified","simulated","verified-hardware","verified-document","research","read-only","configure","calibrate","factory","backup","restore","compare","report","export","share","search","filter","record","solar","grid","load","battery-charge","battery-discharge","capture-record","passive-tap","hex-inspector","frame","request-response","diff","hypothesis","evidence","confirmed-check","profile-builder","register-map","replay-lock","contribute","redact","review-queue","signed-profile","revoked","library-sync","reward-points","role"]
+}

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../app/strings.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../app/theme.dart';
 import '../integration/compatibility_models.dart';
 import '../integration/link_diagnostics.dart';
@@ -18,22 +18,17 @@ class LinkScreen extends StatelessWidget {
   final bool simulated;
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     final delivery = link.messageDeliveryRatio;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         Text(
-          s.pick('Inverter ↔ Battery', 'العاكس ↔ البطارية'),
+          s.inverterBatteryLink,
           style: Theme.of(context).textTheme.displaySmall,
         ),
         const SizedBox(height: 8),
-        Text(
-          s.pick(
-            'Read-only compatibility and communication evidence.',
-            'أدلة توافق واتصال للقراءة فقط.',
-          ),
-        ),
+        Text(s.linkDescription),
         const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.all(22),
@@ -50,21 +45,21 @@ class LinkScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${simulated ? s.simulated : s.pick('Live', 'مباشر')} · ${assessment.verdict.name}',
+                      [
+                        simulated ? s.simulated : s.live,
+                        assessment.verdict.name,
+                      ].join(' · '),
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: SolarColors.onDark,
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
                       ),
                     ),
                     Text(
                       delivery == null
-                          ? s.pick(
-                              'Message delivery unavailable',
-                              'تسليم الرسائل غير متاح',
-                            )
-                          : '${(delivery * 100).toStringAsFixed(0)}% ${s.pick('message delivery', 'تسليم الرسائل')}',
-                      style: const TextStyle(color: Colors.white70),
+                          ? s.deliveryUnavailable
+                          : '${(delivery * 100).toStringAsFixed(0)}% ${s.messageDelivery}',
+                      style: const TextStyle(color: SolarColors.onDarkStrong),
                     ),
                   ],
                 ),
@@ -82,19 +77,16 @@ class LinkScreen extends StatelessWidget {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.tips_and_updates_outlined),
-                title: Text('${item.device}: ${item.setting}'),
+                title: Text([item.device, item.setting].join(': ')),
                 subtitle: Text(
-                  '${item.suggestedValue} · ${item.menu}\n${item.reason}',
+                  [item.suggestedValue, item.menu, item.reason].join(' · '),
                 ),
               ),
             ),
         ],
         const SizedBox(height: 12),
         Text(
-          s.pick(
-            'Recommendations are never applied automatically.',
-            'لا تُطبّق التوصيات تلقائيًا.',
-          ),
+          s.recommendationsNeverApplied,
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontStyle: FontStyle.italic,

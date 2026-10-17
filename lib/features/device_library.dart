@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import '../app/strings.dart';
+
 import '../app/theme.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class DeviceLibraryScreen extends StatelessWidget {
   const DeviceLibraryScreen({super.key});
+  static const freconName = 'FRECON PV100 / PV200';
   static const targets = [
     'Pylontech',
     'Dyness',
@@ -17,27 +19,17 @@ class DeviceLibraryScreen extends StatelessWidget {
   ];
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     return _Page(
-      title: s.pick('Device library', 'مكتبة الأجهزة'),
-      subtitle: s.pick(
-        'Verification status is shown per profile. Planned is not supported.',
-        'تظهر حالة التحقق لكل ملف. «مخطط» لا تعني «مدعوم».',
-      ),
+      title: s.deviceLibrary,
+      subtitle: s.libraryVerificationNote,
       children: [
         Card(
           child: ListTile(
             contentPadding: const EdgeInsets.all(20),
             leading: _Badge(text: s.simulated, color: SolarColors.lime),
-            title: Text(
-              s.pick('SolarDiag deterministic BMS', 'محاكي BMS الحتمي'),
-            ),
-            subtitle: Text(
-              s.pick(
-                'LFP-16S-SIM · Simulator only',
-                'LFP-16S-SIM · محاكاة فقط',
-              ),
-            ),
+            title: Text(s.deterministicBms),
+            subtitle: Text(s.simulatorOnly),
             trailing: const Icon(Icons.chevron_right),
           ),
         ),
@@ -45,22 +37,17 @@ class DeviceLibraryScreen extends StatelessWidget {
         Card(
           child: ListTile(
             leading: const Icon(Icons.solar_power_outlined),
-            title: const Text('FRECON PV100 / PV200'),
-            subtitle: Text(
-              s.pick(
-                'Register map required from manufacturer.',
-                'يلزم الحصول على خريطة السجلات من الشركة المصنعة.',
-              ),
-            ),
+            title: const Text(freconName),
+            subtitle: Text(s.registerMapRequired),
             trailing: _Badge(
-              text: s.pick('RESEARCH', 'قيد البحث'),
+              text: s.research,
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
             ),
           ),
         ),
         const SizedBox(height: 18),
         Text(
-          s.pick('Research targets', 'أهداف البحث'),
+          s.researchTargets,
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 10),
@@ -69,14 +56,9 @@ class DeviceLibraryScreen extends StatelessWidget {
             child: ListTile(
               leading: const Icon(Icons.battery_unknown_outlined),
               title: Text(name),
-              subtitle: Text(
-                s.pick(
-                  'No verified definition is bundled',
-                  'لا يوجد تعريف متحقق مضمّن',
-                ),
-              ),
+              subtitle: Text(s.noVerifiedDefinition),
               trailing: _Badge(
-                text: s.pick('PLANNED', 'مخطط'),
+                text: s.planned,
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
               ),
             ),

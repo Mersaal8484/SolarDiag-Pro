@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../app/strings.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../app/theme.dart';
+import '../design/accessibility.dart';
 import '../core/battery_models.dart';
 import '../diagnostics/battery_diagnostics.dart';
 import '../diagnostics/diagnostic_models.dart';
@@ -15,29 +16,22 @@ class AdvancedDiagnosticsScreen extends StatelessWidget {
   final Set<String> alarmCodes;
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     final assessment = const BatteryDiagnostics().analyze(
       snapshot,
       rawAlarmCodes: alarmCodes,
     );
     return Scaffold(
-      appBar: AppBar(
-        title: Text(s.pick('Advanced diagnostics', 'التشخيص المتقدم')),
-      ),
+      appBar: AppBar(title: Text(s.advancedDiagnostics)),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
           Text(
-            s.pick('Evidence before conclusions.', 'الدليل قبل الاستنتاج.'),
+            s.evidenceBeforeConclusions,
             style: Theme.of(context).textTheme.displaySmall,
           ),
           const SizedBox(height: 10),
-          Text(
-            s.pick(
-              'Every finding below is tied to a reported value or raw alarm. Missing evidence stays unavailable.',
-              'كل نتيجة أدناه مرتبطة بقيمة مبلّغ عنها أو إنذار خام. عند غياب الدليل تبقى النتيجة غير متاحة.',
-            ),
-          ),
+          Text(s.diagnosticEvidenceNote),
           const SizedBox(height: 24),
           _SohUnavailable(reason: assessment.reason),
           const SizedBox(height: 16),
@@ -57,7 +51,7 @@ class _SohUnavailable extends StatelessWidget {
   final String reason;
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -73,23 +67,17 @@ class _SohUnavailable extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  s.pick(
-                    'State of health: not available',
-                    'حالة الصحة: غير متاحة',
-                  ),
+                  s.sohUnavailable,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: SolarColors.onDark,
                     fontWeight: FontWeight.w800,
                     fontSize: 17,
                   ),
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  s.pick(
-                    'The device did not report SOH and available samples cannot prove it.',
-                    'لم يبلغ الجهاز عن SOH ولا تكفي العينات المتاحة لإثباتها.',
-                  ),
-                  style: const TextStyle(color: Colors.white70),
+                  s.sohUnavailableReason,
+                  style: const TextStyle(color: SolarColors.onDarkStrong),
                 ),
               ],
             ),
@@ -105,7 +93,7 @@ class _FindingCard extends StatelessWidget {
   final DiagnosticFinding finding;
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     final tokens = Theme.of(context).extension<SolarTokens>()!;
     final color = switch (finding.severity) {
       DiagnosticSeverity.info => tokens.success,
@@ -160,7 +148,7 @@ class _FindingCard extends StatelessWidget {
                       children: finding.evidence.entries
                           .map(
                             (entry) => Chip(
-                              label: Text(
+                              label: TechnicalText(
                                 '${entry.key}: ${_format(entry.value)}',
                               ),
                             ),
@@ -179,55 +167,22 @@ class _FindingCard extends StatelessWidget {
 
   static String _format(Object value) =>
       value is double ? value.toStringAsFixed(3) : '$value';
-  static String _title(AppStrings s, String key) => switch (key) {
-    'cells_balanced' => s.pick('Cells are balanced', 'الخلايا متوازنة'),
-    'cell_imbalance' => s.pick(
-      'Cell imbalance detected',
-      'تم اكتشاف اختلال بالخلايا',
-    ),
-    'temperature_unavailable' => s.pick(
-      'Temperature unavailable',
-      'درجة الحرارة غير متاحة',
-    ),
-    'temperature_normal' => s.pick(
-      'Temperature is normal',
-      'درجة الحرارة طبيعية',
-    ),
-    'temperature_high' => s.pick('High temperature', 'درجة حرارة مرتفعة'),
-    'cell_overvoltage' => s.pick(
-      'Cell overvoltage alarm',
-      'إنذار ارتفاع جهد خلية',
-    ),
-    _ => s.pick('Unrecognized device alarm', 'إنذار جهاز غير معروف'),
+  static String _title(AppLocalizations s, String key) => switch (key) {
+    'cells_balanced' => s.cellsBalanced,
+    'cell_imbalance' => s.cellImbalanceDetected,
+    'temperature_unavailable' => s.temperatureUnavailable,
+    'temperature_normal' => s.temperatureNormal,
+    'temperature_high' => s.temperatureHigh,
+    'cell_overvoltage' => s.cellOvervoltageAlarm,
+    _ => s.unrecognizedAlarm,
   };
-  static String _detail(AppStrings s, String key) => switch (key) {
-    'cells_balanced_detail' => s.pick(
-      'The reported cell spread is within the configured attention threshold.',
-      'فرق الخلايا المبلّغ عنه ضمن حد الانتباه المحدد.',
-    ),
-    'cell_imbalance_detail' => s.pick(
-      'The reported spread exceeds the configured threshold. Inspect raw cell values.',
-      'الفرق المبلّغ عنه يتجاوز الحد المحدد. راجع قيم الخلايا الخام.',
-    ),
-    'temperature_unavailable_detail' => s.pick(
-      'No temperature value was reported; no thermal conclusion was made.',
-      'لم تُبلغ قيمة للحرارة؛ لذلك لم يصدر استنتاج حراري.',
-    ),
-    'temperature_normal_detail' => s.pick(
-      'The reported temperature is below the configured warning threshold.',
-      'درجة الحرارة المبلّغ عنها أدنى من حد التحذير المحدد.',
-    ),
-    'temperature_high_detail' => s.pick(
-      'The reported temperature exceeds a configured safety threshold.',
-      'درجة الحرارة المبلّغ عنها تتجاوز حد أمان محدد.',
-    ),
-    'cell_overvoltage_detail' => s.pick(
-      'The BMS raw alarm map reports cell overvoltage.',
-      'خريطة إنذارات BMS الخام تبلغ عن ارتفاع جهد خلية.',
-    ),
-    _ => s.pick(
-      'The raw code is preserved without guessing its meaning.',
-      'تم الاحتفاظ بالرمز الخام دون تخمين معناه.',
-    ),
+  static String _detail(AppLocalizations s, String key) => switch (key) {
+    'cells_balanced_detail' => s.cellsBalancedDetail,
+    'cell_imbalance_detail' => s.cellImbalanceDetail,
+    'temperature_unavailable_detail' => s.temperatureUnavailableDetail,
+    'temperature_normal_detail' => s.temperatureNormalDetail,
+    'temperature_high_detail' => s.temperatureHighDetail,
+    'cell_overvoltage_detail' => s.cellOvervoltageDetail,
+    _ => s.rawCodePreserved,
   };
 }

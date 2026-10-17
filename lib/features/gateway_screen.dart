@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../app/strings.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../app/theme.dart';
 import '../identification/identification_state_machine.dart';
 import 'identification_evidence_panel.dart';
@@ -9,21 +9,16 @@ class GatewayScreen extends StatelessWidget {
   final IdentificationOutcome? identificationOutcome;
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         Text(
-          s.pick('Diagnostic gateway', 'بوابة التشخيص'),
+          s.diagnosticGateway,
           style: Theme.of(context).textTheme.displaySmall,
         ),
         const SizedBox(height: 8),
-        Text(
-          s.pick(
-            'Connection checklist and declared capabilities.',
-            'قائمة فحص الاتصال والقدرات المعلنة.',
-          ),
-        ),
+        Text(s.gatewayDescription),
         const SizedBox(height: 24),
         Card(
           child: Padding(
@@ -34,8 +29,8 @@ class GatewayScreen extends StatelessWidget {
               children: [
                 _Status(
                   icon: Icons.visibility_outlined,
-                  label: s.pick('Default mode', 'الوضع الافتراضي'),
-                  value: s.pick('Listen-only', 'استماع فقط'),
+                  label: s.defaultMode,
+                  value: s.listenOnly,
                 ),
                 const _Status(
                   icon: Icons.thermostat_outlined,
@@ -53,27 +48,15 @@ class GatewayScreen extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         Text(
-          s.pick('Connection checklist', 'قائمة فحص الاتصال'),
+          s.connectionChecklist,
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 10),
         for (final item in [
-          s.pick(
-            'Use an isolated interface appropriate for the device.',
-            'استخدم واجهة معزولة مناسبة للجهاز.',
-          ),
-          s.pick(
-            'Confirm connector pinout from a verified profile.',
-            'تحقق من أطراف الموصل من ملف موثق.',
-          ),
-          s.pick(
-            'Confirm termination before enabling the bus.',
-            'تحقق من المقاومة الطرفية قبل تمكين الناقل.',
-          ),
-          s.pick(
-            'Transmission remains blocked without an active profile.',
-            'يبقى الإرسال محظورًا دون ملف نشط.',
-          ),
+          s.isolatedInterfaceCheck,
+          s.pinoutCheck,
+          s.terminationCheck,
+          s.transmissionBlockedCheck,
         ])
           Card(
             child: ListTile(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app/theme.dart';
 import '../contribution/redaction.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class ContributionScreen extends StatefulWidget {
   const ContributionScreen({super.key});
@@ -17,114 +18,115 @@ class _ContributionScreenState extends State<ContributionScreen> {
     sessionSalt: 'preview',
   );
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(24),
-    children: [
-      Text(
-        'Contribute safely',
-        style: Theme.of(context).textTheme.displaySmall,
-      ),
-      const SizedBox(height: 8),
-      Text(
-        'Nothing leaves this device until redaction is previewed and granular consent is granted.',
-        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
-      const SizedBox(height: 24),
-      Stepper(
-        currentStep: step,
-        onStepTapped: (value) => setState(() => step = value),
-        controlsBuilder: (context, details) => Padding(
-          padding: const EdgeInsets.only(top: 18),
-          child: Row(
-            children: [
-              if (step < 3)
-                FilledButton(
-                  onPressed: () => setState(() => step++),
-                  child: const Text('Continue'),
-                ),
-              if (step > 0)
-                TextButton(
-                  onPressed: () => setState(() => step--),
-                  child: const Text('Back'),
-                ),
-            ],
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Text(
+          l10n.contributeSafely,
+          style: Theme.of(context).textTheme.displaySmall,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          l10n.contributionPrivacy,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
-        steps: [
-          Step(
-            title: const Text('Select data'),
-            isActive: step >= 0,
-            content: const _Panel(
-              icon: Icons.folder_open_outlined,
-              title: 'Owned-device diagnostic log',
-              detail:
-                  'Simulated and synthetic captures are excluded automatically.',
+        const SizedBox(height: 24),
+        Stepper(
+          currentStep: step,
+          onStepTapped: (value) => setState(() => step = value),
+          controlsBuilder: (context, details) => Padding(
+            padding: const EdgeInsets.only(top: 18),
+            child: Row(
+              children: [
+                if (step < 3)
+                  FilledButton(
+                    onPressed: () => setState(() => step++),
+                    child: Text(l10n.continueAction),
+                  ),
+                if (step > 0)
+                  TextButton(
+                    onPressed: () => setState(() => step--),
+                    child: Text(l10n.backAction),
+                  ),
+              ],
             ),
           ),
-          Step(
-            title: const Text('Redaction Preview'),
-            isActive: step >= 1,
-            content: _Preview(preview: preview),
-          ),
-          Step(
-            title: const Text('Consent'),
-            isActive: step >= 2,
-            content: Column(
+          steps: [
+            Step(
+              title: Text(l10n.selectData),
+              isActive: step >= 0,
+              content: _Panel(
+                icon: Icons.folder_open_outlined,
+                title: l10n.ownedDeviceLog,
+                detail: l10n.syntheticExcluded,
+              ),
+            ),
+            Step(
+              title: Text(l10n.redactionPreview),
+              isActive: step >= 1,
+              content: _Preview(preview: preview),
+            ),
+            Step(
+              title: Text(l10n.consent),
+              isActive: step >= 2,
+              content: Column(
+                children: [
+                  CheckboxListTile(
+                    value: logs,
+                    onChanged: (value) => setState(() => logs = value ?? false),
+                    title: Text(l10n.shareLogs),
+                  ),
+                  CheckboxListTile(
+                    value: notes,
+                    onChanged: (value) =>
+                        setState(() => notes = value ?? false),
+                    title: Text(l10n.shareNotes),
+                  ),
+                ],
+              ),
+            ),
+            Step(
+              title: Text(l10n.submit),
+              isActive: step >= 3,
+              content: _Panel(
+                icon: Icons.cloud_off_outlined,
+                title: l10n.mockPortalOnly,
+                detail: logs || notes ? l10n.packageReady : l10n.selectConsent,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
               children: [
-                CheckboxListTile(
-                  value: logs,
-                  onChanged: (value) => setState(() => logs = value ?? false),
-                  title: const Text('Share redacted diagnostic logs'),
-                ),
-                CheckboxListTile(
-                  value: notes,
-                  onChanged: (value) => setState(() => notes = value ?? false),
-                  title: const Text('Share engineer notes'),
+                const Icon(Icons.system_update_alt, color: SolarColors.green),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.libraryUpdates,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      Text(l10n.noProductionChannel),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          Step(
-            title: const Text('Submit'),
-            isActive: step >= 3,
-            content: _Panel(
-              icon: Icons.cloud_off_outlined,
-              title: 'Mock portal only',
-              detail: logs || notes
-                  ? 'Package is ready for the offline queue. Production upload is not configured.'
-                  : 'Select at least one consent category.',
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 18),
-      Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              const Icon(Icons.system_update_alt, color: SolarColors.green),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Library updates',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const Text(
-                      'No production channel configured · last-known-good remains active',
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 class _Panel extends StatelessWidget {
@@ -175,14 +177,14 @@ class _Preview extends StatelessWidget {
         child: Text(
           preview.redacted,
           style: const TextStyle(
-            color: Colors.white70,
+            color: SolarColors.onDarkStrong,
             fontFamily: 'monospace',
           ),
         ),
       ),
       const SizedBox(height: 10),
       Text(
-        '${preview.changes.length} sensitive field redacted',
+        AppLocalizations.of(context).redactedFields(preview.changes.length),
         style: const TextStyle(
           fontWeight: FontWeight.w800,
           color: SolarColors.green,

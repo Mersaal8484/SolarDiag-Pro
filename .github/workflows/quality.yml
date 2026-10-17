@@ -16,6 +16,10 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed lib test tool
+      - run: dart run tool/generate_tokens.dart
+      - run: dart run tool/generate_icons.dart
+      - run: git diff --exit-code lib/design/tokens.g.dart lib/design/solar_icons.g.dart assets/icons
+      - run: flutter gen-l10n
       - run: dart run tool/profile_check.dart
       - run: dart run tool/generate_capability_matrix.dart
       - run: git diff --exit-code docs/CAPABILITY_MATRIX.md

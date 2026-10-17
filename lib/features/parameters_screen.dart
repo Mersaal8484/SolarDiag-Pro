@@ -1,26 +1,18 @@
 import 'package:flutter/material.dart';
-import '../app/strings.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../app/theme.dart';
 
 class ParametersScreen extends StatelessWidget {
   const ParametersScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text(
-          s.pick('Parameters', 'المعلمات'),
-          style: Theme.of(context).textTheme.displaySmall,
-        ),
+        Text(s.parameters, style: Theme.of(context).textTheme.displaySmall),
         const SizedBox(height: 8),
-        Text(
-          s.pick(
-            'Simulator values. Physical writes remain unavailable.',
-            'قيم المحاكي. الكتابة على الأجهزة الحقيقية غير متاحة.',
-          ),
-        ),
+        Text(s.simulatorValuesNotice),
         const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.all(18),
@@ -34,12 +26,9 @@ class ParametersScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  s.pick(
-                    'SIMULATED WRITE PIPELINE · Readback required',
-                    'خط كتابة محاكى · القراءة الراجعة إلزامية',
-                  ),
+                  s.simulatedWritePipeline,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: SolarColors.onDark,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -49,19 +38,19 @@ class ParametersScreen extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         _ParameterTile(
-          title: s.pick('Charge voltage limit', 'حد جهد الشحن'),
+          title: s.chargeVoltageLimit,
           value: '55.2 V',
-          range: '50.0–56.0 V · 0.1 V',
+          range: '50.0â€“56.0 V Â· 0.1 V',
         ),
         _ParameterTile(
-          title: s.pick('Charge current limit', 'حد تيار الشحن'),
+          title: s.chargeCurrentLimit,
           value: '80 A',
-          range: '0–100 A · 1 A',
+          range: '0â€“100 A Â· 1 A',
         ),
         _ParameterTile(
-          title: s.pick('Low-voltage cutoff', 'فصل الجهد المنخفض'),
+          title: s.lowVoltageCutoff,
           value: '47.0 V',
-          range: '44.8–52.0 V · 0.1 V',
+          range: '44.8â€“52.0 V Â· 0.1 V',
         ),
         const SizedBox(height: 16),
         Wrap(
@@ -70,14 +59,12 @@ class ParametersScreen extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.backup_outlined),
-              label: Text(s.pick('Create backup', 'إنشاء نسخة احتياطية')),
+              label: Text(s.createBackup),
             ),
             FilledButton.icon(
               onPressed: null,
               icon: const Icon(Icons.edit_off_outlined),
-              label: Text(
-                s.pick('Physical write locked', 'الكتابة الحقيقية مقفلة'),
-              ),
+              label: Text(s.physicalWriteLocked),
             ),
           ],
         ),

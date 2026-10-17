@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../app/strings.dart';
 import '../app/theme.dart';
 import '../core/battery_models.dart';
 import '../integration/compatibility_engine.dart';
 import '../integration/compatibility_models.dart';
 import '../integration/link_diagnostics.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../simulator/simulation_scenario.dart';
 import 'dashboard.dart';
 import 'contribution_screen.dart';
@@ -46,7 +46,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
   int index = 0;
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final battery = BatteryIntegrationProfile(
       chargeVoltageWindow: widget.snapshot.chargeVoltageLimit.value == null
@@ -134,14 +134,13 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
     ];
     final destinations = [
       (Icons.grid_view, s.overview),
-      (Icons.library_books_outlined, s.pick('Library', 'المكتبة')),
-      (Icons.link, s.pick('Link', 'الرابط')),
+      (Icons.library_books_outlined, s.library),
+      (Icons.link, s.link),
       (Icons.cable, s.gateway),
-      (Icons.tune, s.pick('Parameters', 'المعلمات')),
-      if (widget.studioEnabled)
-        (Icons.science_outlined, s.pick('Studio', 'الاستوديو')),
+      (Icons.tune, s.parameters),
+      if (widget.studioEnabled) (Icons.science_outlined, s.studio),
       if (widget.contributionsEnabled)
-        (Icons.volunteer_activism_outlined, s.pick('Contribute', 'ساهم')),
+        (Icons.volunteer_activism_outlined, s.contribute),
     ];
     return Scaffold(
       body: SafeArea(
@@ -183,7 +182,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                       tooltip: s.designLab,
                       icon: const Icon(
                         Icons.science_outlined,
-                        color: Colors.white70,
+                        color: SolarColors.onDarkStrong,
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -228,7 +227,7 @@ class _RailButton extends StatelessWidget {
   Widget build(BuildContext context) => Tooltip(
     message: label,
     child: Material(
-      color: selected ? SolarColors.lime : Colors.transparent,
+      color: selected ? SolarColors.lime : SolarColors.transparent,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -238,7 +237,7 @@ class _RailButton extends StatelessWidget {
           height: 58,
           child: Icon(
             icon,
-            color: selected ? SolarColors.deep : Colors.white60,
+            color: selected ? SolarColors.deep : SolarColors.onDarkMuted,
           ),
         ),
       ),

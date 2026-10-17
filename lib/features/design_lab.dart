@@ -1,114 +1,216 @@
 import 'package:flutter/material.dart';
-import '../app/strings.dart';
+
 import '../app/theme.dart';
+import '../design/components.dart';
+import '../design/solar_icons.g.dart';
+import '../design/tokens.g.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class DesignLab extends StatelessWidget {
   const DesignLab({super.key});
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
-    final tokens = Theme.of(context).extension<SolarTokens>()!;
+    final l10n = AppLocalizations.of(context);
+    final cells = List<double>.generate(16, (index) => 3.18 + index * .004);
     return Scaffold(
-      appBar: AppBar(title: Text(s.designLab)),
+      appBar: AppBar(title: Text(l10n.designLab)),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          SolarSpace.xxl,
+          SolarSpace.lg,
+          SolarSpace.xxl,
+          SolarSpace.hero,
+        ),
         children: [
-          Text(
-            s.pick('Interface foundations', 'أسس الواجهة'),
-            style: Theme.of(context).textTheme.displaySmall,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            s.pick(
-              'A living reference for tokens, states, type and controls.',
-              'مرجع حي للألوان والحالات والخطوط وعناصر التحكم.',
+          ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: SolarSpace.readableWidth,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.designLab,
+                  style: Theme.of(context).textTheme.displaySmall,
+                ),
+                const SizedBox(height: SolarSpace.sm),
+                Text(
+                  l10n.designLabIntro,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 28),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _Swatch(label: s.pick('Success', 'سليم'), color: tokens.success),
-              _Swatch(label: s.pick('Warning', 'تحذير'), color: tokens.warning),
-              _Swatch(label: s.simulated, color: tokens.simulated),
-              _Swatch(label: s.pick('Panel', 'لوحة'), color: tokens.panel),
-            ],
-          ),
-          const SizedBox(height: 28),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    s.pick('Measurement states', 'حالات القياس'),
-                    style: Theme.of(context).textTheme.headlineSmall,
+          const SizedBox(height: SolarSpace.section),
+          _Section(title: l10n.foundations, child: const _PaletteStrip()),
+          _Section(
+            title: l10n.measurements,
+            child: Wrap(
+              spacing: SolarSpace.md,
+              runSpacing: SolarSpace.md,
+              children: [
+                SizedBox(
+                  width: 280,
+                  child: MetricTile(
+                    label: l10n.packVoltage,
+                    value: '51.24',
+                    unit: 'V',
+                    updatedLabel: l10n.updatedNow,
+                    simulated: true,
                   ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    '51.24 V',
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                  Text(
-                    s.missing,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Wrap(
-                    spacing: 12,
-                    children: [
-                      FilledButton(
-                        onPressed: () {},
-                        child: Text(s.pick('Primary action', 'إجراء رئيسي')),
-                      ),
-                      OutlinedButton(
-                        onPressed: null,
-                        child: Text(
-                          s.pick('Unavailable safely', 'غير متاح بأمان'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+                RingGauge(value: .78, label: l10n.stateOfCharge),
+                StatusPill(label: l10n.connected, status: SolarStatus.ok),
+                ModeBadge(label: l10n.monitor, status: SolarStatus.info),
+              ],
             ),
           ),
+          _Section(
+            title: l10n.cells,
+            child: Column(
+              children: [
+                CellGrid(values: cells),
+                const SizedBox(height: SolarSpace.xxl),
+                CellBarChart(values: cells),
+                const SizedBox(height: SolarSpace.xxl),
+                CellHeatmap(values: cells),
+              ],
+            ),
+          ),
+          _Section(
+            title: l10n.safetyStates,
+            child: Column(
+              children: [
+                SafetyBanner(
+                  title: l10n.warning,
+                  message: l10n.registerMapRequired,
+                  status: SolarStatus.warning,
+                ),
+                const SizedBox(height: SolarSpace.md),
+                AlarmCard(
+                  title: l10n.noActiveAlarms,
+                  message: l10n.updatedNow,
+                  status: SolarStatus.ok,
+                ),
+                const SizedBox(height: SolarSpace.md),
+                EmptyState(title: l10n.emptyTitle, message: l10n.emptyMessage),
+              ],
+            ),
+          ),
+          _Section(
+            title: l10n.studioComponents,
+            child: Column(
+              children: [
+                StatusPill(
+                  label: l10n.passiveNoTransmit,
+                  status: SolarStatus.ok,
+                ),
+                const SizedBox(height: SolarSpace.md),
+                HexGrid(title: l10n.evidence),
+                const SizedBox(height: SolarSpace.md),
+                HypothesisCard(
+                  title: l10n.evidence,
+                  detail: l10n.registerMapRequired,
+                ),
+              ],
+            ),
+          ),
+          _Section(title: l10n.symbols, child: const _IconGallery()),
         ],
       ),
     );
   }
 }
 
-class _Swatch extends StatelessWidget {
-  const _Swatch({required this.label, required this.color});
-  final String label;
-  final Color color;
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.child});
+  final String title;
+  final Widget child;
   @override
-  Widget build(BuildContext context) => Container(
-    width: 150,
-    height: 92,
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: color,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: Theme.of(context).dividerColor),
-    ),
-    alignment: AlignmentDirectional.bottomStart,
-    child: Text(
-      label,
-      style: const TextStyle(
-        color: SolarColors.ink,
-        fontWeight: FontWeight.w800,
-      ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(top: SolarSpace.section),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.headlineSmall),
+        const SizedBox(height: SolarSpace.lg),
+        child,
+      ],
     ),
   );
+}
+
+class _PaletteStrip extends StatelessWidget {
+  const _PaletteStrip();
+  @override
+  Widget build(BuildContext context) {
+    final p = Theme.of(context).extension<SolarTokens>()!.palette;
+    final colors = [p.tint, p.ok, p.warning, p.critical, p.info, p.simulated];
+    return Wrap(
+      spacing: SolarSpace.sm,
+      runSpacing: SolarSpace.sm,
+      children: [
+        for (final color in colors)
+          Semantics(
+            label: color.toARGB32().toRadixString(16),
+            child: Container(
+              width: 88,
+              height: 64,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(SolarRadius.control),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _IconGallery extends StatelessWidget {
+  const _IconGallery();
+  @override
+  Widget build(BuildContext context) => GridView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+      maxCrossAxisExtent: 150,
+      mainAxisExtent: 88,
+      crossAxisSpacing: SolarSpace.sm,
+      mainAxisSpacing: SolarSpace.sm,
+    ),
+    itemCount: SolarIcons.all.length,
+    itemBuilder: (context, index) {
+      final icon = SolarIcons.all[index];
+      return SolarSurface(
+        padding: const EdgeInsets.all(SolarSpace.sm),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _previewIcon(index),
+              size: 24,
+              semanticLabel: icon.name,
+              textDirection: icon.directional
+                  ? Directionality.of(context)
+                  : TextDirection.ltr,
+            ),
+            const SizedBox(height: SolarSpace.sm),
+            Text(
+              icon.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ],
+        ),
+      );
+    },
+  );
+  IconData _previewIcon(int index) => [
+    Icons.wb_sunny_outlined,
+    Icons.battery_charging_full,
+    Icons.monitor_heart_outlined,
+    Icons.hub_outlined,
+  ][index % 4];
 }

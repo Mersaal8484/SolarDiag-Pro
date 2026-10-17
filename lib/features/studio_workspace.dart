@@ -4,6 +4,8 @@ import '../studio/capture_analysis.dart';
 import '../studio/capture_models.dart';
 import '../studio/findings.dart';
 import '../studio/profile_builder.dart';
+import '../l10n/generated/app_localizations.dart';
+import '../design/accessibility.dart';
 
 enum StudioSection {
   sessions,
@@ -67,7 +69,7 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
     final wide = MediaQuery.sizeOf(context).width >= 900;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Protocol Discovery Studio'),
+        title: Text(AppLocalizations.of(context).protocolStudio),
         actions: [const _ReplayLockBadge(), const SizedBox(width: 14)],
       ),
       body: Row(
@@ -218,11 +220,11 @@ class _SectionList extends StatelessWidget {
     child: ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(12, 12, 12, 18),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
           child: Text(
-            'STUDIO / ENGINEERING',
-            style: TextStyle(
+            AppLocalizations.of(context).studioEngineering,
+            style: const TextStyle(
               color: SolarColors.lime,
               fontSize: 11,
               fontWeight: FontWeight.w800,
@@ -241,12 +243,16 @@ class _SectionList extends StatelessWidget {
               ),
               leading: Icon(
                 _icon(item),
-                color: selected == item ? SolarColors.deep : Colors.white60,
+                color: selected == item
+                    ? SolarColors.deep
+                    : SolarColors.onDarkMuted,
               ),
               title: Text(
                 _label(item),
                 style: TextStyle(
-                  color: selected == item ? SolarColors.deep : Colors.white70,
+                  color: selected == item
+                      ? SolarColors.deep
+                      : SolarColors.onDarkStrong,
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                 ),
@@ -306,13 +312,13 @@ class _ReplayLockBadge extends StatelessWidget {
       color: SolarColors.lime,
       borderRadius: BorderRadius.circular(99),
     ),
-    child: const Row(
+    child: Row(
       children: [
-        Icon(Icons.lock_outline, size: 15, color: SolarColors.deep),
-        SizedBox(width: 6),
+        const Icon(Icons.lock_outline, size: 15, color: SolarColors.deep),
+        const SizedBox(width: 6),
         Text(
-          'REPLAY LOCK',
-          style: TextStyle(
+          AppLocalizations.of(context).replayLock,
+          style: const TextStyle(
             color: SolarColors.deep,
             fontSize: 10,
             fontWeight: FontWeight.w900,
@@ -330,7 +336,7 @@ class _Stat extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     width: 180,
-    height: 112,
+    height: 120,
     child: Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -386,19 +392,23 @@ class _FrameTable extends StatelessWidget {
     child: SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        columns: const [
-          DataColumn(label: Text('TIME µs')),
-          DataColumn(label: Text('ID')),
-          DataColumn(label: Text('DIRECTION')),
-          DataColumn(label: Text('PAYLOAD')),
+        columns: [
+          DataColumn(
+            label: Text(AppLocalizations.of(context).timeMicroseconds),
+          ),
+          const DataColumn(label: TechnicalText('ID')),
+          DataColumn(label: Text(AppLocalizations.of(context).direction)),
+          DataColumn(label: Text(AppLocalizations.of(context).payload)),
         ],
         rows: [
           for (final frame in frames)
             DataRow(
               cells: [
-                DataCell(Text('${frame.timestampMicros}')),
+                DataCell(TechnicalText('${frame.timestampMicros}')),
                 DataCell(
-                  Text('0x${frame.identifier.toRadixString(16).toUpperCase()}'),
+                  TechnicalText(
+                    '0x${frame.identifier.toRadixString(16).toUpperCase()}',
+                  ),
                 ),
                 DataCell(Text(frame.received ? 'RX' : 'TX')),
                 DataCell(
@@ -425,11 +435,13 @@ class _AnalysisRow extends StatelessWidget {
     child: ListTile(
       contentPadding: const EdgeInsets.all(18),
       leading: const Icon(Icons.memory),
-      title: Text('0x${stats.identifier.toRadixString(16).toUpperCase()}'),
-      subtitle: Text(
+      title: TechnicalText(
+        '0x${stats.identifier.toRadixString(16).toUpperCase()}',
+      ),
+      subtitle: TechnicalText(
         '${stats.frameCount} frames · ${stats.averagePeriodMicros?.toStringAsFixed(0) ?? '—'} µs period',
       ),
-      trailing: Text(
+      trailing: TechnicalText(
         'Δ [${stats.changedByteOffsets.join(', ')}]',
         style: const TextStyle(fontWeight: FontWeight.w800),
       ),
@@ -451,7 +463,11 @@ class _FindingView extends StatelessWidget {
             children: [
               Chip(label: Text(finding.state.name.toUpperCase())),
               const Spacer(),
-              Text('${(finding.confidence * 100).round()}% confidence'),
+              Text(
+                AppLocalizations.of(
+                  context,
+                ).confidencePercent((finding.confidence * 100).round()),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -480,7 +496,7 @@ class _IdentityCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Chip(label: Text('STUDIO-DRAFT')),
+          Chip(label: Text(AppLocalizations.of(context).studioDraft)),
           const SizedBox(height: 12),
           Text(
             '${draft.manufacturer} / ${draft.family}',
@@ -560,16 +576,16 @@ class _ExportView extends StatelessWidget {
         child: SelectableText(
           json,
           style: const TextStyle(
-            color: Colors.white70,
+            color: SolarColors.onDarkStrong,
             fontFamily: 'monospace',
             height: 1.45,
           ),
         ),
       ),
       const SizedBox(height: 14),
-      const FilledButton(
+      FilledButton(
         onPressed: null,
-        child: Text('TECHNICIAN PUBLICATION DISABLED'),
+        child: Text(AppLocalizations.of(context).technicianPublicationDisabled),
       ),
     ],
   );

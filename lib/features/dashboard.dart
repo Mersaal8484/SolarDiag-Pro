@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../app/strings.dart';
 import '../app/theme.dart';
+import '../design/accessibility.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../core/battery_models.dart';
 import '../simulator/simulation_scenario.dart';
 
@@ -28,7 +29,7 @@ class Dashboard extends StatelessWidget {
   final bool embedded;
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     final wide = MediaQuery.sizeOf(context).width >= 850;
     return Scaffold(
       body: SafeArea(
@@ -58,10 +59,7 @@ class Dashboard extends StatelessWidget {
                           initialValue: scenario,
                           isExpanded: true,
                           decoration: InputDecoration(
-                            labelText: s.pick(
-                              'Simulated scenario',
-                              'سيناريو المحاكاة',
-                            ),
+                            labelText: s.simulatedScenario,
                           ),
                           items: [
                             for (final item in SimulationScenario.values)
@@ -82,12 +80,7 @@ class Dashboard extends StatelessWidget {
                           child: FilledButton.icon(
                             onPressed: onOpenDiagnostics,
                             icon: const Icon(Icons.monitor_heart_outlined),
-                            label: Text(
-                              s.pick(
-                                'Open advanced diagnostics',
-                                'فتح التشخيص المتقدم',
-                              ),
-                            ),
+                            label: Text(s.openAdvancedDiagnostics),
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -160,17 +153,20 @@ class _Rail extends StatelessWidget {
         for (final icon in [Icons.battery_6_bar, Icons.cable])
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 15),
-            child: Icon(icon, color: Colors.white54),
+            child: Icon(icon, color: SolarColors.onDarkFaint),
           ),
         IconButton(
           onPressed: onOpenDesignLab,
-          tooltip: AppStrings.of(context).designLab,
-          icon: const Icon(Icons.science_outlined, color: Colors.white54),
+          tooltip: AppLocalizations.of(context).designLab,
+          icon: const Icon(
+            Icons.science_outlined,
+            color: SolarColors.onDarkFaint,
+          ),
         ),
         const Spacer(),
         const Padding(
           padding: EdgeInsets.only(bottom: 26),
-          child: Icon(Icons.settings_outlined, color: Colors.white54),
+          child: Icon(Icons.settings_outlined, color: SolarColors.onDarkFaint),
         ),
       ],
     ),
@@ -188,7 +184,7 @@ class _Header extends StatelessWidget {
   final VoidCallback onToggleContrast;
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -198,7 +194,7 @@ class _Header extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
-              'SOLARDIAG PRO',
+              AppLocalizations.of(context).appTitle.toUpperCase(),
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: SolarColors.green,
                 letterSpacing: 1.4,
@@ -207,17 +203,19 @@ class _Header extends StatelessWidget {
             const SizedBox(width: 8),
             IconButton(
               onPressed: onToggleLocale,
-              tooltip: s.pick('Arabic', 'English'),
+              tooltip: Localizations.localeOf(context).languageCode == 'ar'
+                  ? s.english
+                  : s.arabic,
               icon: const Icon(Icons.language),
             ),
             IconButton(
               onPressed: onToggleTheme,
-              tooltip: s.pick('Toggle theme', 'تبديل المظهر'),
+              tooltip: s.toggleTheme,
               icon: const Icon(Icons.contrast),
             ),
             IconButton(
               onPressed: onToggleContrast,
-              tooltip: s.pick('High contrast', 'تباين عالٍ'),
+              tooltip: s.highContrast,
               icon: const Icon(Icons.visibility_outlined),
             ),
             _Pill(icon: Icons.shield_outlined, text: s.readOnly),
@@ -235,7 +233,7 @@ class _Hero extends StatelessWidget {
   final BatterySnapshot snapshot;
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
@@ -256,17 +254,23 @@ class _Hero extends StatelessWidget {
                 const SizedBox(height: 24),
                 Text(
                   s.bank,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.headlineSmall?.copyWith(color: Colors.white),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: SolarColors.onDark,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                Text(s.healthy, style: const TextStyle(color: Colors.white60)),
+                Text(
+                  s.healthy,
+                  style: const TextStyle(color: SolarColors.onDarkMuted),
+                ),
               ],
             ),
           ),
-          _BigMetric(value: snapshot.soc, label: s.soc),
-          _BigMetric(value: snapshot.voltage, label: s.packVoltage),
+          _BigMetric(value: snapshot.soc, label: s.stateOfCharge.toUpperCase()),
+          _BigMetric(
+            value: snapshot.voltage,
+            label: s.packVoltage.toUpperCase(),
+          ),
         ],
       ),
     );
@@ -286,7 +290,7 @@ class _BigMetric extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            color: Colors.white54,
+            color: SolarColors.onDarkFaint,
             fontSize: 11,
             letterSpacing: 1.1,
           ),
@@ -295,9 +299,9 @@ class _BigMetric extends StatelessWidget {
         Text(
           value.isReported
               ? '${value.value!.toStringAsFixed(value.unit == '%' ? 0 : 2)} ${value.unit}'
-              : AppStrings.of(context).missing,
+              : AppLocalizations.of(context).notReportedByDevice,
           style: const TextStyle(
-            color: Colors.white,
+            color: SolarColors.onDark,
             fontSize: 31,
             fontWeight: FontWeight.w700,
             fontFeatures: [FontFeature.tabularFigures()],
@@ -313,7 +317,7 @@ class _Metrics extends StatelessWidget {
   final BatterySnapshot snapshot;
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     return Wrap(
       spacing: 16,
       runSpacing: 16,
@@ -362,11 +366,15 @@ class _MetricCard extends StatelessWidget {
             Row(
               children: [
                 Icon(icon, size: 20, color: SolarColors.green),
-                const Spacer(),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
@@ -375,7 +383,7 @@ class _MetricCard extends StatelessWidget {
             Text(
               value.isReported
                   ? '${value.value!.toStringAsFixed(1)} ${value.unit}'
-                  : AppStrings.of(context).missing,
+                  : AppLocalizations.of(context).notReportedByDevice,
               style: value.isReported
                   ? Theme.of(context).textTheme.headlineSmall
                   : TextStyle(
@@ -395,7 +403,7 @@ class _CellPanel extends StatelessWidget {
   final BatterySnapshot snapshot;
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -430,7 +438,7 @@ class _CellPanel extends StatelessWidget {
                     ),
                     child: Column(
                       children: [
-                        Text(
+                        TechnicalText(
                           'C${i + 1}',
                           style: TextStyle(
                             fontSize: 11,
