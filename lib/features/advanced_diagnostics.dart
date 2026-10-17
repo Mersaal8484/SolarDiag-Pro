@@ -2,24 +2,19 @@ import 'package:flutter/material.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../app/theme.dart';
 import '../design/accessibility.dart';
-import '../core/battery_models.dart';
 import '../diagnostics/battery_diagnostics.dart';
 import '../diagnostics/diagnostic_models.dart';
+import '../session/device_session.dart';
 
 class AdvancedDiagnosticsScreen extends StatelessWidget {
-  const AdvancedDiagnosticsScreen({
-    super.key,
-    required this.snapshot,
-    this.alarmCodes = const {},
-  });
-  final BatterySnapshot snapshot;
-  final Set<String> alarmCodes;
+  const AdvancedDiagnosticsScreen({super.key});
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final session = DeviceSessionScope.of(context);
     final assessment = const BatteryDiagnostics().analyze(
-      snapshot,
-      rawAlarmCodes: alarmCodes,
+      session.snapshot,
+      rawAlarmCodes: session.alarmCodes,
     );
     return Scaffold(
       appBar: AppBar(title: Text(s.advancedDiagnostics)),

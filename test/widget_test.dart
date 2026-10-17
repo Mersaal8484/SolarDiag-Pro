@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solardiag_pro/app/solardiag_app.dart';
+import 'package:solardiag_pro/session/device_session.dart';
+import 'package:solardiag_pro/simulator/simulation_scenario.dart';
+import 'package:solardiag_pro/persistence/local_database.dart';
 
 void main() {
   testWidgets('shows simulator, read-only mode, and honest missing data', (
     tester,
   ) async {
     await tester.pumpWidget(const SolarDiagApp());
+    expect(find.byKey(const Key('connection-capsule')), findsOneWidget);
     expect(find.text('SIMULATED'), findsOneWidget);
     expect(find.text('READ-ONLY'), findsOneWidget);
     await tester.drag(
@@ -36,6 +40,15 @@ void main() {
 
   testWidgets('opens evidence-based advanced diagnostics', (tester) async {
     await tester.pumpWidget(const SolarDiagApp());
+    final dashboardScroll = find.descendant(
+      of: find.byType(CustomScrollView).first,
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Open advanced diagnostics'),
+      200,
+      scrollable: dashboardScroll,
+    );
     await tester.tap(find.text('Open advanced diagnostics'));
     await tester.pumpAndSettle();
     expect(find.text('Advanced diagnostics'), findsOneWidget);
@@ -51,6 +64,118 @@ void main() {
     expect(find.text('Device library'), findsOneWidget);
     expect(find.text('Pylontech'), findsOneWidget);
     expect(find.text('SolarDiag deterministic BMS'), findsOneWidget);
+  });
+
+  testWidgets('gateway status comes from the live read-only session', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const SolarDiagApp());
+    await tester.tap(find.text('Gateway'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Transmission guard'), findsOneWidget);
+    expect(find.text('Transmission blocked in read-only mode'), findsOneWidget);
+    expect(find.text('ENFORCED'), findsNothing);
+  });
+
+  testWidgets('parameters are read from adapter and backup is functional', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const SolarDiagApp());
+    await tester.pump();
+    await tester.tap(find.text('Parameters'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('55.2 V'), findsOneWidget);
+    expect(find.text('No backups saved'), findsOneWidget);
+    final parametersScroll = find.descendant(
+      of: find.byType(ListView).first,
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Create backup'),
+      200,
+      scrollable: parametersScroll,
+    );
+    await tester.tap(find.text('Create backup'));
+    await tester.pump();
+    expect(find.text('1 backup saved'), findsOneWidget);
+    expect(
+      find.text('Configuration backup created from the current readback.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('simulated parameter review confirms through readback', (
+    tester,
+  ) async {
+    final session = DeviceSession(
+      scenario: SimulationScenario.healthy,
+      autoStart: false,
+    );
+    addTearDown(session.dispose);
+    await session.refresh();
+    await session.refreshParameters();
+    await tester.pumpWidget(SolarDiagApp(session: session));
+    await tester.tap(find.text('Parameters'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('edit-charge-limit')));
+    await tester.pumpAndSettle();
+    expect(find.text('Review changes'), findsOneWidget);
+    expect(find.byKey(const Key('parameter-diff')), findsOneWidget);
+
+    final slider = find.byKey(const Key('parameter-slider'));
+    await tester.tapAt(tester.getCenter(slider) - const Offset(40, 0));
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('confirm-parameter-write')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Applied and verified by readback:'),
+      findsOneWidget,
+    );
+    expect(session.lastWriteResult?.readback, isNotNull);
+  });
+
+  testWidgets('latest backup can be restored through the verified UI flow', (
+    tester,
+  ) async {
+    final session = DeviceSession(
+      scenario: SimulationScenario.healthy,
+      autoStart: false,
+    );
+    addTearDown(session.dispose);
+    await session.refresh();
+    await session.refreshParameters();
+    session.createParameterBackup();
+    await session.applySimulatedParameterChange(
+      parameterId: 'charge_limit',
+      requestedValue: 54.8,
+      safetyAcknowledged: true,
+    );
+    await tester.pumpWidget(SolarDiagApp(session: session));
+    await tester.tap(find.text('Parameters'));
+    await tester.pumpAndSettle();
+
+    final parametersScroll = find.descendant(
+      of: find.byType(ListView).first,
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('restore-latest-backup')),
+      200,
+      scrollable: parametersScroll,
+    );
+    await tester.tap(find.byKey(const Key('restore-latest-backup')));
+    await tester.pumpAndSettle();
+    expect(find.text('Restore configuration backup'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('confirm-backup-restore')));
+    await tester.pumpAndSettle();
+
+    expect(session.parameters['charge_limit'], closeTo(55.2, 1e-9));
+    expect(find.textContaining('Restored and verified 1'), findsOneWidget);
   });
 
   testWidgets('mobile layout tolerates large accessibility text', (
@@ -76,15 +201,68 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(const SolarDiagApp());
     await tester.pumpAndSettle();
+    final dashboardScroll = find.descendant(
+      of: find.byType(CustomScrollView).first,
+      matching: find.byType(Scrollable),
+    );
     await tester.scrollUntilVisible(
       find.byKey(const Key('scenario-selector')),
       400,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: dashboardScroll,
     );
     await tester.tap(find.byKey(const Key('scenario-selector')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('highTemperature').last);
     await tester.pumpAndSettle();
     expect(find.text('highTemperature'), findsWidgets);
+  });
+
+  testWidgets('live session refresh changes an on-screen measurement', (
+    tester,
+  ) async {
+    final session = DeviceSession(
+      scenario: SimulationScenario.healthy,
+      autoStart: false,
+    );
+    addTearDown(session.dispose);
+    await tester.pumpWidget(SolarDiagApp(session: session));
+    expect(find.text('78 %'), findsOneWidget);
+
+    await session.refresh();
+    await session.refresh();
+    await tester.pump();
+
+    expect(find.text('77 %'), findsOneWidget);
+    expect(find.text('78 %'), findsNothing);
+  });
+
+  testWidgets('diagnostic history exposes persisted session evidence', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final database = LocalDatabase.inMemory();
+    final session = DeviceSession(
+      scenario: SimulationScenario.healthy,
+      autoStart: false,
+      database: database,
+    );
+    addTearDown(session.dispose);
+    addTearDown(database.close);
+    await session.refresh();
+    await tester.pumpWidget(SolarDiagApp(session: session));
+
+    await tester.tap(find.byIcon(Icons.history));
+    await tester.pumpAndSettle();
+    expect(find.text('Diagnostic history'), findsOneWidget);
+    expect(find.textContaining('SHA-256:'), findsOneWidget);
+    await tester.tap(
+      find.byKey(ValueKey('history-${session.history.single.id}')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Session evidence'), findsOneWidget);
+    expect(find.textContaining('"soc"'), findsOneWidget);
   });
 }

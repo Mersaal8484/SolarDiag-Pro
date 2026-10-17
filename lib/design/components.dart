@@ -228,20 +228,22 @@ class ConnectionCapsule extends StatelessWidget {
         horizontal: SolarSpace.lg,
         vertical: SolarSpace.md,
       ),
-      child: Wrap(
-        spacing: SolarSpace.sm,
-        runSpacing: SolarSpace.sm,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          _segment(Icons.hub_outlined, gateway),
-          _arrow(),
-          _segment(Icons.cable, interfaceName),
-          _arrow(),
-          _segment(Icons.battery_charging_full, device),
-          _arrow(),
-          Text(profile),
-          ModeBadge(label: mode, status: SolarStatus.info),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _segment(Icons.hub_outlined, gateway),
+            _arrow(),
+            _segment(Icons.cable, interfaceName),
+            _arrow(),
+            _segment(Icons.battery_charging_full, device),
+            _arrow(),
+            Text(profile),
+            const SizedBox(width: SolarSpace.sm),
+            ModeBadge(label: mode, status: SolarStatus.info),
+          ],
+        ),
       ),
     ),
   );

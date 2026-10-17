@@ -2,23 +2,17 @@ import 'package:flutter/material.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../app/theme.dart';
 import '../integration/compatibility_models.dart';
-import '../integration/link_diagnostics.dart';
+import '../session/device_session.dart';
 
 class LinkScreen extends StatelessWidget {
-  const LinkScreen({
-    required this.assessment,
-    required this.link,
-    required this.recommendations,
-    required this.simulated,
-    super.key,
-  });
-  final CompatibilityAssessment assessment;
-  final LinkDiagnosticResult link;
-  final List<IntegrationRecommendation> recommendations;
-  final bool simulated;
+  const LinkScreen({super.key});
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final session = DeviceSessionScope.of(context);
+    final assessment = session.compatibilityAssessment;
+    final link = session.linkDiagnostics;
+    final recommendations = session.integrationRecommendations;
     final delivery = link.messageDeliveryRatio;
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -46,7 +40,7 @@ class LinkScreen extends StatelessWidget {
                   children: [
                     Text(
                       [
-                        simulated ? s.simulated : s.live,
+                        session.simulated ? s.simulated : s.live,
                         assessment.verdict.name,
                       ].join(' · '),
                       style: const TextStyle(

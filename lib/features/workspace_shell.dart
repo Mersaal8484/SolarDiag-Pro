@@ -1,25 +1,20 @@
 import 'package:flutter/material.dart';
 import '../app/theme.dart';
-import '../core/battery_models.dart';
-import '../integration/compatibility_engine.dart';
-import '../integration/compatibility_models.dart';
-import '../integration/link_diagnostics.dart';
+import '../design/components.dart';
 import '../l10n/generated/app_localizations.dart';
-import '../simulator/simulation_scenario.dart';
+import '../session/device_session.dart';
 import 'dashboard.dart';
 import 'contribution_screen.dart';
 import 'device_library.dart';
 import 'gateway_screen.dart';
 import 'link_screen.dart';
 import 'parameters_screen.dart';
+import 'session_history_screen.dart';
 import 'studio_workspace.dart';
 
 class WorkspaceShell extends StatefulWidget {
   const WorkspaceShell({
     super.key,
-    required this.snapshot,
-    required this.scenario,
-    required this.onScenarioChanged,
     required this.onToggleLocale,
     required this.onToggleTheme,
     required this.onToggleContrast,
@@ -28,9 +23,6 @@ class WorkspaceShell extends StatefulWidget {
     required this.studioEnabled,
     required this.contributionsEnabled,
   });
-  final BatterySnapshot snapshot;
-  final SimulationScenario scenario;
-  final ValueChanged<SimulationScenario> onScenarioChanged;
   final VoidCallback onToggleLocale;
   final VoidCallback onToggleTheme;
   final VoidCallback onToggleContrast;
@@ -47,70 +39,10 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final session = DeviceSessionScope.of(context);
     final wide = MediaQuery.sizeOf(context).width >= 900;
-    final battery = BatteryIntegrationProfile(
-      chargeVoltageWindow: widget.snapshot.chargeVoltageLimit.value == null
-          ? const SourcedValue.unavailable('not_reported')
-          : SourcedValue.reported(
-              VoltageWindow(
-                minimum: widget.snapshot.voltage.value ?? 0,
-                maximum: widget.snapshot.chargeVoltageLimit.value!,
-              ),
-              EvidenceSource.deviceReported,
-            ),
-      dischargeVoltageWindow: const SourcedValue.unavailable('not_reported'),
-      maximumChargeCurrent: widget.snapshot.chargeCurrentLimit.value == null
-          ? const SourcedValue.unavailable('not_reported')
-          : SourcedValue.reported(
-              widget.snapshot.chargeCurrentLimit.value!,
-              EvidenceSource.deviceReported,
-            ),
-      maximumDischargeCurrent:
-          widget.snapshot.dischargeCurrentLimit.value == null
-          ? const SourcedValue.unavailable('not_reported')
-          : SourcedValue.reported(
-              widget.snapshot.dischargeCurrentLimit.value!,
-              EvidenceSource.deviceReported,
-            ),
-      chemistry: const SourcedValue.unavailable('profile_required'),
-      spokenProtocols: const {},
-    );
-    const inverter = InverterIntegrationProfile(
-      configuredChargeVoltage: SourcedValue.unavailable(
-        'inverter_not_connected',
-      ),
-      configuredLowVoltageCutoff: SourcedValue.unavailable(
-        'inverter_not_connected',
-      ),
-      configuredChargeCurrent: SourcedValue.unavailable(
-        'inverter_not_connected',
-      ),
-      configuredDischargeCurrent: SourcedValue.unavailable(
-        'inverter_not_connected',
-      ),
-      supportedChemistries: {},
-      supportedBatteryProtocols: {},
-    );
-    final assessment = const CompatibilityEngine().assess(
-      battery: battery,
-      inverter: inverter,
-    );
-    final link = const LinkDiagnostics().analyze(
-      LinkObservation(
-        window: Duration.zero,
-        expectedMessages: 0,
-        receivedMessages: 0,
-        timeouts: 0,
-        crcFailures: 0,
-        inverterSoc: SourcedValue.unavailable('inverter_not_connected'),
-        batterySoc: SourcedValue.unavailable('inverter_not_connected'),
-      ),
-    );
     final pages = <Widget>[
       Dashboard(
-        snapshot: widget.snapshot,
-        scenario: widget.scenario,
-        onScenarioChanged: widget.onScenarioChanged,
         onToggleLocale: widget.onToggleLocale,
         onToggleTheme: widget.onToggleTheme,
         onToggleContrast: widget.onToggleContrast,
@@ -119,16 +51,10 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
         embedded: true,
       ),
       const DeviceLibraryScreen(),
-      LinkScreen(
-        assessment: assessment,
-        link: link,
-        recommendations: const CompatibilityEngine().recommendations(
-          assessment,
-        ),
-        simulated: true,
-      ),
+      const LinkScreen(),
       const GatewayScreen(),
       const ParametersScreen(),
+      const SessionHistoryScreen(),
       if (widget.studioEnabled) const StudioWorkspace(),
       if (widget.contributionsEnabled) const ContributionScreen(),
     ];
@@ -138,6 +64,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
       (Icons.link, s.link),
       (Icons.cable, s.gateway),
       (Icons.tune, s.parameters),
+      (Icons.history, s.history),
       if (widget.studioEnabled) (Icons.science_outlined, s.studio),
       if (widget.contributionsEnabled)
         (Icons.volunteer_activism_outlined, s.contribute),
@@ -190,7 +117,30 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                 ),
               ),
             Expanded(
-              child: IndexedStack(index: index, children: pages),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                      16,
+                      12,
+                      16,
+                      4,
+                    ),
+                    child: ConnectionCapsule(
+                      key: const Key('connection-capsule'),
+                      gateway: s.simulatedGateway,
+                      interfaceName: s.virtualInterface,
+                      device: s.simulatedBms,
+                      profile: s.simulatedProfile,
+                      mode:
+                          '${s.readOnlyMode} · ${_linkLabel(s, session.linkState)}',
+                    ),
+                  ),
+                  Expanded(
+                    child: IndexedStack(index: index, children: pages),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -210,6 +160,13 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
           : null,
     );
   }
+
+  static String _linkLabel(AppLocalizations s, DeviceSessionLinkState state) =>
+      switch (state) {
+        DeviceSessionLinkState.connecting => s.connecting,
+        DeviceSessionLinkState.online => s.online,
+        DeviceSessionLinkState.unavailable => s.linkUnavailable,
+      };
 }
 
 class _RailButton extends StatelessWidget {

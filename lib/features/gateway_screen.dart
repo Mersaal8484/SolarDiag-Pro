@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../app/theme.dart';
 import '../identification/identification_state_machine.dart';
+import '../session/device_session.dart';
 import 'identification_evidence_panel.dart';
 
 class GatewayScreen extends StatelessWidget {
@@ -10,6 +11,7 @@ class GatewayScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final session = DeviceSessionScope.of(context);
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -32,15 +34,19 @@ class GatewayScreen extends StatelessWidget {
                   label: s.defaultMode,
                   value: s.listenOnly,
                 ),
-                const _Status(
+                _Status(
                   icon: Icons.thermostat_outlined,
-                  label: 'Gateway',
-                  value: 'Not connected',
+                  label: s.gateway,
+                  value: switch (session.linkState) {
+                    DeviceSessionLinkState.connecting => s.connecting,
+                    DeviceSessionLinkState.online => s.online,
+                    DeviceSessionLinkState.unavailable => s.linkUnavailable,
+                  },
                 ),
-                const _Status(
+                _Status(
                   icon: Icons.security,
-                  label: 'TX allow-list',
-                  value: 'ENFORCED',
+                  label: s.transmissionGuard,
+                  value: s.transmissionBlocked,
                 ),
               ],
             ),
@@ -100,18 +106,24 @@ class _Status extends StatelessWidget {
       children: [
         Icon(icon, color: SolarColors.green),
         const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontSize: 12,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
               ),
-            ),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
-          ],
+              Text(
+                value,
+                softWrap: true,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
         ),
       ],
     ),

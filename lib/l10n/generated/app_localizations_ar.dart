@@ -104,6 +104,91 @@ class AppLocalizationsAr extends AppLocalizations {
       'القيم الخام المبلّغ عنها من محاكي نظام إدارة البطارية';
 
   @override
+  String get simulatedGateway => 'بوابة المحاكي';
+
+  @override
+  String get virtualInterface => 'ناقل افتراضي';
+
+  @override
+  String get simulatedBms => 'نظام إدارة بطارية محاكى';
+
+  @override
+  String get simulatedProfile => 'LFP-16S-SIM';
+
+  @override
+  String get readOnlyMode => 'للقراءة فقط';
+
+  @override
+  String get connecting => 'جارٍ الاتصال';
+
+  @override
+  String get online => 'متصل';
+
+  @override
+  String get linkUnavailable => 'الرابط غير متاح';
+
+  @override
+  String get transmissionGuard => 'حارس الإرسال';
+
+  @override
+  String get transmissionBlocked => 'الإرسال محظور في وضع القراءة فقط';
+
+  @override
+  String get serviceMode => 'وضع الخدمة';
+
+  @override
+  String get noParametersReported => 'لم يبلّغ المحول النشط عن أي معاملات.';
+
+  @override
+  String get backupCreated =>
+      'أُنشئت نسخة احتياطية للإعدادات من القراءة الحالية.';
+
+  @override
+  String backupsSaved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count نسخة احتياطية محفوظة',
+      many: '$count نسخة احتياطية محفوظة',
+      few: '$count نسخ احتياطية محفوظة',
+      two: 'نسختان احتياطيتان محفوظتان',
+      one: 'نسخة احتياطية واحدة محفوظة',
+      zero: 'لا توجد نسخ احتياطية محفوظة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get editParameter => 'تعديل معامل محاكى';
+
+  @override
+  String get reviewChanges => 'مراجعة التغييرات';
+
+  @override
+  String get parameterRiskAdvanced => 'المخاطرة: متقدمة · للمحاكي الموثق فقط';
+
+  @override
+  String get safetyAcknowledgement => 'راجعت النطاق والأثر والقراءة الحالية.';
+
+  @override
+  String get cancel => 'إلغاء';
+
+  @override
+  String get confirmSimulatedWrite => 'تأكيد الكتابة المحاكية';
+
+  @override
+  String writeAppliedWithReadback(String value) {
+    return 'طُبق التغيير وتحقق بالقراءة الراجعة: $value';
+  }
+
+  @override
+  String get writeRejected => 'رفض خط الأمان عملية الكتابة.';
+
+  @override
+  String get writeFailedVerify =>
+      'فشلت الكتابة. يجب التحقق من حالة الجهاز قبل أي تغيير آخر.';
+
+  @override
   String get symbols => 'رموز SolarDiag';
 
   @override
@@ -431,4 +516,77 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get cellOvervoltageDetail =>
       'خريطة إنذارات نظام إدارة البطارية الخام تبلغ عن ارتفاع جهد خلية.';
+
+  @override
+  String get history => 'السجل';
+
+  @override
+  String get diagnosticHistory => 'سجل التشخيص';
+
+  @override
+  String get historyDescription =>
+      'جلسات محفوظة محليًا مع بصمات سلامة وأدلة ملتقطة.';
+
+  @override
+  String get noSavedSessions => 'لم تُحفظ جلسات تشخيص بعد.';
+
+  @override
+  String scenarioValue(String value) {
+    return 'السيناريو: $value';
+  }
+
+  @override
+  String lastUpdatedValue(String value) {
+    return 'آخر تحديث: $value';
+  }
+
+  @override
+  String integrityHashValue(String value) {
+    return 'SHA-256: $value…';
+  }
+
+  @override
+  String get sessionEvidence => 'أدلة الجلسة';
+
+  @override
+  String get closeAction => 'إغلاق';
+
+  @override
+  String get exportJsonPdf => 'تصدير JSON وPDF';
+
+  @override
+  String reportExported(String pdfPath, String jsonPath) {
+    return 'تم تصدير التقرير: $pdfPath · $jsonPath';
+  }
+
+  @override
+  String get reportExportFailed =>
+      'فشل تصدير التقرير بسبب فحص السلامة أو الملف.';
+
+  @override
+  String get restoreLatestBackup => 'استعادة أحدث نسخة احتياطية';
+
+  @override
+  String get restoreBackup => 'استعادة نسخة الإعدادات الاحتياطية';
+
+  @override
+  String restoreBackupConfirmation(int count) {
+    return 'هل تريد استعادة $count من المعلمات المتغيرة عبر خط الكتابة والقراءة الراجعة الموثّق؟';
+  }
+
+  @override
+  String get confirmRestore => 'تأكيد الاستعادة';
+
+  @override
+  String get backupAlreadyMatches =>
+      'الإعداد النشط مطابق لهذه النسخة الاحتياطية بالفعل.';
+
+  @override
+  String backupRestoreComplete(int count) {
+    return 'تمت استعادة $count من المعلمات والتحقق منها.';
+  }
+
+  @override
+  String get backupRestoreFailed =>
+      'توقفت الاستعادة بسبب فشل الكتابة أو التحقق بالقراءة الراجعة.';
 }

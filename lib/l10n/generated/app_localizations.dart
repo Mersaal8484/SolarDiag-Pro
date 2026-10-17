@@ -284,6 +284,144 @@ abstract class AppLocalizations {
   /// **'Raw values reported by the simulated BMS'**
   String get rawValues;
 
+  /// No description provided for @simulatedGateway.
+  ///
+  /// In en, this message translates to:
+  /// **'Simulator gateway'**
+  String get simulatedGateway;
+
+  /// No description provided for @virtualInterface.
+  ///
+  /// In en, this message translates to:
+  /// **'Virtual bus'**
+  String get virtualInterface;
+
+  /// No description provided for @simulatedBms.
+  ///
+  /// In en, this message translates to:
+  /// **'Simulated BMS'**
+  String get simulatedBms;
+
+  /// No description provided for @simulatedProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'LFP-16S-SIM'**
+  String get simulatedProfile;
+
+  /// No description provided for @readOnlyMode.
+  ///
+  /// In en, this message translates to:
+  /// **'READ-ONLY'**
+  String get readOnlyMode;
+
+  /// No description provided for @connecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting'**
+  String get connecting;
+
+  /// No description provided for @online.
+  ///
+  /// In en, this message translates to:
+  /// **'Online'**
+  String get online;
+
+  /// No description provided for @linkUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Link unavailable'**
+  String get linkUnavailable;
+
+  /// No description provided for @transmissionGuard.
+  ///
+  /// In en, this message translates to:
+  /// **'Transmission guard'**
+  String get transmissionGuard;
+
+  /// No description provided for @transmissionBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Transmission blocked in read-only mode'**
+  String get transmissionBlocked;
+
+  /// No description provided for @serviceMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Service mode'**
+  String get serviceMode;
+
+  /// No description provided for @noParametersReported.
+  ///
+  /// In en, this message translates to:
+  /// **'No parameters were reported by the active adapter.'**
+  String get noParametersReported;
+
+  /// No description provided for @backupCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration backup created from the current readback.'**
+  String get backupCreated;
+
+  /// No description provided for @backupsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No backups saved} =1{1 backup saved} other{{count} backups saved}}'**
+  String backupsSaved(int count);
+
+  /// No description provided for @editParameter.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit simulated parameter'**
+  String get editParameter;
+
+  /// No description provided for @reviewChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Review changes'**
+  String get reviewChanges;
+
+  /// No description provided for @parameterRiskAdvanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Risk: advanced · verified simulator only'**
+  String get parameterRiskAdvanced;
+
+  /// No description provided for @safetyAcknowledgement.
+  ///
+  /// In en, this message translates to:
+  /// **'I reviewed the range, consequence, and current readback.'**
+  String get safetyAcknowledgement;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @confirmSimulatedWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm simulated write'**
+  String get confirmSimulatedWrite;
+
+  /// No description provided for @writeAppliedWithReadback.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied and verified by readback: {value}'**
+  String writeAppliedWithReadback(String value);
+
+  /// No description provided for @writeRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The write was rejected by the safety pipeline.'**
+  String get writeRejected;
+
+  /// No description provided for @writeFailedVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Write failed. Device state must be verified before another change.'**
+  String get writeFailedVerify;
+
   /// No description provided for @symbols.
   ///
   /// In en, this message translates to:
@@ -853,6 +991,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The BMS raw alarm map reports cell overvoltage.'**
   String get cellOvervoltageDetail;
+
+  /// No description provided for @history.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get history;
+
+  /// No description provided for @diagnosticHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostic history'**
+  String get diagnosticHistory;
+
+  /// No description provided for @historyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Locally stored sessions with integrity hashes and captured evidence.'**
+  String get historyDescription;
+
+  /// No description provided for @noSavedSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'No diagnostic sessions have been saved yet.'**
+  String get noSavedSessions;
+
+  /// No description provided for @scenarioValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Scenario: {value}'**
+  String scenarioValue(String value);
+
+  /// No description provided for @lastUpdatedValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Last updated: {value}'**
+  String lastUpdatedValue(String value);
+
+  /// No description provided for @integrityHashValue.
+  ///
+  /// In en, this message translates to:
+  /// **'SHA-256: {value}...'**
+  String integrityHashValue(String value);
+
+  /// No description provided for @sessionEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Session evidence'**
+  String get sessionEvidence;
+
+  /// No description provided for @closeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get closeAction;
+
+  /// No description provided for @exportJsonPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Export JSON + PDF'**
+  String get exportJsonPdf;
+
+  /// No description provided for @reportExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Report exported: {pdfPath} · {jsonPath}'**
+  String reportExported(String pdfPath, String jsonPath);
+
+  /// No description provided for @reportExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Report export failed integrity or file checks.'**
+  String get reportExportFailed;
+
+  /// No description provided for @restoreLatestBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore latest backup'**
+  String get restoreLatestBackup;
+
+  /// No description provided for @restoreBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore configuration backup'**
+  String get restoreBackup;
+
+  /// No description provided for @restoreBackupConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore {count} changed parameters through the verified write and readback pipeline?'**
+  String restoreBackupConfirmation(int count);
+
+  /// No description provided for @confirmRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm restore'**
+  String get confirmRestore;
+
+  /// No description provided for @backupAlreadyMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'The active configuration already matches this backup.'**
+  String get backupAlreadyMatches;
+
+  /// No description provided for @backupRestoreComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Restored and verified {count} parameters.'**
+  String backupRestoreComplete(int count);
+
+  /// No description provided for @backupRestoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore stopped because a write or readback verification failed.'**
+  String get backupRestoreFailed;
 }
 
 class _AppLocalizationsDelegate

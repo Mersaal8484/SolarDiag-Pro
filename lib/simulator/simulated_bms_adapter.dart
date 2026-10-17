@@ -5,9 +5,12 @@ import '../protocol/capabilities.dart';
 import 'simulation_scenario.dart';
 
 class SimulatedBmsAdapter implements BmsAdapter {
-  SimulatedBmsAdapter({this.scenario = SimulationScenario.healthy});
+  SimulatedBmsAdapter({
+    this.scenario = SimulationScenario.healthy,
+    int initialTick = 0,
+  }) : _tick = initialTick;
   final SimulationScenario scenario;
-  int _tick = 0;
+  int _tick;
   bool _mismatchPending = false;
   final Map<String, num> _parameters = {
     'charge_limit': 55.2,

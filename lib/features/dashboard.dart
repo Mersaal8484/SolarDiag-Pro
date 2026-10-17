@@ -3,14 +3,12 @@ import '../app/theme.dart';
 import '../design/accessibility.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../core/battery_models.dart';
+import '../session/device_session.dart';
 import '../simulator/simulation_scenario.dart';
 
 class Dashboard extends StatelessWidget {
   const Dashboard({
     super.key,
-    required this.snapshot,
-    required this.scenario,
-    required this.onScenarioChanged,
     required this.onToggleLocale,
     required this.onToggleTheme,
     required this.onToggleContrast,
@@ -18,9 +16,6 @@ class Dashboard extends StatelessWidget {
     required this.onOpenDiagnostics,
     this.embedded = false,
   });
-  final BatterySnapshot snapshot;
-  final SimulationScenario scenario;
-  final ValueChanged<SimulationScenario> onScenarioChanged;
   final VoidCallback onToggleLocale;
   final VoidCallback onToggleTheme;
   final VoidCallback onToggleContrast;
@@ -30,6 +25,8 @@ class Dashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final session = DeviceSessionScope.of(context);
+    final snapshot = session.snapshot;
     final wide = MediaQuery.sizeOf(context).width >= 850;
     return Scaffold(
       body: SafeArea(
@@ -56,7 +53,7 @@ class Dashboard extends StatelessWidget {
                         const SizedBox(height: 32),
                         DropdownButtonFormField<SimulationScenario>(
                           key: const Key('scenario-selector'),
-                          initialValue: scenario,
+                          initialValue: session.scenario,
                           isExpanded: true,
                           decoration: InputDecoration(
                             labelText: s.simulatedScenario,
@@ -69,7 +66,7 @@ class Dashboard extends StatelessWidget {
                               ),
                           ],
                           onChanged: (value) {
-                            if (value != null) onScenarioChanged(value);
+                            if (value != null) session.selectScenario(value);
                           },
                         ),
                         const SizedBox(height: 16),

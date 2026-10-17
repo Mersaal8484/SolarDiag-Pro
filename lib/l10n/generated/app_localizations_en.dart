@@ -103,6 +103,91 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rawValues => 'Raw values reported by the simulated BMS';
 
   @override
+  String get simulatedGateway => 'Simulator gateway';
+
+  @override
+  String get virtualInterface => 'Virtual bus';
+
+  @override
+  String get simulatedBms => 'Simulated BMS';
+
+  @override
+  String get simulatedProfile => 'LFP-16S-SIM';
+
+  @override
+  String get readOnlyMode => 'READ-ONLY';
+
+  @override
+  String get connecting => 'Connecting';
+
+  @override
+  String get online => 'Online';
+
+  @override
+  String get linkUnavailable => 'Link unavailable';
+
+  @override
+  String get transmissionGuard => 'Transmission guard';
+
+  @override
+  String get transmissionBlocked => 'Transmission blocked in read-only mode';
+
+  @override
+  String get serviceMode => 'Service mode';
+
+  @override
+  String get noParametersReported =>
+      'No parameters were reported by the active adapter.';
+
+  @override
+  String get backupCreated =>
+      'Configuration backup created from the current readback.';
+
+  @override
+  String backupsSaved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count backups saved',
+      one: '1 backup saved',
+      zero: 'No backups saved',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get editParameter => 'Edit simulated parameter';
+
+  @override
+  String get reviewChanges => 'Review changes';
+
+  @override
+  String get parameterRiskAdvanced =>
+      'Risk: advanced · verified simulator only';
+
+  @override
+  String get safetyAcknowledgement =>
+      'I reviewed the range, consequence, and current readback.';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get confirmSimulatedWrite => 'Confirm simulated write';
+
+  @override
+  String writeAppliedWithReadback(String value) {
+    return 'Applied and verified by readback: $value';
+  }
+
+  @override
+  String get writeRejected => 'The write was rejected by the safety pipeline.';
+
+  @override
+  String get writeFailedVerify =>
+      'Write failed. Device state must be verified before another change.';
+
+  @override
   String get symbols => 'SolarDiag Symbols';
 
   @override
@@ -433,4 +518,77 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get cellOvervoltageDetail =>
       'The BMS raw alarm map reports cell overvoltage.';
+
+  @override
+  String get history => 'History';
+
+  @override
+  String get diagnosticHistory => 'Diagnostic history';
+
+  @override
+  String get historyDescription =>
+      'Locally stored sessions with integrity hashes and captured evidence.';
+
+  @override
+  String get noSavedSessions => 'No diagnostic sessions have been saved yet.';
+
+  @override
+  String scenarioValue(String value) {
+    return 'Scenario: $value';
+  }
+
+  @override
+  String lastUpdatedValue(String value) {
+    return 'Last updated: $value';
+  }
+
+  @override
+  String integrityHashValue(String value) {
+    return 'SHA-256: $value...';
+  }
+
+  @override
+  String get sessionEvidence => 'Session evidence';
+
+  @override
+  String get closeAction => 'Close';
+
+  @override
+  String get exportJsonPdf => 'Export JSON + PDF';
+
+  @override
+  String reportExported(String pdfPath, String jsonPath) {
+    return 'Report exported: $pdfPath · $jsonPath';
+  }
+
+  @override
+  String get reportExportFailed =>
+      'Report export failed integrity or file checks.';
+
+  @override
+  String get restoreLatestBackup => 'Restore latest backup';
+
+  @override
+  String get restoreBackup => 'Restore configuration backup';
+
+  @override
+  String restoreBackupConfirmation(int count) {
+    return 'Restore $count changed parameters through the verified write and readback pipeline?';
+  }
+
+  @override
+  String get confirmRestore => 'Confirm restore';
+
+  @override
+  String get backupAlreadyMatches =>
+      'The active configuration already matches this backup.';
+
+  @override
+  String backupRestoreComplete(int count) {
+    return 'Restored and verified $count parameters.';
+  }
+
+  @override
+  String get backupRestoreFailed =>
+      'Restore stopped because a write or readback verification failed.';
 }
