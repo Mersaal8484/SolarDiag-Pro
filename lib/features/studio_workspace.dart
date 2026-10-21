@@ -744,7 +744,7 @@ class _FrameTable extends StatelessWidget {
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: frames.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final frame = frames[index];
                 return Padding(

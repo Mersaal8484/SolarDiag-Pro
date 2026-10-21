@@ -100,6 +100,7 @@ class _FindingTile extends StatelessWidget {
   final CompatibilityFinding finding;
   @override
   Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
     final ok = finding.state == CompatibilityState.compatible;
     return Card(
       child: ListTile(
