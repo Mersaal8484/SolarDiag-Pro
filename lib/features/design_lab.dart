@@ -14,109 +14,119 @@ class DesignLab extends StatelessWidget {
     final cells = List<double>.generate(16, (index) => 3.18 + index * .004);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.designLab)),
-      body: ListView(
-        padding: const EdgeInsetsDirectional.fromSTEB(
-          SolarSpace.xxl,
-          SolarSpace.lg,
-          SolarSpace.xxl,
-          SolarSpace.hero,
-        ),
-        children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: SolarSpace.readableWidth,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final horizontal = constraints.maxWidth > 1248
+              ? (constraints.maxWidth - 1200) / 2
+              : SolarSpace.xxl;
+          return ListView(
+            padding: EdgeInsetsDirectional.fromSTEB(
+              horizontal,
+              SolarSpace.lg,
+              horizontal,
+              SolarSpace.hero,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l10n.designLab,
-                  style: Theme.of(context).textTheme.displaySmall,
+            children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: SolarSpace.readableWidth,
                 ),
-                const SizedBox(height: SolarSpace.sm),
-                Text(
-                  l10n.designLabIntro,
-                  style: Theme.of(context).textTheme.bodyLarge,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.designLab,
+                      style: Theme.of(context).textTheme.displaySmall,
+                    ),
+                    const SizedBox(height: SolarSpace.sm),
+                    Text(
+                      l10n.designLabIntro,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: SolarSpace.section),
-          _Section(title: l10n.foundations, child: const _PaletteStrip()),
-          _Section(
-            title: l10n.measurements,
-            child: Wrap(
-              spacing: SolarSpace.md,
-              runSpacing: SolarSpace.md,
-              children: [
-                SizedBox(
-                  width: 280,
-                  child: MetricTile(
-                    label: l10n.packVoltage,
-                    value: '51.24',
-                    unit: 'V',
-                    updatedLabel: l10n.updatedNow,
-                    simulated: true,
-                  ),
+              ),
+              const SizedBox(height: SolarSpace.section),
+              _Section(title: l10n.foundations, child: const _PaletteStrip()),
+              _Section(
+                title: l10n.measurements,
+                child: Wrap(
+                  spacing: SolarSpace.md,
+                  runSpacing: SolarSpace.md,
+                  children: [
+                    SizedBox(
+                      width: 280,
+                      child: MetricTile(
+                        label: l10n.packVoltage,
+                        value: '51.24',
+                        unit: 'V',
+                        updatedLabel: l10n.updatedNow,
+                        simulated: true,
+                      ),
+                    ),
+                    RingGauge(value: .78, label: l10n.stateOfCharge),
+                    StatusPill(label: l10n.connected, status: SolarStatus.ok),
+                    ModeBadge(label: l10n.monitor, status: SolarStatus.info),
+                  ],
                 ),
-                RingGauge(value: .78, label: l10n.stateOfCharge),
-                StatusPill(label: l10n.connected, status: SolarStatus.ok),
-                ModeBadge(label: l10n.monitor, status: SolarStatus.info),
-              ],
-            ),
-          ),
-          _Section(
-            title: l10n.cells,
-            child: Column(
-              children: [
-                CellGrid(values: cells),
-                const SizedBox(height: SolarSpace.xxl),
-                CellBarChart(values: cells),
-                const SizedBox(height: SolarSpace.xxl),
-                CellHeatmap(values: cells),
-              ],
-            ),
-          ),
-          _Section(
-            title: l10n.safetyStates,
-            child: Column(
-              children: [
-                SafetyBanner(
-                  title: l10n.warning,
-                  message: l10n.registerMapRequired,
-                  status: SolarStatus.warning,
+              ),
+              _Section(
+                title: l10n.cells,
+                child: Column(
+                  children: [
+                    CellGrid(values: cells),
+                    const SizedBox(height: SolarSpace.xxl),
+                    CellBarChart(values: cells),
+                    const SizedBox(height: SolarSpace.xxl),
+                    CellHeatmap(values: cells),
+                  ],
                 ),
-                const SizedBox(height: SolarSpace.md),
-                AlarmCard(
-                  title: l10n.noActiveAlarms,
-                  message: l10n.updatedNow,
-                  status: SolarStatus.ok,
+              ),
+              _Section(
+                title: l10n.safetyStates,
+                child: Column(
+                  children: [
+                    SafetyBanner(
+                      title: l10n.warning,
+                      message: l10n.registerMapRequired,
+                      status: SolarStatus.warning,
+                    ),
+                    const SizedBox(height: SolarSpace.md),
+                    AlarmCard(
+                      title: l10n.noActiveAlarms,
+                      message: l10n.updatedNow,
+                      status: SolarStatus.ok,
+                    ),
+                    const SizedBox(height: SolarSpace.md),
+                    EmptyState(
+                      title: l10n.emptyTitle,
+                      message: l10n.emptyMessage,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: SolarSpace.md),
-                EmptyState(title: l10n.emptyTitle, message: l10n.emptyMessage),
-              ],
-            ),
-          ),
-          _Section(
-            title: l10n.studioComponents,
-            child: Column(
-              children: [
-                StatusPill(
-                  label: l10n.passiveNoTransmit,
-                  status: SolarStatus.ok,
+              ),
+              _Section(
+                title: l10n.studioComponents,
+                child: Column(
+                  children: [
+                    StatusPill(
+                      label: l10n.passiveNoTransmit,
+                      status: SolarStatus.ok,
+                    ),
+                    const SizedBox(height: SolarSpace.md),
+                    HexGrid(title: l10n.evidence),
+                    const SizedBox(height: SolarSpace.md),
+                    HypothesisCard(
+                      title: l10n.evidence,
+                      detail: l10n.registerMapRequired,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: SolarSpace.md),
-                HexGrid(title: l10n.evidence),
-                const SizedBox(height: SolarSpace.md),
-                HypothesisCard(
-                  title: l10n.evidence,
-                  detail: l10n.registerMapRequired,
-                ),
-              ],
-            ),
-          ),
-          _Section(title: l10n.symbols, child: const _IconGallery()),
-        ],
+              ),
+              _Section(title: l10n.symbols, child: const _IconGallery()),
+            ],
+          );
+        },
       ),
     );
   }

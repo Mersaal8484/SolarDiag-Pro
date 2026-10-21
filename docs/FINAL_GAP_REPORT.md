@@ -16,25 +16,60 @@ and offline JSON/PDF engineering reports. Stored session evidence is hashed;
 report generation verifies it, refuses mixed simulated/real inputs, and marks
 simulated output in JSON metadata and on every PDF page.
 
+Post-review corrections (2026-10-21):
+
+- `AuditChain` is now persisted via `DatabaseAuditChainStore` backed by SQLite
+  schema migration 6 (`audit_entries` append-only table + `audit_chain_heads`).
+  Both tables are protected by SQLite triggers that abort UPDATE and DELETE,
+  preventing in-database tampering.
+- PDF engineering reports now iterate over all sessions in `data.sessions`,
+  matching the JSON export. Single-session and multi-session PDF rendering is
+  verified by `engineering_report_test.dart`.
+- `restoreParameterBackup` now requires an explicit `safetyAcknowledged`
+  parameter; callers must pass the value obtained from user confirmation.
+- `linkDiagnostics.expectedMessages` is now derived from the adapter poll
+  interval rather than a hard-coded constant.
+- `writeLocked` in `applySimulatedParameterChange` is now derived from live
+  link state and last-error presence.
+- `hasWriteCapability` in `DeviceProfile` now exclusively checks
+  `VerificationStatus.verifiedHardware` on write or calibration capabilities,
+  removing the unreliable text-matching fallback.
+- Open-source research references (`syssi/esphome-jk-bms`, `jblance/mpp-solar`)
+  added to `docs/research/references.json` with MIT license tags and legal
+  review flags.
+- `LEGAL_REVIEW_CHECKLIST.md` created at project root and `docs/studio/`.
+- Studio `_FrameTable` replaced `DataTable` with `ListView.separated` + lazy
+  `itemBuilder`, enabling virtualized rendering of large captures.
+- Studio capture import dialog added with format selector, hex-paste area, and
+  NDA acknowledgement toggle.
+- Milestone reports created for M5, M6, and M7 in `docs/reports/`.
+
 ## Not implemented or not validated
 
 - No ESP32 firmware or physical multi-interface gateway exists in this repository.
-- The host-side gateway contract is implemented for passive negotiation, but no USB/BLE/TCP connector or hardware attestation exists.
+- The host-side gateway contract is implemented for passive negotiation, but no
+  USB/BLE/TCP connector or hardware attestation exists.
 - No manufacturer profile is verified from authoritative documents or hardware.
 - No real battery, inverter, CAN, RS485, RS232, UART or BLE test was run.
-- No production backend, reviewer console, KMS/HSM signing, asymmetric trust root, account system or cloud distribution exists.
-- SQLite currently persists diagnostic sessions, state-transition events,
-  parameter backups and local application settings; audit-chain, lifecycle,
-  last-known-good library and Studio research persistence still require schema
-  extensions.
+- No production backend, reviewer console, KMS/HSM signing, asymmetric trust
+  root, account system or cloud distribution exists.
+- SQLite now covers diagnostic sessions, events, backups, settings, lifecycle
+  history, and audit chain (schema 6). Studio research session and finding
+  persistence (schema 5 tables) is present but Studio does not yet persist to
+  them in the live UI flow.
 - The F2 screen inventory, deep-linkable routing, onboarding and adaptive
   navigation are substantially implemented. Backup comparison, ordered
   state-transition timelines and report preview are implemented; broader
   real-device workflows remain dependent on verified hardware profiles.
-- HMAC signing is mock-only and unsuitable as the production profile trust model.
-- No legal approval has been obtained for privacy, contributor terms or reverse-engineering workflows.
-- Visual screenshot/golden review has not yet been completed on representative Android devices.
-- Windows builds are verified locally; Android build status is reported by the final command results.
+- Production asymmetric signing (Ed25519 with KMS-held private key) is stubbed;
+  `Ed25519TrustVerifier` implementation exists but is not wired into the
+  production app startup path.
+- No legal approval has been obtained for privacy, contributor terms or
+  reverse-engineering workflows; `LEGAL_REVIEW_CHECKLIST.md` tracks open items.
+- Visual screenshot/golden review has not yet been completed on representative
+  Android devices. Arabic PDF rendering has not been visually verified on device.
+- Windows builds are verified locally; Android build status is reported by the
+  final command results.
 
 ## Primary risks
 

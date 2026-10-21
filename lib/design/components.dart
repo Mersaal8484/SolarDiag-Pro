@@ -76,19 +76,26 @@ class MetricTile extends StatelessWidget {
           ),
           const SizedBox(height: SolarSpace.sm),
           ExcludeSemantics(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      value,
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    const SizedBox(width: SolarSpace.xs),
+                    Text(unit, style: Theme.of(context).textTheme.bodySmall),
+                  ],
                 ),
-                const SizedBox(width: SolarSpace.xs),
-                Text(unit, style: Theme.of(context).textTheme.bodySmall),
-              ],
+              ),
             ),
           ),
           const SizedBox(height: SolarSpace.xs),
@@ -302,16 +309,20 @@ class CellGrid extends StatelessWidget {
   const CellGrid({required this.values, super.key});
   final List<double> values;
   @override
-  Widget build(BuildContext context) => GridView.builder(
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-      maxCrossAxisExtent: 110,
-      mainAxisSpacing: SolarSpace.sm,
-      crossAxisSpacing: SolarSpace.sm,
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.ltr,
+    child: GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 110,
+        childAspectRatio: .85,
+        mainAxisSpacing: SolarSpace.sm,
+        crossAxisSpacing: SolarSpace.sm,
+      ),
+      itemCount: values.length,
+      itemBuilder: (_, i) => CellTile(index: i + 1, voltage: values[i]),
     ),
-    itemCount: values.length,
-    itemBuilder: (_, i) => CellTile(index: i + 1, voltage: values[i]),
   );
 }
 
@@ -324,29 +335,32 @@ class CellBarChart extends StatelessWidget {
     final max = values.reduce(math.max);
     return SizedBox(
       height: 150,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (var i = 0; i < values.length; i++)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsetsDirectional.symmetric(horizontal: 2),
-                child: Container(
-                  height:
-                      30 +
-                      110 * ((values[i] - min) / math.max(.001, max - min)),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).extension<SolarTokens>()!.palette.tint,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(4),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (var i = 0; i < values.length; i++)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Container(
+                    height:
+                        30 +
+                        110 * ((values[i] - min) / math.max(.001, max - min)),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).extension<SolarTokens>()!.palette.tint,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(4),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -360,29 +374,32 @@ class CellHeatmap extends StatelessWidget {
     final min = values.reduce(math.min);
     final max = values.reduce(math.max);
     final p = Theme.of(context).extension<SolarTokens>()!.palette;
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        for (var i = 0; i < values.length; i++)
-          Container(
-            width: 54,
-            height: 54,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Color.lerp(
-                p.info,
-                p.warning,
-                (values[i] - min) / math.max(.001, max - min),
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (var i = 0; i < values.length; i++)
+            Container(
+              width: 54,
+              height: 54,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Color.lerp(
+                  p.info,
+                  p.warning,
+                  (values[i] - min) / math.max(.001, max - min),
+                ),
+                borderRadius: BorderRadius.circular(SolarRadius.chip),
+                border: (values[i] == min || values[i] == max)
+                    ? Border.all(color: p.labelPrimary, width: 2)
+                    : null,
               ),
-              borderRadius: BorderRadius.circular(SolarRadius.chip),
-              border: (values[i] == min || values[i] == max)
-                  ? Border.all(color: p.labelPrimary, width: 2)
-                  : null,
+              child: Text('${i + 1}'),
             ),
-            child: Text('${i + 1}'),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -548,46 +565,76 @@ class DeltaBar extends SolarLabeledPanel {
 }
 
 class Sparkline extends SolarLabeledPanel {
-  const Sparkline({required String label, super.key})
-    : super(
-        title: label,
-        child: const SizedBox(
-          height: 48,
-          child: CustomPaint(painter: _SparkPainter()),
-        ),
-      );
+  Sparkline({
+    required String label,
+    List<double>? points,
+    Color? color,
+    super.key,
+  }) : super(
+         title: label,
+         child: SizedBox(
+           height: 48,
+           child: CustomPaint(
+             painter: _SparkPainter(
+               points: points ?? const [0.7, 0.4, 0.6, 0.2, 0.35],
+               color: color,
+             ),
+           ),
+         ),
+       );
 }
 
 class _SparkPainter extends CustomPainter {
-  const _SparkPainter();
+  const _SparkPainter({
+    this.points = const [0.7, 0.4, 0.6, 0.2, 0.35],
+    this.color,
+  });
+  final List<double> points;
+  final Color? color;
+
   @override
   void paint(Canvas canvas, Size size) {
+    if (points.isEmpty) return;
     final p = Paint()
-      ..color = const Color(0xFF0071E3)
+      ..color = color ?? const Color(0xFF0071E3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
-    canvas.drawPath(
-      Path()
-        ..moveTo(0, size.height * .7)
-        ..lineTo(size.width * .25, size.height * .4)
-        ..lineTo(size.width * .5, size.height * .6)
-        ..lineTo(size.width * .75, size.height * .2)
-        ..lineTo(size.width, size.height * .35),
-      p,
-    );
+    final path = Path();
+    for (var i = 0; i < points.length; i++) {
+      final x = points.length <= 1 ? 0.0 : (size.width * (i / (points.length - 1)));
+      final y = size.height * (1.0 - points[i].clamp(0.0, 1.0));
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(path, p);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _SparkPainter oldDelegate) =>
+      oldDelegate.points != points || oldDelegate.color != color;
 }
 
 class TrendChart extends Sparkline {
-  const TrendChart({required super.label, super.key});
+  TrendChart({
+    required super.label,
+    super.points,
+    super.color,
+    super.key,
+  });
 }
 
 class ThermalMap extends SolarLabeledPanel {
-  const ThermalMap({required String label, super.key})
-    : super(title: label, child: const LinearProgressIndicator(value: .65));
+  ThermalMap({
+    required String label,
+    double value = 0.65,
+    super.key,
+  }) : super(
+         title: label,
+         child: LinearProgressIndicator(value: value.clamp(0.0, 1.0)),
+       );
 }
 
 class AlarmCard extends SafetyBanner {
@@ -629,17 +676,25 @@ class ProfileCard extends TimelineEvent {
 }
 
 class LinkDiagram extends SolarLabeledPanel {
-  const LinkDiagram({required super.title, super.key})
-    : super(
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Icon(Icons.battery_charging_full),
-            Expanded(child: Divider()),
-            Icon(Icons.solar_power),
-          ],
-        ),
-      );
+  LinkDiagram({
+    required super.title,
+    bool connected = true,
+    super.key,
+  }) : super(
+         child: Row(
+           mainAxisAlignment: MainAxisAlignment.spaceAround,
+           children: [
+             const Icon(Icons.battery_charging_full),
+             Expanded(
+               child: Divider(
+                 color: connected ? SolarColors.green : SolarColors.amber,
+                 thickness: 2,
+               ),
+             ),
+             const Icon(Icons.solar_power),
+           ],
+         ),
+       );
 }
 
 class ReportPreview extends SolarLabeledPanel {
@@ -647,14 +702,25 @@ class ReportPreview extends SolarLabeledPanel {
 }
 
 class HexGrid extends SolarLabeledPanel {
-  const HexGrid({required super.title, super.key})
-    : super(
-        child: const Text(
-          '01 03 00 00 00 02',
-          textDirection: TextDirection.ltr,
-          style: TextStyle(fontFamily: 'JetBrains Mono'),
-        ),
-      );
+  HexGrid({
+    required super.title,
+    List<int>? bytes,
+    String? hexContent,
+    super.key,
+  }) : super(
+         child: Text(
+           hexContent ??
+               (bytes != null
+                   ? bytes
+                       .map(
+                         (b) => b.toRadixString(16).padLeft(2, '0').toUpperCase(),
+                       )
+                       .join(' ')
+                   : '01 03 00 00 00 02'),
+           textDirection: TextDirection.ltr,
+           style: const TextStyle(fontFamily: 'JetBrains Mono'),
+         ),
+       );
 }
 
 class FieldOverlay extends TimelineEvent {

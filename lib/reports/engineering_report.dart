@@ -109,8 +109,6 @@ class EngineeringReportService {
           ? 'SolarDiag,engineering,SIMULATED'
           : 'SolarDiag,engineering',
     );
-    final session = data.sessions.first;
-    final readings = jsonDecode(session.snapshotJson) as Map<String, Object?>;
     document.addPage(
       pw.MultiPage(
         pageTheme: pw.PageTheme(
@@ -144,7 +142,7 @@ class EngineeringReportService {
           style: pw.TextStyle(font: bold, fontSize: 15),
         ),
         footer: (context) => pw.Text(
-          '${context.pageNumber} / ${context.pagesCount} · ${session.dataHash}',
+          '${context.pageNumber} / ${context.pagesCount} · ${data.sessions.first.dataHash}',
           style: const pw.TextStyle(fontSize: 7),
         ),
         build: (context) => [
@@ -160,20 +158,31 @@ class EngineeringReportService {
             _label('Technician', 'الفني', language):
                 data.technicianId ?? 'Not provided',
           }, bold),
-          _section(_label('Session', 'الجلسة', language), {
-            _label('Scenario', 'السيناريو', language): session.scenario,
-            _label('Started', 'بدأت', language): session.startedAt
-                .toUtc()
-                .toIso8601String(),
-            _label('Updated', 'حُدثت', language): session.updatedAt
-                .toUtc()
-                .toIso8601String(),
-            'SHA-256': session.dataHash,
-          }, bold),
-          _section(_label('Readings', 'القراءات', language), {
-            for (final entry in readings.entries)
-              entry.key: _readableValue(entry.value),
-          }, bold),
+          // يشمل التقرير جميع sessions (وليس الأولى فقط)، تماشياً مع JSON.
+          for (final session in data.sessions) ...[
+            _section(
+              '${_label('Session', 'الجلسة', language)} ${session.id}',
+              {
+                _label('Scenario', 'السيناريو', language): session.scenario,
+                _label('Started', 'بدأت', language):
+                    session.startedAt.toUtc().toIso8601String(),
+                _label('Updated', 'حُدثت', language):
+                    session.updatedAt.toUtc().toIso8601String(),
+                'SHA-256': session.dataHash,
+              },
+              bold,
+            ),
+            _section(
+              _label('Readings', 'القراءات', language),
+              {
+                for (final entry in (jsonDecode(session.snapshotJson)
+                        as Map<String, Object?>)
+                    .entries)
+                  entry.key: _readableValue(entry.value),
+              },
+              bold,
+            ),
+          ],
           _section(_label('Parameters', 'المعلمات', language), {
             for (final entry in data.parameters.entries)
               entry.key: '${entry.value}',

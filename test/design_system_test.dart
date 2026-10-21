@@ -72,6 +72,48 @@ void main() {
     expect(offenders, isEmpty);
   });
 
+  testWidgets('technical measurements and cell order stay LTR in Arabic', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: solarTheme(brightness: Brightness.light),
+        home: const Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: Column(
+              children: [
+                SizedBox(
+                  width: 300,
+                  child: MetricTile(
+                    label: 'جهد الحزمة',
+                    value: '51.24',
+                    unit: 'V',
+                    updatedLabel: 'الآن',
+                  ),
+                ),
+                SizedBox(
+                  width: 300,
+                  height: 180,
+                  child: CellGrid(values: [3.1, 3.2]),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final metric = find.byType(MetricTile);
+    final value = find.descendant(of: metric, matching: find.text('51.24'));
+    final unit = find.descendant(of: metric, matching: find.text('V'));
+    expect(tester.getCenter(value).dx, lessThan(tester.getCenter(unit).dx));
+    expect(
+      tester.getCenter(find.text('1')).dx,
+      lessThan(tester.getCenter(find.text('2')).dx),
+    );
+  });
+
   for (final locale in const [Locale('en'), Locale('ar')]) {
     for (final brightness in Brightness.values) {
       testWidgets(

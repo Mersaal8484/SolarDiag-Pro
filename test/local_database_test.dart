@@ -141,4 +141,78 @@ void main() {
     expect(restored.records, hasLength(2));
     expect(restored.records.first.actorId, 'author');
   });
+
+  test('SQLite audit_entries round-trips and is append-only', () {
+    final database = LocalDatabase.inMemory();
+    addTearDown(database.close);
+    final now = DateTime.utc(2026, 10, 18, 12);
+
+    // حفظ إدخال audit
+    database.saveAuditEntry(
+      sessionId: 'audit-session-1',
+      sequence: 1,
+      occurredAt: now,
+      action: 'session_started',
+      details: {'scenario': 'healthy'},
+      previousHash: 'GENESIS',
+      hash: 'hash-entry-1',
+    );
+    database.saveAuditEntry(
+      sessionId: 'audit-session-1',
+      sequence: 2,
+      occurredAt: now.add(const Duration(seconds: 5)),
+      action: 'parameter_changed',
+      details: {'key': 'charge_limit', 'old': 55, 'new': 60},
+      previousHash: 'hash-entry-1',
+      hash: 'hash-entry-2',
+    );
+
+    // التحقق من تحميل الإدخالات مرتبةً
+    final entries = database.loadAuditEntries('audit-session-1');
+    expect(entries, hasLength(2));
+    expect(entries.first['sequence'], 1);
+    expect(entries.first['action'], 'session_started');
+    expect(entries.last['sequence'], 2);
+    expect(entries.last['previous_hash'], 'hash-entry-1');
+  });
+
+  test('SQLite audit_chain_heads round-trips head value', () {
+    final database = LocalDatabase.inMemory();
+    addTearDown(database.close);
+
+    // لا توجد سجلات بعد
+    expect(database.loadAuditHead('session-x'), isNull);
+
+    // حفظ head
+    database.saveAuditHead('session-x', 'hash-abc');
+    expect(database.loadAuditHead('session-x'), 'hash-abc');
+
+    // تحديث head
+    database.saveAuditHead('session-x', 'hash-xyz');
+    expect(database.loadAuditHead('session-x'), 'hash-xyz');
+  });
+
+  test('SQLite audit_entries append-only trigger rejects UPDATE', () {
+    final database = LocalDatabase.inMemory();
+    addTearDown(database.close);
+    final now = DateTime.utc(2026, 10, 18, 12);
+
+    database.saveAuditEntry(
+      sessionId: 'session-y',
+      sequence: 1,
+      occurredAt: now,
+      action: 'test_action',
+      details: {},
+      previousHash: 'GENESIS',
+      hash: 'hash-1',
+    );
+
+    // محاولة تحديث يجب أن ترفعها trigger
+    expect(
+      () => database.rawExecuteForTest(
+        "UPDATE audit_entries SET action = 'tampered' WHERE session_id = 'session-y'",
+      ),
+      throwsA(anything),
+    );
+  });
 }

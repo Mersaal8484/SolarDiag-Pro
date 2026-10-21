@@ -58,7 +58,7 @@ class DeviceSession extends ChangeNotifier {
   Set<String> _alarmCodes = const {};
   Map<String, num> _parameters = const {};
   final List<ParameterBackup> _backups = [];
-  final AuditChain _audit = AuditChain();
+  late AuditChain _audit;
   WriteResult? _lastWriteResult;
   int _writeSequence = 0;
   Object? _lastError;
@@ -77,6 +77,7 @@ class DeviceSession extends ChangeNotifier {
   Set<String> get alarmCodes => _alarmCodes;
   Map<String, num> get parameters => _parameters;
   List<ParameterBackup> get backups => List.unmodifiable(_backups);
+  AuditChain get audit => _audit;
   WriteResult? get lastWriteResult => _lastWriteResult;
   Object? get lastError => _lastError;
   bool get simulated => true;
@@ -162,7 +163,15 @@ class DeviceSession extends ChangeNotifier {
   }
 
   LinkDiagnosticResult get linkDiagnostics {
-    const expectedMessages = 2;
+    // يُشتق عدد الرسائل المتوقعة من معدل الاستطلاع الفعلي:
+    // بافتراض رسالتين لكل دورة استطلاع (telemetry + alarms) وفق الـ protocol
+    // المحاكى. عند توفر profile حقيقي، يُمرَّر هذا الرقم من الـ adapter.
+    final expectedMessages =
+        pollInterval.inMilliseconds > 0
+            ? (const Duration(seconds: 1).inMilliseconds ~/
+                  pollInterval.inMilliseconds) *
+                2
+            : 2;
     final receivedMessages = _linkState == DeviceSessionLinkState.online
         ? (expectedMessages * (1 - (_linkHealth?.errorRate ?? 0))).round()
         : 0;
@@ -197,6 +206,14 @@ class DeviceSession extends ChangeNotifier {
     _sessionStartedEventSaved = false;
     _persistedLinkState = null;
     _persistedAlarmCodes = null;
+    _audit = database != null
+        ? AuditChain(
+            store: DatabaseAuditChainStore(
+              database: database!,
+              sessionId: _sessionId,
+            ),
+          )
+        : AuditChain();
   }
 
   void start() {
@@ -255,9 +272,14 @@ class DeviceSession extends ChangeNotifier {
     return backup;
   }
 
+  /// استعادة نسخة احتياطية من المعاملات.
+  ///
+  /// يتطلب [safetyAcknowledged] من المستدعي صراحةً؛ لا يُمرَّر ثابت `true`
+  /// تلقائياً، تماشياً مع متطلب M5 باشتراط موافقة المستخدم الفعلية.
   Future<List<WriteResult>> restoreParameterBackup(
-    ParameterBackup backup,
-  ) async {
+    ParameterBackup backup, {
+    required bool safetyAcknowledged,
+  }) async {
     if (_parameters.isEmpty) await refreshParameters();
     final changes = backup.planRestore(
       activeProfileId: 'solardiag.simulated.lfp16.v2',
@@ -274,7 +296,7 @@ class DeviceSession extends ChangeNotifier {
       final result = await applySimulatedParameterChange(
         parameterId: change.definition.id,
         requestedValue: change.requestedValue,
-        safetyAcknowledged: true,
+        safetyAcknowledged: safetyAcknowledged,
       );
       results.add(result);
       if (result.outcome != WriteOutcome.applied) break;
@@ -301,7 +323,9 @@ class DeviceSession extends ChangeNotifier {
       connectedModel: 'LFP-16S-SIM',
       connectedFirmware: 'simulator-v2',
       linkHealthy: _linkState == DeviceSessionLinkState.online,
-      writeLocked: false,
+      // writeLocked مشتق من حالة الجلسة الفعلية:
+      // true إذا كانت الحالة غير متصلة أو يوجد خطأ سابق.
+      writeLocked: _linkState != DeviceSessionLinkState.online || _lastError != null,
       state: DeviceWriteState.known,
     );
     final change = ParameterChange(

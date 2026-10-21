@@ -191,7 +191,10 @@ void main() {
     );
     expect(changed.outcome, WriteOutcome.applied);
 
-    final restored = await session.restoreParameterBackup(backup);
+    final restored = await session.restoreParameterBackup(
+      backup,
+      safetyAcknowledged: true,
+    );
 
     expect(restored, hasLength(1));
     expect(restored.single.outcome, WriteOutcome.applied);

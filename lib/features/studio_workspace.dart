@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app/theme.dart';
 import '../studio/capture_analysis.dart';
+import '../studio/capture_importers.dart';
 import '../studio/capture_models.dart';
 import '../studio/differential_analysis.dart';
 import '../studio/findings.dart';
@@ -30,17 +31,29 @@ class StudioWorkspace extends StatefulWidget {
 
 class _StudioWorkspaceState extends State<StudioWorkspace> {
   StudioSection section = StudioSection.sessions;
-  late final CaptureSession session = _syntheticSession();
-  late final CaptureAnalysis analysis = const CaptureAnalyzer().analyze(
+  late CaptureSession session = _syntheticSession();
+  late CaptureAnalysis analysis = const CaptureAnalyzer().analyze(
     session,
   );
   late final CaptureSession comparisonSession = _comparisonSession();
-  late final ProtocolAnalysisReport protocolAnalysis =
+  late ProtocolAnalysisReport protocolAnalysis =
       const ProtocolAnalysisEngine().analyze(session);
-  late final SafeDifferentialReport differential =
+  late SafeDifferentialReport differential =
       const SafeDifferentialAnalyzer(
         maximumCandidates: 12,
       ).compare(session, comparisonSession, baselineRepeat: session);
+
+  void _onSessionImported(CaptureSession newSession) {
+    setState(() {
+      session = newSession;
+      analysis = const CaptureAnalyzer().analyze(session);
+      protocolAnalysis = const ProtocolAnalysisEngine().analyze(session);
+      differential = const SafeDifferentialAnalyzer(
+        maximumCandidates: 12,
+      ).compare(session, comparisonSession, baselineRepeat: session);
+      section = StudioSection.frames;
+    });
+  }
   late final StudioProfileDraft draft = StudioProfileDraft(
     id: 'studio.synthetic.can.v1',
     manufacturer: 'SolarDiag Research',
@@ -134,12 +147,12 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
         ],
       ),
     ),
-    StudioSection.capture => const _StudioPage(
-      key: ValueKey('capture'),
+    StudioSection.capture => _StudioPage(
+      key: const ValueKey('capture'),
       eyebrow: 'PASSIVE CAPTURE',
       title: 'Capture controls',
       subtitle: 'Hardware capture is unavailable in this build.',
-      body: _CaptureSourcesView(),
+      body: _CaptureSourcesView(onSessionImported: _onSessionImported),
     ),
     StudioSection.frames => _StudioPage(
       key: const ValueKey('frames'),
@@ -395,7 +408,9 @@ class _EmptyInstrument extends StatelessWidget {
 }
 
 class _CaptureSourcesView extends StatelessWidget {
-  const _CaptureSourcesView();
+  const _CaptureSourcesView({this.onSessionImported});
+
+  final ValueChanged<CaptureSession>? onSessionImported;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -430,6 +445,14 @@ class _CaptureSourcesView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: onSessionImported == null
+                    ? null
+                    : () => _showImportDialog(context),
+                icon: const Icon(Icons.file_upload_outlined),
+                label: const Text(_StudioCopy.importCapture),
+              ),
+              const SizedBox(height: 16),
               Text(
                 _StudioCopy.unsupportedFormats,
                 style: Theme.of(context).textTheme.bodySmall,
@@ -440,6 +463,110 @@ class _CaptureSourcesView extends StatelessWidget {
       ),
     ],
   );
+
+  void _showImportDialog(BuildContext context) {
+    final textController = TextEditingController();
+    var selectedFormat = 'candump';
+    var isNda = false;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text(_StudioCopy.importDialogTitle),
+          content: SizedBox(
+            width: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(_StudioCopy.selectFormat),
+                  DropdownButton<String>(
+                    value: selectedFormat,
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'candump',
+                        child: Text(_StudioCopy.candumpOption),
+                      ),
+                      DropdownMenuItem(
+                        value: 'sdcap',
+                        child: Text(_StudioCopy.sdcapOption),
+                      ),
+                      DropdownMenuItem(
+                        value: 'generic',
+                        child: Text(_StudioCopy.genericHexOption),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => selectedFormat = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: textController,
+                    maxLines: 8,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'Paste capture file contents here...',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    title: const Text(_StudioCopy.containsNda),
+                    subtitle: const Text(_StudioCopy.ndaSubtitle),
+                    value: isNda,
+                    onChanged: (val) => setDialogState(() => isNda = val),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text(_StudioCopy.cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                final source = textController.text.trim();
+                if (source.isEmpty) return;
+                final importer = switch (selectedFormat) {
+                  'sdcap' => const SdcapImporter(),
+                  'candump' => const CandumpImporter(),
+                  _ => const GenericHexImporter(GenericHexRules()),
+                };
+                final importContext = CaptureImportContext(
+                  sessionId: 'import-${DateTime.now().millisecondsSinceEpoch}',
+                  startedAt: DateTime.now().toUtc(),
+                  synthetic: false,
+                  containsNdaMaterial: isNda,
+                  notes: 'Imported via Studio',
+                );
+                final result = importer.import(source, importContext);
+                if (result.hasErrors || result.session == null) {
+                  final message =
+                      'Import error: ${result.issues.firstOrNull?.message ?? "Failed to parse"}';
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(message)),
+                  );
+                } else {
+                  Navigator.pop(dialogContext);
+                  onSessionImported?.call(result.session!);
+                  final message =
+                      'Loaded ${result.session!.frames.length} frames successfully.';
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(message)),
+                  );
+                }
+              },
+              child: const Text(_StudioCopy.importAction),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ProtocolSummary extends StatelessWidget {
@@ -556,46 +683,115 @@ class _DifferentialView extends StatelessWidget {
 class _FrameTable extends StatelessWidget {
   const _FrameTable({required this.frames});
   final List<CaptureFrame> frames;
+
   @override
-  Widget build(BuildContext context) => Card(
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columns: [
-          DataColumn(
-            label: Text(AppLocalizations.of(context).timeMicroseconds),
-          ),
-          const DataColumn(label: TechnicalText('ID')),
-          DataColumn(label: Text(AppLocalizations.of(context).direction)),
-          DataColumn(label: Text(AppLocalizations.of(context).payload)),
-        ],
-        rows: [
-          for (final frame in frames)
-            DataRow(
-              cells: [
-                DataCell(TechnicalText('${frame.timestampMicros}')),
-                DataCell(
-                  TechnicalText(
-                    frame.identifier == null
-                        ? frame.protocolHint ?? frame.channel
-                        : '0x${frame.identifier!.toRadixString(16).toUpperCase()}',
+  Widget build(BuildContext context) {
+    if (frames.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Center(child: Text(_StudioCopy.noFrames)),
+        ),
+      );
+    }
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Sticky header
+          Container(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    AppLocalizations.of(context).timeMicroseconds,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-                DataCell(Text(frame.received ? 'RX' : 'TX')),
-                DataCell(
-                  Text(
-                    frame.payload
-                        .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
-                        .join(' ')
-                        .toUpperCase(),
+                const Expanded(
+                  flex: 2,
+                  child: TechnicalText(
+                    'ID',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    AppLocalizations.of(context).direction,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  flex: 4,
+                  child: Text(
+                    AppLocalizations.of(context).payload,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
+          ),
+          const Divider(height: 1),
+          // Virtualized list builder - only renders visible rows, enabling large captures
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 520),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: frames.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final frame = frames[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: TechnicalText('${frame.timestampMicros}'),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: TechnicalText(
+                          frame.identifier == null
+                              ? frame.protocolHint ?? frame.channel
+                              : '0x${frame.identifier!.toRadixString(16).toUpperCase()}',
+                        ),
+                      ),
+                      Expanded(
+                        flex: 1,
+                        child: Text(frame.received ? 'RX' : 'TX'),
+                      ),
+                      Expanded(
+                        flex: 4,
+                        child: TechnicalText(
+                          frame.payload
+                              .map(
+                                (byte) =>
+                                    byte.toRadixString(16).padLeft(2, '0'),
+                              )
+                              .join(' ')
+                              .toUpperCase(),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
         ],
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _AnalysisRow extends StatelessWidget {
@@ -894,6 +1090,17 @@ abstract final class _StudioCopy {
   static const protocolEvidence = 'Protocol evidence';
   static const aba = 'A/B/A';
   static const ab = 'A/B';
+  static const importCapture = 'Import Capture Data';
+  static const importDialogTitle = 'Import Capture';
+  static const selectFormat = 'Select format:';
+  static const candumpOption = 'Linux candump (.log)';
+  static const sdcapOption = 'SolarDiag Capture (.sdcap)';
+  static const genericHexOption = 'Generic HEX text';
+  static const containsNda = 'Contains NDA material';
+  static const ndaSubtitle = 'Blocks export and contribution';
+  static const cancel = 'Cancel';
+  static const importAction = 'Import';
+  static const noFrames = 'No frames recorded in this session.';
 }
 
 String _differentialSummary(DifferentialFieldCandidate candidate) =>

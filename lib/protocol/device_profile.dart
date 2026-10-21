@@ -121,15 +121,14 @@ class DeviceProfile {
   final List<LocalizedText> connectionChecklist;
   final bool simulated;
 
+  /// يُحدَّد `hasWriteCapability` بناءً على حالة `VerificationStatus` المُحققة
+  /// فعلياً في مجموعة القدرات فقط. لا يُستخدم text matching على حقل `access`
+  /// لأن ذلك يُعرِّض التحقق للتلاعب من خلال أسماء الحقول.
   bool get hasWriteCapability =>
       capabilities.statusOf(DeviceCapability.writeParameter) ==
           VerificationStatus.verifiedHardware ||
       capabilities.statusOf(DeviceCapability.calibrate) ==
-          VerificationStatus.verifiedHardware ||
-      parameters.any((parameter) {
-        final access = parameter.access.toLowerCase();
-        return access.contains('write') || access.contains('calibrat');
-      });
+          VerificationStatus.verifiedHardware;
 
   static Map<String, Object?> migrateV1ToV2(Map<String, Object?> source) =>
       source['schema_version'] != 1

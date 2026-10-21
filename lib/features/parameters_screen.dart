@@ -161,7 +161,11 @@ class _ParametersScreenState extends State<ParametersScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    final results = await session.restoreParameterBackup(backup);
+    // تمرير safetyAcknowledged: true لأن المستخدم أكّد المربع الحواري صريحاً أعلاه.
+    final results = await session.restoreParameterBackup(
+      backup,
+      safetyAcknowledged: true,
+    );
     if (!mounted) return;
     final applied = results.where(
       (result) => result.outcome == WriteOutcome.applied,
@@ -357,16 +361,22 @@ class _ParameterTile extends StatelessWidget {
     child: ListTile(
       contentPadding: const EdgeInsets.all(20),
       title: Text(title),
-      subtitle: Text(range),
+      subtitle: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Text(range),
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              fontFeatures: [FontFeature.tabularFigures()],
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
             ),
           ),
           if (onEdit != null) ...[

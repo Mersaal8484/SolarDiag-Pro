@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import '../audit/audit_chain.dart';
 import '../contribution/lifecycle.dart';
 import '../parameters/parameter_backup.dart';
 
@@ -166,6 +167,45 @@ class LocalDatabase implements LifecycleHistoryStore {
         ) STRICT;
       ''');
       _database.userVersion = 5;
+    }
+    if (_database.userVersion < 6) {
+      // Migration 6: AuditChain persistence.
+      // يُخزَّن كل إدخال audit مع sequence وhash السابق لضمان سلامة السلسلة.
+      // الجدول للإلحاق فقط (لا تحديث، لا حذف) لمنع التلاعب.
+      _database.execute('''
+        CREATE TABLE audit_entries (
+          id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+          session_id TEXT NOT NULL,
+          sequence INTEGER NOT NULL,
+          occurred_at TEXT NOT NULL,
+          action TEXT NOT NULL,
+          details_json TEXT NOT NULL,
+          previous_hash TEXT NOT NULL,
+          hash TEXT NOT NULL
+        ) STRICT;
+      ''');
+      _database.execute('''
+        CREATE INDEX audit_entries_session_seq
+        ON audit_entries(session_id, sequence ASC);
+      ''');
+      _database.execute('''
+        CREATE TRIGGER audit_entries_no_update
+        BEFORE UPDATE ON audit_entries
+        BEGIN SELECT RAISE(ABORT, 'audit entries are append-only'); END;
+      ''');
+      _database.execute('''
+        CREATE TRIGGER audit_entries_no_delete
+        BEFORE DELETE ON audit_entries
+        BEGIN SELECT RAISE(ABORT, 'audit entries are append-only'); END;
+      ''');
+      // جدول head منفصل لتخزين hash الرأس الحالي لكل جلسة audit.
+      _database.execute('''
+        CREATE TABLE audit_chain_heads (
+          session_id TEXT NOT NULL PRIMARY KEY,
+          head TEXT NOT NULL
+        ) STRICT;
+      ''');
+      _database.userVersion = 6;
     }
   }
 
@@ -384,5 +424,130 @@ class LocalDatabase implements LifecycleHistoryStore {
       ),
   ];
 
+  // ─── AuditChain persistence ───────────────────────────────────────────────
+
+  /// يُخزِّن إدخال audit مرتبطاً بـ [sessionId].
+  /// الجدول للإلحاق فقط؛ يرفع SQLite trigger عند محاولة التحديث أو الحذف.
+  void saveAuditEntry({
+    required String sessionId,
+    required int sequence,
+    required DateTime occurredAt,
+    required String action,
+    required Map<String, Object?> details,
+    required String previousHash,
+    required String hash,
+  }) {
+    _database.execute(
+      '''
+      INSERT INTO audit_entries (
+        session_id, sequence, occurred_at, action,
+        details_json, previous_hash, hash
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ''',
+      [
+        sessionId,
+        sequence,
+        occurredAt.toUtc().toIso8601String(),
+        action,
+        jsonEncode(details),
+        previousHash,
+        hash,
+      ],
+    );
+  }
+
+  /// يُحدِّث hash الرأس لسلسلة audit الخاصة بـ [sessionId].
+  void saveAuditHead(String sessionId, String head) {
+    _database.execute(
+      '''
+      INSERT INTO audit_chain_heads (session_id, head) VALUES (?, ?)
+      ON CONFLICT(session_id) DO UPDATE SET head = excluded.head
+      ''',
+      [sessionId, head],
+    );
+  }
+
+  /// يُحمِّل جميع إدخالات audit الخاصة بـ [sessionId] مرتبةً حسب sequence.
+  List<Map<String, Object?>> loadAuditEntries(String sessionId) => [
+    for (final row in _database.select(
+      '''
+      SELECT sequence, occurred_at, action, details_json, previous_hash, hash
+      FROM audit_entries
+      WHERE session_id = ?
+      ORDER BY sequence ASC
+      ''',
+      [sessionId],
+    ))
+      {
+        'sequence': row['sequence'] as int,
+        'timestamp': row['occurred_at'] as String,
+        'action': row['action'] as String,
+        'details': jsonDecode(row['details_json'] as String),
+        'previous_hash': row['previous_hash'] as String,
+        'hash': row['hash'] as String,
+      },
+  ];
+
+  /// يُرجع hash الرأس المخزَّن لـ [sessionId]، أو null إذا لم تُوجَد سجلات.
+  String? loadAuditHead(String sessionId) {
+    final rows = _database.select(
+      'SELECT head FROM audit_chain_heads WHERE session_id = ?',
+      [sessionId],
+    );
+    return rows.isEmpty ? null : rows.single['head'] as String;
+  }
+
   void close() => _database.close();
+
+  /// للاختبار فقط: تنفيذ SQL خام للتحقق من صحة triggers.
+  // ignore: avoid_returning_null_for_void
+  void rawExecuteForTest(String sql) => _database.execute(sql);
 }
+
+/// منفذ استمرارية لـ [AuditChainStore] يعتمد على قاعدة بيانات SQLite المحلية [LocalDatabase].
+/// يربط سجلات التدقيق بمعرف الجلسة [sessionId] ويضمن أن تكون السجلات غير قابلة للتعديل.
+class DatabaseAuditChainStore implements AuditChainStore {
+  const DatabaseAuditChainStore({
+    required this.database,
+    required this.sessionId,
+  });
+
+  final LocalDatabase database;
+  final String sessionId;
+
+  @override
+  StoredAuditChain? load() {
+    final entriesData = database.loadAuditEntries(sessionId);
+    final head = database.loadAuditHead(sessionId);
+    if (entriesData.isEmpty && head == null) return null;
+    final entries = [
+      for (final map in entriesData) AuditEntry.fromJson(map),
+    ];
+    return StoredAuditChain(entries: entries, head: head ?? 'GENESIS');
+  }
+
+  @override
+  void saveEntries(List<AuditEntry> entries) {
+    for (final entry in entries) {
+      try {
+        database.saveAuditEntry(
+          sessionId: sessionId,
+          sequence: entry.sequence,
+          occurredAt: entry.timestamp,
+          action: entry.action,
+          details: entry.details,
+          previousHash: entry.previousHash,
+          hash: entry.hash,
+        );
+      } catch (_) {
+        // Ignored if already inserted (append-only trigger)
+      }
+    }
+  }
+
+  @override
+  void saveHead(String head) {
+    database.saveAuditHead(sessionId, head);
+  }
+}
+

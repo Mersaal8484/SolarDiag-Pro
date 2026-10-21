@@ -471,15 +471,18 @@ class _BigMetric extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 7),
-        Text(
-          value.isReported
-              ? '${value.value!.toStringAsFixed(value.unit == '%' ? 0 : 2)} ${value.unit}'
-              : AppLocalizations.of(context).notReportedByDevice,
-          style: const TextStyle(
-            color: SolarColors.onDark,
-            fontSize: 31,
-            fontWeight: FontWeight.w700,
-            fontFeatures: [FontFeature.tabularFigures()],
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Text(
+            value.isReported
+                ? '${value.value!.toStringAsFixed(value.unit == '%' ? 0 : 2)} ${value.unit}'
+                : AppLocalizations.of(context).notReportedByDevice,
+            style: const TextStyle(
+              color: SolarColors.onDark,
+              fontSize: 31,
+              fontWeight: FontWeight.w700,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
           ),
         ),
       ],
@@ -555,16 +558,19 @@ class _MetricCard extends StatelessWidget {
               ],
             ),
             const Spacer(),
-            Text(
-              value.isReported
-                  ? '${value.value!.toStringAsFixed(1)} ${value.unit}'
-                  : AppLocalizations.of(context).notReportedByDevice,
-              style: value.isReported
-                  ? Theme.of(context).textTheme.headlineSmall
-                  : TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                value.isReported
+                    ? '${value.value!.toStringAsFixed(1)} ${value.unit}'
+                    : AppLocalizations.of(context).notReportedByDevice,
+                style: value.isReported
+                    ? Theme.of(context).textTheme.headlineSmall
+                    : TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
+              ),
             ),
           ],
         ),

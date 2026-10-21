@@ -35,6 +35,48 @@
       "legal_review": true,
       "notice_required": false,
       "nda_restricted": false
+    },
+    {
+      "id": "syssi-esphome-jk-bms",
+      "title": "esphome-jk-bms open-source protocol research reference",
+      "type": "open-source-research",
+      "url": "https://github.com/syssi/esphome-jk-bms",
+      "retrieved_on": "2026-10-18",
+      "exact_version": "commit-reference-research-lead",
+      "license": "MIT",
+      "obligations": [
+        "Include copyright notice in redistribution",
+        "Research-only lead: requires physical manufacturer validation before write capability"
+      ],
+      "scope": "JK BMS BLE and RS485 communication frame structure research",
+      "used_for": ["protocol research", "candidate frame identification"],
+      "derived_artifacts": ["docs/research/REFERENCE_REGISTRY.md"],
+      "profile_document_ids": ["RESEARCH-SYSSI-JKBMS"],
+      "verification_status": "unverified-community-source",
+      "legal_review": true,
+      "notice_required": true,
+      "nda_restricted": false
+    },
+    {
+      "id": "mpp-solar-protocols",
+      "title": "mpp-solar open-source inverter protocol research reference",
+      "type": "open-source-research",
+      "url": "https://github.com/jblance/mpp-solar",
+      "retrieved_on": "2026-10-18",
+      "exact_version": "commit-reference-research-lead",
+      "license": "MIT",
+      "obligations": [
+        "Include copyright notice in redistribution",
+        "Research-only lead: requires manufacturer validation before write capability"
+      ],
+      "scope": "Voltronic/Axpert inverter protocol query commands and response formatting",
+      "used_for": ["protocol research", "candidate query patterns"],
+      "derived_artifacts": ["docs/research/REFERENCE_REGISTRY.md"],
+      "profile_document_ids": ["RESEARCH-MPP-SOLAR"],
+      "verification_status": "unverified-community-source",
+      "legal_review": true,
+      "notice_required": true,
+      "nda_restricted": false
     }
   ]
 }

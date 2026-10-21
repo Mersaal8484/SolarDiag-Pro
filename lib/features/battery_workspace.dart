@@ -405,11 +405,14 @@ class _MeasurementCard extends StatelessWidget {
           children: [
             Text(label),
             const SizedBox(height: 10),
-            Text(
-              value.value == null
-                  ? AppLocalizations.of(context).notReportedByDevice
-                  : '${value.value!.toStringAsFixed(1)} ${value.unit}',
-              style: Theme.of(context).textTheme.headlineSmall,
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                value.value == null
+                    ? AppLocalizations.of(context).notReportedByDevice
+                    : '${value.value!.toStringAsFixed(1)} ${value.unit}',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
             ),
           ],
         ),

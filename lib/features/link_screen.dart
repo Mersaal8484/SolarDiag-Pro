@@ -41,7 +41,7 @@ class LinkScreen extends StatelessWidget {
                     Text(
                       [
                         session.simulated ? s.simulated : s.live,
-                        assessment.verdict.name,
+                        _verdictLabel(s, assessment.verdict),
                       ].join(' · '),
                       style: const TextStyle(
                         color: SolarColors.onDark,
@@ -62,7 +62,11 @@ class LinkScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Text(assessment.explanation),
+        Text(
+          assessment.verdict == IntegrationVerdict.cannotDetermine
+              ? s.requiredEvidenceUnavailable
+              : assessment.explanation,
+        ),
         const SizedBox(height: 18),
         ...assessment.findings.map((finding) => _FindingTile(finding: finding)),
         if (recommendations.isNotEmpty) ...[
@@ -105,13 +109,45 @@ class _FindingTile extends StatelessWidget {
               ? Theme.of(context).extension<SolarTokens>()!.success
               : Theme.of(context).extension<SolarTokens>()!.warning,
         ),
-        title: Text(finding.code.replaceAll('_', ' ')),
-        subtitle: Text(finding.message),
+        title: Text(_findingTitle(s, finding.code)),
+        subtitle: Text(_findingMessage(s, finding)),
         trailing: Text(
-          finding.state.name.toUpperCase(),
+          finding.state == CompatibilityState.unknown
+              ? s.unknown.toUpperCase()
+              : finding.state.name.toUpperCase(),
           style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
         ),
       ),
     );
   }
 }
+
+String _verdictLabel(AppLocalizations s, IntegrationVerdict verdict) =>
+    verdict == IntegrationVerdict.cannotDetermine
+    ? s.compatibilityCannotDetermine
+    : verdict.name;
+
+String _findingTitle(AppLocalizations s, String code) => switch (code) {
+  'CHARGE_VOLTAGE' => s.chargeVoltage,
+  'LOW_VOLTAGE_CUTOFF' => s.lowVoltageCutoff,
+  'CHARGE_CURRENT' => s.chargeCurrent,
+  'DISCHARGE_CURRENT' => s.dischargeCurrent,
+  'CHEMISTRY' => s.chemistry,
+  'PROTOCOL' => s.protocol,
+  _ => code.replaceAll('_', ' '),
+};
+
+String _findingMessage(AppLocalizations s, CompatibilityFinding finding) =>
+    switch (finding.code) {
+      'CHARGE_VOLTAGE' || 'LOW_VOLTAGE_CUTOFF'
+          when finding.state == CompatibilityState.unknown =>
+        s.requiredVoltageEvidenceUnavailable,
+      'CHARGE_CURRENT' || 'DISCHARGE_CURRENT'
+          when finding.state == CompatibilityState.unknown =>
+        s.requiredCurrentEvidenceUnavailable,
+      'CHEMISTRY' when finding.state == CompatibilityState.unknown =>
+        s.chemistryCompatibilityUnproven,
+      'PROTOCOL' when finding.state == CompatibilityState.unknown =>
+        s.protocolIntersectionUnavailable,
+      _ => finding.message,
+    };

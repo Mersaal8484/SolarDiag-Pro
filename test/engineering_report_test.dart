@@ -83,4 +83,47 @@ void main() {
       expect(utf8.decode(bytes, allowMalformed: true), contains('SIMULATED'));
     },
   );
+
+  test('JSON report includes ALL sessions (multi-session)', () {
+    final snapshot2 = '{"soc":{"value":65,"unit":"%","quality":"fair"}}';
+    final session1 = record();
+    final session2 = DiagnosticSessionRecord(
+      id: 'sim-2',
+      startedAt: DateTime.utc(2026, 10, 18, 10),
+      updatedAt: DateTime.utc(2026, 10, 18, 11),
+      scenario: 'gradualImbalance',
+      simulated: true,
+      snapshotJson: snapshot2,
+      dataHash: sha256.convert(utf8.encode(snapshot2)).toString(),
+    );
+    final report = const EngineeringReportService()
+        .buildJson(data([session1, session2]));
+    final sessions = report['sessions'] as List;
+    expect(sessions, hasLength(2));
+    expect(sessions[0]['id'], 'sim-1');
+    expect(sessions[1]['id'], 'sim-2');
+    expect(sessions[1]['scenario'], 'gradualImbalance');
+  });
+
+  test('PDF report renders all sessions (multi-session) and has PDF signature',
+      () async {
+    final snapshot2 = '{"soc":{"value":65,"unit":"%","quality":"fair"}}';
+    final session2 = DiagnosticSessionRecord(
+      id: 'sim-2',
+      startedAt: DateTime.utc(2026, 10, 18, 10),
+      updatedAt: DateTime.utc(2026, 10, 18, 11),
+      scenario: 'gradualImbalance',
+      simulated: true,
+      snapshotJson: snapshot2,
+      dataHash: sha256.convert(utf8.encode(snapshot2)).toString(),
+    );
+    final bytes = await const EngineeringReportService().buildPdf(
+      data([record(), session2]),
+    );
+    expect(utf8.decode(bytes.take(5).toList()), '%PDF-');
+    // كلا معرفي الجلسة يجب أن يظهرا في PDF
+    final pdfText = utf8.decode(bytes, allowMalformed: true);
+    expect(pdfText, contains('sim-1'));
+    expect(pdfText, contains('sim-2'));
+  });
 }
