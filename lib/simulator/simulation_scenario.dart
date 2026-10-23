@@ -11,6 +11,7 @@ enum SimulationScenario {
   masterSlaveMisconfiguration,
   inverterPeer,
   parameterProfile,
+  identityMismatch,
 }
 
 class SimulatedModule {
@@ -154,6 +155,8 @@ abstract final class ScenarioFactory {
       modules: modules,
       metadata: {
         'simulated': true,
+        if (scenario == SimulationScenario.identityMismatch)
+          'connected_model': 'LFP-UNKNOWN-MISMATCH',
         if (scenario == SimulationScenario.inverterPeer)
           'peer_case': [
             'compatible',

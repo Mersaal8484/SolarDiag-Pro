@@ -57,29 +57,72 @@ class AuditEntry {
 }
 
 class StoredAuditChain {
-  const StoredAuditChain({required this.entries, required this.head});
+  const StoredAuditChain({
+    required this.entries,
+    required this.head,
+    this.headMac,
+  });
   final List<AuditEntry> entries;
   final String head;
+  final String? headMac;
+}
+
+abstract interface class SecretStore {
+  Future<List<int>> getOrCreateSecret(String keyId);
+  List<int> getOrCreateSecretSync(String keyId);
+}
+
+class InMemorySecretStore implements SecretStore {
+  InMemorySecretStore([Map<String, List<int>>? initial])
+      : _secrets = initial ?? {};
+  final Map<String, List<int>> _secrets;
+
+  void setSecret(String keyId, Object secret) {
+    if (secret is String) {
+      _secrets[keyId] = utf8.encode(secret);
+    } else if (secret is List<int>) {
+      _secrets[keyId] = secret;
+    }
+  }
+
+  @override
+  Future<List<int>> getOrCreateSecret(String keyId) async =>
+      getOrCreateSecretSync(keyId);
+
+  @override
+  List<int> getOrCreateSecretSync(String keyId) => _secrets.putIfAbsent(
+        keyId,
+        () => List<int>.generate(32, (i) => (i * 31 + 17) % 256),
+      );
 }
 
 abstract interface class AuditChainStore {
   void saveEntries(List<AuditEntry> entries);
   void saveHead(String head);
+  void saveHeadMac(String head, String mac);
   StoredAuditChain? load();
 }
 
 class FileAuditChainStore implements AuditChainStore {
-  const FileAuditChainStore({
+  FileAuditChainStore({
     required this.entriesPath,
     required this.headPath,
-  });
+    String? macPath,
+    this.secretStore,
+    this.keyId = 'installation_audit_key',
+  }) : macPath = macPath ?? '$headPath.mac';
+
   final String entriesPath;
   final String headPath;
+  final String macPath;
+  final SecretStore? secretStore;
+  final String keyId;
 
   @override
   StoredAuditChain? load() {
     final entriesFile = File(entriesPath);
     final headFile = File(headPath);
+    final macFile = File(macPath);
     if (!entriesFile.existsSync() && !headFile.existsSync()) {
       return null;
     }
@@ -90,12 +133,18 @@ class FileAuditChainStore implements AuditChainStore {
     if (decoded is! List) {
       throw const FormatException('Audit store must contain an array.');
     }
+    final head = headFile.readAsStringSync().trim();
+    String? mac;
+    if (macFile.existsSync()) {
+      mac = macFile.readAsStringSync().trim();
+    }
     return StoredAuditChain(
       entries: [
         for (final value in decoded)
           AuditEntry.fromJson(Map<String, Object?>.from(value as Map)),
       ],
-      head: headFile.readAsStringSync().trim(),
+      head: head,
+      headMac: mac,
     );
   }
 
@@ -118,34 +167,89 @@ class FileAuditChainStore implements AuditChainStore {
     final temporary = File('$headPath.tmp');
     temporary.writeAsStringSync(head, flush: true);
     temporary.renameSync(headPath);
+
+    if (secretStore != null) {
+      final secret = secretStore!.getOrCreateSecretSync(keyId);
+      final mac = Hmac(sha256, secret).convert(utf8.encode(head)).toString();
+      saveHeadMac(head, mac);
+    }
+  }
+
+  @override
+  void saveHeadMac(String head, String mac) {
+    final file = File(macPath);
+    file.parent.createSync(recursive: true);
+    final temporary = File('$macPath.tmp');
+    temporary.writeAsStringSync(mac, flush: true);
+    temporary.renameSync(macPath);
   }
 }
 
 class AuditChain {
-  AuditChain({DateTime Function()? clock, this._store})
-    : _clock = clock ?? DateTime.now,
-      _entries = [];
+  AuditChain({
+    DateTime Function()? clock,
+    AuditChainStore? store,
+    this.secretStore,
+    this.keyId = 'installation_audit_key',
+  })  : _clock = clock ?? DateTime.now,
+        _store = store,
+        _entries = [];
 
-  AuditChain._(this._clock, this._store, this._entries);
+  factory AuditChain.inMemory({
+    DateTime Function()? clock,
+    SecretStore? secretStore,
+    String keyId = 'installation_audit_key',
+  }) =>
+      AuditChain(clock: clock, secretStore: secretStore, keyId: keyId);
+
+  AuditChain._(
+    this._clock,
+    this._store,
+    this._entries,
+    this.secretStore,
+    this.keyId,
+  );
 
   final DateTime Function() _clock;
   final AuditChainStore? _store;
+  final SecretStore? secretStore;
+  final String keyId;
   List<AuditEntry> _entries;
   List<AuditEntry> get entries => List.unmodifiable(_entries);
   String get head => _entries.isEmpty ? 'GENESIS' : _entries.last.hash;
 
-  factory AuditChain.load(AuditChainStore store, {DateTime Function()? clock}) {
+  factory AuditChain.load(
+    AuditChainStore store, {
+    DateTime Function()? clock,
+    SecretStore? secretStore,
+    String keyId = 'installation_audit_key',
+  }) {
     final stored = store.load();
     if (stored == null) {
-      return AuditChain(clock: clock, store: store);
+      return AuditChain(
+        clock: clock,
+        store: store,
+        secretStore: secretStore,
+        keyId: keyId,
+      );
     }
     final chain = AuditChain._(
       clock ?? DateTime.now,
       store,
       List.of(stored.entries),
+      secretStore,
+      keyId,
     );
     if (!chain.verify() || stored.head != chain.head) {
       throw const FormatException('Audit chain tampering detected.');
+    }
+    if (secretStore != null && stored.head != 'GENESIS') {
+      final secret = secretStore.getOrCreateSecretSync(keyId);
+      final expectedMac =
+          Hmac(sha256, secret).convert(utf8.encode(stored.head)).toString();
+      if (stored.headMac != expectedMac) {
+        throw const FormatException('Audit head MAC verification failed.');
+      }
     }
     return chain;
   }
@@ -172,6 +276,11 @@ class AuditChain {
     _entries.add(entry);
     _store?.saveEntries(entries);
     _store?.saveHead(head);
+    if (secretStore != null && _store != null) {
+      final secret = secretStore!.getOrCreateSecretSync(keyId);
+      final mac = Hmac(sha256, secret).convert(utf8.encode(head)).toString();
+      _store!.saveHeadMac(head, mac);
+    }
     return entry;
   }
 
@@ -195,6 +304,20 @@ class AuditChain {
       previous = entry.hash;
     }
     return true;
+  }
+
+  String computeHeadHmac() {
+    if (secretStore == null) {
+      throw StateError('Cannot compute HMAC without secretStore');
+    }
+    final secret = secretStore!.getOrCreateSecretSync(keyId);
+    return Hmac(sha256, secret).convert(utf8.encode(head)).toString();
+  }
+
+  bool verifyHeadHmac(String mac) {
+    if (secretStore == null) return false;
+    final expected = computeHeadHmac();
+    return mac == expected;
   }
 
   String export() => jsonEncode({

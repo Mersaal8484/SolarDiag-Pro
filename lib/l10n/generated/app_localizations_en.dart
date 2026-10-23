@@ -425,7 +425,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chargeCurrentLimit => 'Charge current limit';
 
   @override
-  String get lowVoltageCutoff => 'Low-voltage cutoff';
+  String get lowVoltageCutoff => 'Low voltage cutoff';
 
   @override
   String get createBackup => 'Create backup';
@@ -861,4 +861,100 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bilingual => 'Bilingual';
+
+  @override
+  String get compatibilityCannotDetermine => 'Cannot determine';
+
+  @override
+  String get requiredEvidenceUnavailable =>
+      'Required evidence is unavailable; compatibility cannot be claimed.';
+
+  @override
+  String get unknown => 'Unknown';
+
+  @override
+  String get chargeVoltage => 'Charge voltage';
+
+  @override
+  String get chargeCurrent => 'Charge current';
+
+  @override
+  String get dischargeCurrent => 'Discharge current';
+
+  @override
+  String get chemistry => 'Chemistry';
+
+  @override
+  String get protocol => 'Protocol';
+
+  @override
+  String get requiredVoltageEvidenceUnavailable =>
+      'Required voltage evidence is unavailable.';
+
+  @override
+  String get requiredCurrentEvidenceUnavailable =>
+      'Required current evidence is unavailable.';
+
+  @override
+  String get chemistryCompatibilityUnproven =>
+      'Chemistry compatibility cannot be proven.';
+
+  @override
+  String get protocolIntersectionUnavailable =>
+      'No verified protocol intersection can be evaluated.';
+
+  @override
+  String get researchSession => 'Research session';
+
+  @override
+  String get syntheticCanStudy => 'Synthetic CAN study';
+
+  @override
+  String get isolatedSessionNoHardware =>
+      'One isolated session · no hardware attached';
+
+  @override
+  String get frames => 'Frames';
+
+  @override
+  String get identifiers => 'Identifiers';
+
+  @override
+  String get source => 'Source';
+
+  @override
+  String get synthetic => 'Synthetic';
+
+  @override
+  String get locked => 'Locked';
+
+  @override
+  String get sessions => 'Sessions';
+
+  @override
+  String get capture => 'Capture';
+
+  @override
+  String get frameExplorer => 'Frame explorer';
+
+  @override
+  String get analysis => 'Analysis';
+
+  @override
+  String get differential => 'Differential';
+
+  @override
+  String get hypotheses => 'Hypotheses';
+
+  @override
+  String get profileBuilder => 'Profile builder';
+
+  @override
+  String get mappingEditor => 'Mapping editor';
+
+  @override
+  String get validation => 'Validation';
+
+  @override
+  String get export => 'Export';
 }

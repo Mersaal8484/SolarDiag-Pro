@@ -1,19 +1,39 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import '../core/battery_models.dart';
 import '../trust/profile_integrity.dart';
+import 'capabilities.dart';
 import 'device_profile.dart';
 
 class ProfileRegistry {
-  ProfileRegistry._(this._profiles, this._writeEnabledProfileIds);
+  ProfileRegistry._(this._profiles, this._writeCapabilities);
+  factory ProfileRegistry.empty() => ProfileRegistry._({}, {});
+
   final Map<String, DeviceProfile> _profiles;
-  final Set<String> _writeEnabledProfileIds;
+  final Map<String, Set<DeviceCapability>> _writeCapabilities;
   Iterable<DeviceProfile> get profiles => _profiles.values;
   DeviceProfile? byId(String id) => _profiles[id];
-  bool profileCanWrite(String id) => _writeEnabledProfileIds.contains(id);
+
+  bool canWrite(
+    String id, [
+    DeviceCapability capability = DeviceCapability.writeParameter,
+  ]) =>
+      profileCanWrite(id, capability);
+
+  bool profileCanWrite(
+    String id, [
+    DeviceCapability capability = DeviceCapability.writeParameter,
+  ]) =>
+      _writeCapabilities[id]?.contains(capability) ?? false;
+
+  void registerExternalProfile(DeviceProfile profile) {
+    _profiles[profile.id] = profile;
+  }
 
   static ProfileRegistry fromJsonDocuments(
     Iterable<String> documents, {
     required bool technicianMode,
+    bool isBundled = false,
   }) {
     final profiles = <String, DeviceProfile>{};
     for (final document in documents) {
@@ -22,6 +42,11 @@ class ProfileRegistry {
         throw const FormatException('Profile root must be an object.');
       }
       final profile = DeviceProfile.fromJson(decoded);
+      if (!isBundled && profile.simulated) {
+        throw const FormatException(
+          'Unsigned simulated profiles must be loaded from bundled assets or signed documents.',
+        );
+      }
       if (technicianMode && !profile.simulated) {
         throw const FormatException(
           'Unsigned physical profiles are blocked in technician mode.',
@@ -42,7 +67,7 @@ class ProfileRegistry {
     bool developerMode = false,
   }) async {
     final accepted = <String>[];
-    final writeEnabled = <String>{};
+    final writeCapabilities = <String, Set<DeviceCapability>>{};
     for (final signed in documents) {
       final decoded = jsonDecode(signed.document);
       if (decoded is! Map<String, Object?>) {
@@ -58,22 +83,48 @@ class ProfileRegistry {
       if (!trusted && !developerMode && !profile.simulated) {
         throw const FormatException('Untrusted physical profile blocked.');
       }
-      if (trusted && !profile.simulated && profile.hasWriteCapability) {
-        writeEnabled.add(profile.id);
+      if (trusted && !profile.simulated) {
+        final approval = profile.approval;
+        if (approval != null &&
+            approval.lifecycleStage == 'published' &&
+            approval.approvedByRole == 'approvalEngineer') {
+          final allowedCaps = <DeviceCapability>{};
+          for (final cap in [
+            DeviceCapability.writeParameter,
+            DeviceCapability.calibrate,
+          ]) {
+            if (profile.capabilities.statusOf(cap) ==
+                    VerificationStatus.verifiedHardware &&
+                approval.isApprovedFor(cap)) {
+              allowedCaps.add(cap);
+            }
+          }
+          if (allowedCaps.isNotEmpty) {
+            writeCapabilities[profile.id] = allowedCaps;
+          }
+        }
       }
       accepted.add(signed.document);
     }
-    final registry = fromJsonDocuments(accepted, technicianMode: false);
+    final registry = fromJsonDocuments(
+      accepted,
+      technicianMode: false,
+      isBundled: true,
+    );
     return ProfileRegistry._(
       registry._profiles,
-      Set.unmodifiable(writeEnabled),
+      Map.unmodifiable(writeCapabilities),
     );
   }
 
   static Future<ProfileRegistry> loadBundledSimulator() async =>
-      fromJsonDocuments([
-        await rootBundle.loadString(
-          'device_profiles/batteries/_simulated/solardiag_sim.json',
-        ),
-      ], technicianMode: true);
+      fromJsonDocuments(
+        [
+          await rootBundle.loadString(
+            'device_profiles/batteries/_simulated/solardiag_sim.json',
+          ),
+        ],
+        technicianMode: true,
+        isBundled: true,
+      );
 }

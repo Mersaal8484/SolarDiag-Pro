@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'parameter_models.dart';
 
 class ParameterDifference {
@@ -12,6 +13,22 @@ class ParameterDifference {
   final num? backupValue;
   final num? currentValue;
   bool get changed => backupValue != currentValue;
+}
+
+class RestorePlan {
+  const RestorePlan({
+    required this.backup,
+    required this.changes,
+    required this.orderedDiffHash,
+  });
+
+  final ParameterBackup backup;
+  final List<ParameterChange> changes;
+  final String orderedDiffHash;
+
+  bool get isEmpty => changes.isEmpty;
+  bool get isNotEmpty => changes.isNotEmpty;
+  int get length => changes.length;
 }
 
 class ParameterBackup {
@@ -83,6 +100,31 @@ class ParameterBackup {
             requestedValue: entry.value,
           ),
     ];
+  }
+
+  RestorePlan createRestorePlan({
+    required String activeProfileId,
+    required String activeDeviceIdentity,
+    required String activeFirmware,
+    required Map<String, ParameterDefinition> definitions,
+    required ParameterSnapshot current,
+  }) {
+    final changes = planRestore(
+      activeProfileId: activeProfileId,
+      activeDeviceIdentity: activeDeviceIdentity,
+      activeFirmware: activeFirmware,
+      definitions: definitions,
+      current: current,
+    );
+    final diffBuffer = changes
+        .map((c) => '${c.definition.id}:${c.requestedValue}')
+        .join('|');
+    final hash = sha256.convert(utf8.encode(diffBuffer)).toString();
+    return RestorePlan(
+      backup: this,
+      changes: changes,
+      orderedDiffHash: hash,
+    );
   }
 
   List<ParameterDifference> compare(Map<String, num> currentValues) {

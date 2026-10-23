@@ -827,7 +827,7 @@ abstract class AppLocalizations {
   /// No description provided for @lowVoltageCutoff.
   ///
   /// In en, this message translates to:
-  /// **'Low-voltage cutoff'**
+  /// **'Low voltage cutoff'**
   String get lowVoltageCutoff;
 
   /// No description provided for @createBackup.
@@ -1579,6 +1579,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Bilingual'**
   String get bilingual;
+
+  /// No description provided for @compatibilityCannotDetermine.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot determine'**
+  String get compatibilityCannotDetermine;
+
+  /// No description provided for @requiredEvidenceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Required evidence is unavailable; compatibility cannot be claimed.'**
+  String get requiredEvidenceUnavailable;
+
+  /// No description provided for @unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get unknown;
+
+  /// No description provided for @chargeVoltage.
+  ///
+  /// In en, this message translates to:
+  /// **'Charge voltage'**
+  String get chargeVoltage;
+
+  /// No description provided for @chargeCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Charge current'**
+  String get chargeCurrent;
+
+  /// No description provided for @dischargeCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Discharge current'**
+  String get dischargeCurrent;
+
+  /// No description provided for @chemistry.
+  ///
+  /// In en, this message translates to:
+  /// **'Chemistry'**
+  String get chemistry;
+
+  /// No description provided for @protocol.
+  ///
+  /// In en, this message translates to:
+  /// **'Protocol'**
+  String get protocol;
+
+  /// No description provided for @requiredVoltageEvidenceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Required voltage evidence is unavailable.'**
+  String get requiredVoltageEvidenceUnavailable;
+
+  /// No description provided for @requiredCurrentEvidenceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Required current evidence is unavailable.'**
+  String get requiredCurrentEvidenceUnavailable;
+
+  /// No description provided for @chemistryCompatibilityUnproven.
+  ///
+  /// In en, this message translates to:
+  /// **'Chemistry compatibility cannot be proven.'**
+  String get chemistryCompatibilityUnproven;
+
+  /// No description provided for @protocolIntersectionUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No verified protocol intersection can be evaluated.'**
+  String get protocolIntersectionUnavailable;
+
+  /// No description provided for @researchSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Research session'**
+  String get researchSession;
+
+  /// No description provided for @syntheticCanStudy.
+  ///
+  /// In en, this message translates to:
+  /// **'Synthetic CAN study'**
+  String get syntheticCanStudy;
+
+  /// No description provided for @isolatedSessionNoHardware.
+  ///
+  /// In en, this message translates to:
+  /// **'One isolated session · no hardware attached'**
+  String get isolatedSessionNoHardware;
+
+  /// No description provided for @frames.
+  ///
+  /// In en, this message translates to:
+  /// **'Frames'**
+  String get frames;
+
+  /// No description provided for @identifiers.
+  ///
+  /// In en, this message translates to:
+  /// **'Identifiers'**
+  String get identifiers;
+
+  /// No description provided for @source.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get source;
+
+  /// No description provided for @synthetic.
+  ///
+  /// In en, this message translates to:
+  /// **'Synthetic'**
+  String get synthetic;
+
+  /// No description provided for @locked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get locked;
+
+  /// No description provided for @sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get sessions;
+
+  /// No description provided for @capture.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture'**
+  String get capture;
+
+  /// No description provided for @frameExplorer.
+  ///
+  /// In en, this message translates to:
+  /// **'Frame explorer'**
+  String get frameExplorer;
+
+  /// No description provided for @analysis.
+  ///
+  /// In en, this message translates to:
+  /// **'Analysis'**
+  String get analysis;
+
+  /// No description provided for @differential.
+  ///
+  /// In en, this message translates to:
+  /// **'Differential'**
+  String get differential;
+
+  /// No description provided for @hypotheses.
+  ///
+  /// In en, this message translates to:
+  /// **'Hypotheses'**
+  String get hypotheses;
+
+  /// No description provided for @profileBuilder.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile builder'**
+  String get profileBuilder;
+
+  /// No description provided for @mappingEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Mapping editor'**
+  String get mappingEditor;
+
+  /// No description provided for @validation.
+  ///
+  /// In en, this message translates to:
+  /// **'Validation'**
+  String get validation;
+
+  /// No description provided for @export.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get export;
 }
 
 class _AppLocalizationsDelegate

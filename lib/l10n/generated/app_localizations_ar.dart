@@ -858,4 +858,99 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get bilingual => 'ثنائي اللغة';
+
+  @override
+  String get compatibilityCannotDetermine => 'لا يمكن التحديد';
+
+  @override
+  String get requiredEvidenceUnavailable =>
+      'الأدلة المطلوبة غير متاحة؛ لا يمكن تأكيد التوافق.';
+
+  @override
+  String get unknown => 'غير معروف';
+
+  @override
+  String get chargeVoltage => 'جهد الشحن';
+
+  @override
+  String get chargeCurrent => 'تيار الشحن';
+
+  @override
+  String get dischargeCurrent => 'تيار التفريغ';
+
+  @override
+  String get chemistry => 'الكيمياء';
+
+  @override
+  String get protocol => 'البروتوكول';
+
+  @override
+  String get requiredVoltageEvidenceUnavailable =>
+      'أدلة الجهد المطلوبة غير متاحة.';
+
+  @override
+  String get requiredCurrentEvidenceUnavailable =>
+      'أدلة التيار المطلوبة غير متاحة.';
+
+  @override
+  String get chemistryCompatibilityUnproven =>
+      'لا يمكن إثبات توافق كيمياء البطارية.';
+
+  @override
+  String get protocolIntersectionUnavailable =>
+      'لا يمكن تقييم تقاطع بروتوكولات موثّق.';
+
+  @override
+  String get researchSession => 'جلسة بحثية';
+
+  @override
+  String get syntheticCanStudy => 'دراسة CAN محاكية';
+
+  @override
+  String get isolatedSessionNoHardware => 'جلسة معزولة واحدة · دون عتاد متصل';
+
+  @override
+  String get frames => 'الإطارات';
+
+  @override
+  String get identifiers => 'المعرّفات';
+
+  @override
+  String get source => 'المصدر';
+
+  @override
+  String get synthetic => 'محاكي';
+
+  @override
+  String get locked => 'مقفل';
+
+  @override
+  String get sessions => 'الجلسات';
+
+  @override
+  String get capture => 'الالتقاط';
+
+  @override
+  String get frameExplorer => 'مستكشف الإطارات';
+
+  @override
+  String get analysis => 'التحليل';
+
+  @override
+  String get differential => 'المقارنة التفاضلية';
+
+  @override
+  String get hypotheses => 'الفرضيات';
+
+  @override
+  String get profileBuilder => 'منشئ الملف';
+
+  @override
+  String get mappingEditor => 'محرر التعيين';
+
+  @override
+  String get validation => 'التحقق';
+
+  @override
+  String get export => 'التصدير';
 }

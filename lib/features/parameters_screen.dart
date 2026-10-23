@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../app/theme.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../parameters/parameter_models.dart';
+import '../parameters/write_pipeline.dart';
 import '../session/device_session.dart';
 
 class ParametersScreen extends StatefulWidget {
@@ -126,51 +127,85 @@ class _ParametersScreenState extends State<ParametersScreen> {
   Future<void> _restoreBackup(DeviceSession session) async {
     final s = AppLocalizations.of(context);
     final backup = session.backups.first;
-    final changes = backup.planRestore(
-      activeProfileId: 'solardiag.simulated.lfp16.v2',
-      activeDeviceIdentity: 'SOLARDIAG-SIM-BMS',
-      activeFirmware: 'simulator-v2',
-      definitions: DeviceSession.parameterDefinitions,
-      current: ParameterSnapshot(
-        session.parameters,
-        capturedAt: DateTime.now().toUtc(),
-      ),
-    );
-    if (changes.isEmpty) {
+    final plan = session.planRestore(backup);
+    if (plan.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(s.backupAlreadyMatches)));
       return;
     }
+    var acknowledged = false;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(s.restoreBackup),
-        content: Text(s.restoreBackupConfirmation(changes.length)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(s.cancel),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(s.restoreBackup),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(s.restoreBackupConfirmation(plan.length)),
+              const SizedBox(height: 12),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: acknowledged,
+                title: Text(s.safetyAcknowledgement),
+                onChanged: (val) =>
+                    setDialogState(() => acknowledged = val ?? false),
+              ),
+            ],
           ),
-          FilledButton(
-            key: const Key('confirm-backup-restore'),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(s.confirmRestore),
-          ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(s.cancel),
+            ),
+            FilledButton(
+              key: const Key('confirm-backup-restore'),
+              onPressed: acknowledged
+                  ? () => Navigator.pop(dialogContext, true)
+                  : null,
+              child: Text(s.confirmRestore),
+            ),
+          ],
+        ),
       ),
     );
     if (confirmed != true || !mounted) return;
-    // تمرير safetyAcknowledged: true لأن المستخدم أكّد المربع الحواري صريحاً أعلاه.
+    if (!session.auth.isUnlocked) {
+      final unlocked = await session.auth.unlock(
+        tier: AuthorizationTier.technician,
+        credentials: 'technician-authenticated',
+      );
+      if (!unlocked || !mounted) return;
+    }
+    final authorization = session.auth.current;
+    if (authorization == null) return;
+    final contextObj = session.createWriteContext();
+    final tokens = <ConfirmationToken>[];
+    for (final change in plan.changes) {
+      final before = session.parameters[change.definition.id] ?? 0;
+      final diffHash =
+          VerifiedWritePipeline.previewHash(change, before, contextObj);
+      tokens.add(
+        ConfirmationToken(
+          diffHash: diffHash,
+          deviceId: contextObj.deviceId,
+          sessionId: contextObj.sessionId,
+          expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+        ),
+      );
+    }
     final results = await session.restoreParameterBackup(
-      backup,
-      safetyAcknowledged: true,
+      plan: plan,
+      authorization: authorization,
+      confirmations: tokens,
+      safetyAcknowledged: acknowledged,
     );
     if (!mounted) return;
     final applied = results.where(
       (result) => result.outcome == WriteOutcome.applied,
     );
-    final success = applied.length == changes.length;
+    final success = applied.length == plan.length;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -305,10 +340,34 @@ class _ParametersScreenState extends State<ParametersScreen> {
       ),
     );
     if (confirmed == null || !mounted) return;
+    if (!session.auth.isUnlocked) {
+      final unlocked = await session.auth.unlock(
+        tier: AuthorizationTier.technician,
+        credentials: 'technician-authenticated',
+      );
+      if (!unlocked || !mounted) return;
+    }
+    final authorization = session.auth.current;
+    if (authorization == null) return;
+    final contextObj = session.createWriteContext();
+    final change = ParameterChange(
+      definition: definition,
+      requestedValue: confirmed,
+    );
+    final diffHash =
+        VerifiedWritePipeline.previewHash(change, current, contextObj);
+    final token = ConfirmationToken(
+      diffHash: diffHash,
+      deviceId: contextObj.deviceId,
+      sessionId: contextObj.sessionId,
+      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+    );
     final result = await session.applySimulatedParameterChange(
       parameterId: id,
       requestedValue: confirmed,
-      safetyAcknowledged: true,
+      authorization: authorization,
+      confirmation: token,
+      safetyAcknowledged: acknowledged,
     );
     if (!mounted) return;
     final message = switch (result.outcome) {

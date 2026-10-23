@@ -7,10 +7,14 @@ class IdentificationResult {
     required this.confidence,
     required this.evidence,
     required this.candidateProfileIds,
+    this.model,
+    this.firmware,
   });
   final double confidence;
   final List<String> evidence;
   final List<String> candidateProfileIds;
+  final String? model;
+  final String? firmware;
 }
 
 class LinkHealth {

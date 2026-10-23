@@ -64,6 +64,58 @@ class TelemetryFieldDefinition {
   final num scale;
 }
 
+enum ParameterAccess {
+  readOnly,
+  readWrite,
+  writeOnly,
+  calibrate,
+  factory;
+
+  static ParameterAccess from(String raw) => fromString(raw);
+  static ParameterAccess fromString(String raw) => switch (raw.toLowerCase()) {
+    'readonly' || 'read_only' || 'read' => ParameterAccess.readOnly,
+    'readwrite' || 'read_write' => ParameterAccess.readWrite,
+    'writeonly' || 'write_only' || 'write' => ParameterAccess.writeOnly,
+    'calibrate' => ParameterAccess.calibrate,
+    'factory' => ParameterAccess.factory,
+    _ => throw FormatException('Unknown parameter access: $raw'),
+  };
+}
+
+class ProfileApproval {
+  const ProfileApproval({
+    required this.lifecycleStage,
+    required this.approvedByRole,
+    this.hardwareValidationRecordId = '',
+    this.verifiedCapabilities = const [],
+    this.approvedAt,
+  });
+
+  final String lifecycleStage;
+  final String approvedByRole;
+  final String hardwareValidationRecordId;
+  final List<String> verifiedCapabilities;
+  final DateTime? approvedAt;
+
+  factory ProfileApproval.fromJson(Map<String, Object?> json) => ProfileApproval(
+    lifecycleStage: json['lifecycle_stage'] as String? ?? '',
+    approvedByRole: json['approved_by_role'] as String? ?? '',
+    hardwareValidationRecordId:
+        json['hardware_validation_record_id'] as String? ?? '',
+    verifiedCapabilities: [
+      for (final cap in (json['verified_capabilities'] as List? ?? const []))
+        cap.toString(),
+    ],
+  );
+
+  bool isApprovedFor(DeviceCapability capability) {
+    if (lifecycleStage != 'published' || approvedByRole != 'approvalEngineer') {
+      return false;
+    }
+    return verifiedCapabilities.contains(capability.name);
+  }
+}
+
 class ProfileParameterDefinition {
   const ProfileParameterDefinition({
     required this.id,
@@ -73,7 +125,7 @@ class ProfileParameterDefinition {
   });
   final String id;
   final LocalizedText label;
-  final String access;
+  final ParameterAccess access;
   final Map<String, Object?> definition;
 }
 
@@ -99,6 +151,7 @@ class DeviceProfile {
     required this.testVectors,
     required this.connectionChecklist,
     required this.simulated,
+    this.approval,
   });
   final int schemaVersion;
   final String id;
@@ -120,15 +173,24 @@ class DeviceProfile {
   final List<Map<String, Object?>> testVectors;
   final List<LocalizedText> connectionChecklist;
   final bool simulated;
+  final ProfileApproval? approval;
 
-  /// يُحدَّد `hasWriteCapability` بناءً على حالة `VerificationStatus` المُحققة
-  /// فعلياً في مجموعة القدرات فقط. لا يُستخدم text matching على حقل `access`
-  /// لأن ذلك يُعرِّض التحقق للتلاعب من خلال أسماء الحقول.
-  bool get hasWriteCapability =>
-      capabilities.statusOf(DeviceCapability.writeParameter) ==
-          VerificationStatus.verifiedHardware ||
-      capabilities.statusOf(DeviceCapability.calibrate) ==
-          VerificationStatus.verifiedHardware;
+  /// يُحدَّد `hasWriteCapability` بحيث يكون صحيحاً إذا كانت أي قدرة كتابة أو معايرة
+  /// مدعومة (ليست unsupported)، أو إذا كان أي معامل يتطلب وصولاً غير readOnly.
+  /// هذا يضمن عدم تخطي مرحلة مراجعة السلامة لأي مساهمة تحتوي قدرة كتابة محتملة.
+  bool get hasWriteCapability {
+    const writeCapabilities = [
+      DeviceCapability.writeParameter,
+      DeviceCapability.calibrate,
+    ];
+    final hasCap = writeCapabilities.any(
+      (cap) => capabilities.statusOf(cap) == VerificationStatus.verifiedHardware,
+    );
+    final hasParamWrite = parameters.any(
+      (p) => p.access != ParameterAccess.readOnly,
+    );
+    return hasCap || hasParamWrite;
+  }
 
   static Map<String, Object?> migrateV1ToV2(Map<String, Object?> source) =>
       source['schema_version'] != 1
@@ -165,6 +227,20 @@ class DeviceProfile {
       }
     }
     final simulated = json['simulated'] == true;
+    final profileId = requiredString('id');
+    final transportInterface = transportJson['interface'] as String? ?? '';
+    if (simulated) {
+      if (!profileId.startsWith('solardiag.simulated.')) {
+        throw const FormatException(
+          'Simulated profiles must have an id starting with "solardiag.simulated."',
+        );
+      }
+      if (transportInterface != 'simulator') {
+        throw const FormatException(
+          'Simulated profiles must use the simulator transport interface.',
+        );
+      }
+    }
     if (!simulated && statuses.values.contains(VerificationStatus.simulated)) {
       throw const FormatException(
         'Physical profiles cannot declare simulated capabilities.',
@@ -208,7 +284,7 @@ class DeviceProfile {
           (item) => ProfileParameterDefinition(
             id: _requiredString(item, 'id'),
             label: LocalizedText.fromJson(item['label'], 'parameter label'),
-            access: _requiredString(item, 'access'),
+            access: ParameterAccess.fromString(_requiredString(item, 'access')),
             definition: item,
           ),
         )
@@ -226,9 +302,13 @@ class DeviceProfile {
     if (checklist is! List) {
       throw const FormatException('connection_checklist must be an array.');
     }
+    final approvalJson = json['approval'];
+    final approval = approvalJson is Map<String, Object?>
+        ? ProfileApproval.fromJson(approvalJson)
+        : null;
     return DeviceProfile(
       schemaVersion: 2,
-      id: requiredString('id'),
+      id: profileId,
       category: requiredString('category'),
       manufacturer: requiredString('manufacturer'),
       family: requiredString('family'),
@@ -275,6 +355,7 @@ class DeviceProfile {
           )
           .toList(),
       simulated: simulated,
+      approval: approval,
     );
   }
 

@@ -7,7 +7,7 @@ import '../protocol/inverter_adapter.dart';
 import '../protocols/modbus/modbus_models.dart';
 import '../protocols/modbus/rtu_codec.dart';
 
-class SimulatedInverterAdapter implements InverterAdapter {
+class SimulatedInverterAdapter implements InverterAdapter, SimulatedParameterBackend {
   SimulatedInverterAdapter({this.tick = 0});
   int tick;
   final Map<String, num> _parameters = {'output_frequency_limit': 50};
@@ -40,11 +40,26 @@ class SimulatedInverterAdapter implements InverterAdapter {
   @override
   Future<Map<String, num>> readParameters() async =>
       Map.unmodifiable(_parameters);
+
+  @override
+  Future<num> readParameter(String id) async => _parameters[id]!;
+
+  @override
+  Future<Map<String, num>> readConfiguration() async => Map.of(_parameters);
+
+  @override
+  Future<void> writeParameter(
+    String id,
+    int rawValue,
+    String idempotencyKey,
+  ) async {
+    _parameters[id] = rawValue;
+  }
+
   @override
   ParameterTransport parameterTransport() => createSimulatedParameterTransport(
-    read: (id) async => _parameters[id]!,
-    readAll: () async => Map.of(_parameters),
-    write: (id, raw, _) async => _parameters[id] = raw,
+    this,
+    SimulatorToken.instance,
   );
   @override
   Future<CapabilitySet> capabilities() async => CapabilitySet({

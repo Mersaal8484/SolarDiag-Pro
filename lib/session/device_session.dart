@@ -5,13 +5,14 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/widgets.dart';
 
 import '../audit/audit_chain.dart';
+import '../auth/authorization_controller.dart';
 import '../core/battery_models.dart';
 import '../core/inverter_models.dart';
 import '../integration/compatibility_engine.dart';
 import '../integration/compatibility_models.dart';
 import '../integration/link_diagnostics.dart';
 import '../parameters/parameter_backup.dart';
-import '../parameters/parameter_models.dart';
+import '../parameters/parameter_models.dart' hide RestorePlan;
 import '../parameters/write_pipeline.dart';
 import '../persistence/local_database.dart';
 import '../protocol/bms_adapter.dart';
@@ -39,15 +40,18 @@ class DeviceSession extends ChangeNotifier {
          initialTick: _initialTick(scenario),
        ) {
     _beginSession();
+    auth.addListener(notifyListeners);
     if (database != null) _backups.addAll(database!.listBackups());
     if (autoStart) start();
   }
 
   final Duration pollInterval;
   final LocalDatabase? database;
+  final AuthorizationController auth = AuthorizationController();
   SimulationScenario _scenario;
   TelemetrySnapshot _snapshot;
   SimulatedBmsAdapter _adapter;
+  IdentificationResult? _lastIdentification;
   final SimulatedInverterAdapter _inverterAdapter = SimulatedInverterAdapter();
   InverterTelemetrySnapshot? _inverterSnapshot;
   Timer? _pollTimer;
@@ -71,7 +75,8 @@ class DeviceSession extends ChangeNotifier {
   SimulationScenario get scenario => _scenario;
   TelemetrySnapshot get snapshot => _snapshot;
   BmsAdapter get adapter => _adapter;
-  DeviceSessionMode get mode => DeviceSessionMode.readOnly;
+  DeviceSessionMode get mode =>
+      auth.isUnlocked ? DeviceSessionMode.writeAuthorized : DeviceSessionMode.readOnly;
   DeviceSessionLinkState get linkState => _linkState;
   LinkHealth? get linkHealth => _linkHealth;
   Set<String> get alarmCodes => _alarmCodes;
@@ -206,6 +211,8 @@ class DeviceSession extends ChangeNotifier {
     _sessionStartedEventSaved = false;
     _persistedLinkState = null;
     _persistedAlarmCodes = null;
+    auth.lock('session switch');
+    _lastIdentification = null;
     _audit = database != null
         ? AuditChain(
             store: DatabaseAuditChainStore(
@@ -272,34 +279,63 @@ class DeviceSession extends ChangeNotifier {
     return backup;
   }
 
-  /// استعادة نسخة احتياطية من المعاملات.
+  DeviceWriteContext createWriteContext() {
+    final connectedModel = _lastIdentification?.model ?? 'LFP-16S-SIM';
+    final connectedFirmware = _lastIdentification?.firmware ?? 'simulator-v2';
+    return DeviceWriteContext(
+      deviceId: 'SOLARDIAG-SIM-BMS',
+      sessionId: _sessionId,
+      profileModel: 'LFP-16S-SIM',
+      profileFirmware: 'simulator-v2',
+      connectedModel: connectedModel,
+      connectedFirmware: connectedFirmware,
+      linkHealthy: _linkState == DeviceSessionLinkState.online,
+      writeLocked: !auth.isUnlocked ||
+          _linkState != DeviceSessionLinkState.online ||
+          _lastError != null,
+      state: DeviceWriteState.known,
+    );
+  }
+
+  RestorePlan planRestore(ParameterBackup backup) => backup.createRestorePlan(
+    activeProfileId: 'solardiag.simulated.lfp16.v2',
+    activeDeviceIdentity: 'SOLARDIAG-SIM-BMS',
+    activeFirmware: 'simulator-v2',
+    definitions: parameterDefinitions,
+    current: ParameterSnapshot(
+      _parameters,
+      capturedAt: DateTime.now().toUtc(),
+    ),
+  );
+
+  /// استعادة نسخة احتياطية من المعاملات وفق خطة استعادة [RestorePlan].
   ///
-  /// يتطلب [safetyAcknowledged] من المستدعي صراحةً؛ لا يُمرَّر ثابت `true`
-  /// تلقائياً، تماشياً مع متطلب M5 باشتراط موافقة المستخدم الفعلية.
-  Future<List<WriteResult>> restoreParameterBackup(
-    ParameterBackup backup, {
+  /// يتطلب تفويضاً صريحاً [authorization]، وتوكينات تأكيد لكل خطوة [confirmations]،
+  /// وموافقة المستخدم الصريحة [safetyAcknowledged].
+  /// يتوقف عند أول خطوة تفشل أو لا تُطبَّق ولا يُكمل تلقائياً.
+  Future<List<WriteResult>> restoreParameterBackup({
+    required RestorePlan plan,
+    required AuthorizationSession authorization,
+    required List<ConfirmationToken> confirmations,
     required bool safetyAcknowledged,
   }) async {
     if (_parameters.isEmpty) await refreshParameters();
-    final changes = backup.planRestore(
-      activeProfileId: 'solardiag.simulated.lfp16.v2',
-      activeDeviceIdentity: 'SOLARDIAG-SIM-BMS',
-      activeFirmware: 'simulator-v2',
-      definitions: parameterDefinitions,
-      current: ParameterSnapshot(
-        _parameters,
-        capturedAt: DateTime.now().toUtc(),
-      ),
-    );
     final results = <WriteResult>[];
-    for (final change in changes) {
+    for (var i = 0; i < plan.changes.length; i++) {
+      if (i >= confirmations.length) break;
+      final change = plan.changes[i];
+      final confirmation = confirmations[i];
       final result = await applySimulatedParameterChange(
         parameterId: change.definition.id,
         requestedValue: change.requestedValue,
+        authorization: authorization,
+        confirmation: confirmation,
         safetyAcknowledged: safetyAcknowledged,
       );
       results.add(result);
-      if (result.outcome != WriteOutcome.applied) break;
+      if (result.outcome != WriteOutcome.applied) {
+        break;
+      }
     }
     return List.unmodifiable(results);
   }
@@ -307,6 +343,8 @@ class DeviceSession extends ChangeNotifier {
   Future<WriteResult> applySimulatedParameterChange({
     required String parameterId,
     required num requestedValue,
+    required AuthorizationSession authorization,
+    required ConfirmationToken confirmation,
     required bool safetyAcknowledged,
   }) async {
     final definition = parameterDefinitions[parameterId];
@@ -314,45 +352,23 @@ class DeviceSession extends ChangeNotifier {
     if (definition == null || before == null) {
       throw ArgumentError.value(parameterId, 'parameterId');
     }
-    final now = DateTime.now().toUtc();
-    final context = DeviceWriteContext(
-      deviceId: 'SOLARDIAG-SIM-BMS',
-      sessionId: 'local-simulator-session',
-      profileModel: 'LFP-16S-SIM',
-      profileFirmware: 'simulator-v2',
-      connectedModel: 'LFP-16S-SIM',
-      connectedFirmware: 'simulator-v2',
-      linkHealthy: _linkState == DeviceSessionLinkState.online,
-      // writeLocked مشتق من حالة الجلسة الفعلية:
-      // true إذا كانت الحالة غير متصلة أو يوجد خطأ سابق.
-      writeLocked: _linkState != DeviceSessionLinkState.online || _lastError != null,
-      state: DeviceWriteState.known,
-    );
+    _lastIdentification ??= await _adapter.identify();
+    final context = createWriteContext();
     final change = ParameterChange(
       definition: definition,
       requestedValue: requestedValue,
     );
-    final confirmation = ConfirmationToken(
-      diffHash: VerifiedWritePipeline.previewHash(change, before, context),
-      deviceId: context.deviceId,
-      sessionId: context.sessionId,
-      expiresAt: now.add(const Duration(minutes: 5)),
+    final result = await VerifiedWritePipeline(
+      transport: _adapter.parameterTransport(),
+      audit: _audit,
+    ).execute(
+      change: change,
+      authorization: authorization,
+      safetyAcknowledged: safetyAcknowledged,
+      context: context,
+      confirmation: confirmation,
+      idempotencyKey: 'sim-${_writeSequence++}-$parameterId',
     );
-    final result =
-        await VerifiedWritePipeline(
-          transport: _adapter.parameterTransport(),
-          audit: _audit,
-        ).execute(
-          change: change,
-          authorization: AuthorizationSession(
-            tier: AuthorizationTier.technician,
-            expiresAt: now.add(const Duration(minutes: 15)),
-          ),
-          safetyAcknowledged: safetyAcknowledged,
-          context: context,
-          confirmation: confirmation,
-          idempotencyKey: 'sim-${_writeSequence++}-$parameterId',
-        );
     _lastWriteResult = result;
     await refreshParameters();
     return result;
@@ -362,6 +378,7 @@ class DeviceSession extends ChangeNotifier {
     if (_polling) return;
     _polling = true;
     try {
+      _lastIdentification ??= await _adapter.identify();
       final next = await _adapter.readTelemetry();
       final health = await _adapter.health();
       final alarms = await _adapter.readAlarms();
@@ -486,6 +503,8 @@ class DeviceSession extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _pollTimer?.cancel();
+    auth.removeListener(notifyListeners);
+    auth.dispose();
     super.dispose();
   }
 }

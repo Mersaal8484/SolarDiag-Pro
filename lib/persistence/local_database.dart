@@ -549,5 +549,10 @@ class DatabaseAuditChainStore implements AuditChainStore {
   void saveHead(String head) {
     database.saveAuditHead(sessionId, head);
   }
+
+  @override
+  void saveHeadMac(String head, String mac) {
+    // Session SQLite tables can persist head; MAC storage can be added to audit_chain_heads
+  }
 }
 

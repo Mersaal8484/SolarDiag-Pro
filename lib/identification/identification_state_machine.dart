@@ -141,7 +141,20 @@ class IdentificationStateMachine {
       if (evidence.isNotEmpty) scored[profile] = evidence;
     }
     final passiveConfirmed = scored.entries
-        .where((e) => e.value.length >= 2)
+        .where((e) {
+          if (e.value.length < 2) return false;
+          // Minimum evidence weight calculation
+          var totalWeight = 0.0;
+          for (final ev in e.value) {
+            totalWeight += switch (ev) {
+              'identifier-fingerprint' => 0.4,
+              'payload-structure-periodicity' => 0.5,
+              'documented-identity-response' => 0.7,
+              _ => 0.3,
+            };
+          }
+          return totalWeight >= 0.8;
+        })
         .toList();
     if (passiveConfirmed.length == 1) {
       return _finish(
@@ -199,6 +212,8 @@ class IdentificationStateMachine {
           break;
         } on TimeoutException {
           allEvidence.add('query-timeout-${attempt + 1}');
+        } catch (error) {
+          allEvidence.add('query-failed-${attempt + 1}:$error');
         }
       }
     }

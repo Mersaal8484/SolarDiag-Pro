@@ -23,17 +23,50 @@ class TransmissionDecision {
   final String reason;
 }
 
+class GuardRule {
+  const GuardRule({
+    required this.identifier,
+    this.dlc,
+    this.payloadMask,
+    this.payloadExpected,
+  });
+
+  final int identifier;
+  final int? dlc;
+  final List<int>? payloadMask;
+  final List<int>? payloadExpected;
+
+  bool matches(BusFrame frame) {
+    if (frame.identifier != identifier) return false;
+    if (dlc != null && frame.payload.length != dlc) return false;
+    if (payloadMask != null && payloadExpected != null) {
+      if (frame.payload.length < payloadMask!.length) return false;
+      for (var i = 0; i < payloadMask!.length; i++) {
+        if ((frame.payload[i] & payloadMask![i]) != payloadExpected![i]) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+}
+
 class TransmissionGuard {
   const TransmissionGuard({
-    required this.allowedReadIdentifiers,
-    required this.allowedWriteIdentifiers,
+    this.allowedReadIdentifiers = const {},
+    this.allowedWriteIdentifiers = const {},
+    this.readRules = const [],
+    this.writeRules = const [],
     required this.activeSession,
     required this.profileVerifiedForHardware,
   });
   final Set<int> allowedReadIdentifiers;
   final Set<int> allowedWriteIdentifiers;
+  final List<GuardRule> readRules;
+  final List<GuardRule> writeRules;
   final bool activeSession;
   final bool profileVerifiedForHardware;
+
   TransmissionDecision evaluate(BusFrame frame, TransmissionPurpose purpose) {
     if (!activeSession) {
       return const TransmissionDecision.deny('No active diagnostic session.');
@@ -44,6 +77,13 @@ class TransmissionGuard {
       );
     }
     if (purpose == TransmissionPurpose.documentedRead) {
+      if (readRules.isNotEmpty) {
+        return readRules.any((rule) => rule.matches(frame))
+            ? const TransmissionDecision.allow()
+            : const TransmissionDecision.deny(
+                'Frame does not match read rule constraints.',
+              );
+      }
       return allowedReadIdentifiers.contains(frame.identifier)
           ? const TransmissionDecision.allow()
           : const TransmissionDecision.deny(
@@ -54,6 +94,13 @@ class TransmissionGuard {
       return const TransmissionDecision.deny(
         'Write capability is not verified on hardware.',
       );
+    }
+    if (writeRules.isNotEmpty) {
+      return writeRules.any((rule) => rule.matches(frame))
+          ? const TransmissionDecision.allow()
+          : const TransmissionDecision.deny(
+              'Frame does not match write rule constraints.',
+            );
     }
     return allowedWriteIdentifiers.contains(frame.identifier)
         ? const TransmissionDecision.allow()
@@ -73,11 +120,14 @@ abstract interface class FrameTransport {
 class LoopbackGatewayTransport implements FrameTransport {
   LoopbackGatewayTransport({
     required this.mode,
-    required this._guard,
+    required TransmissionGuard guard,
     required this.maxFramesPerSecond,
     required this.busLoadCap,
     required this.audit,
-  }) {
+    this.cooldown = const Duration(seconds: 1),
+    DateTime Function()? clock,
+  }) : _guard = guard,
+       _clock = clock ?? DateTime.now {
     audit.append('gateway_mode_started', {'mode': mode.name});
   }
   @override
@@ -86,11 +136,24 @@ class LoopbackGatewayTransport implements FrameTransport {
   final int maxFramesPerSecond;
   final double busLoadCap;
   final AuditChain audit;
+  final Duration cooldown;
+  final DateTime Function() _clock;
   final List<BusFrame> wire = [];
   final _controller = StreamController<BusFrame>.broadcast();
   final List<DateTime> _sentAt = [];
-  double observedBusLoad = 0;
+  final List<DateTime> _errorTimestamps = [];
+  int errorCount = 0;
+  int blockedCount = 0;
   bool _closed = false;
+
+  double get observedBusLoad {
+    final now = _clock();
+    _errorTimestamps.removeWhere(
+      (time) => now.difference(time) >= cooldown,
+    );
+    return _errorTimestamps.isNotEmpty ? busLoadCap : 0.0;
+  }
+
   @override
   Stream<BusFrame> get frames => _controller.stream;
 
@@ -106,17 +169,19 @@ class LoopbackGatewayTransport implements FrameTransport {
     }
     final decision = _guard.evaluate(frame, purpose);
     if (!decision.allowed) {
+      blockedCount++;
       audit.append('frame_rejected', {
         'identifier': frame.identifier,
         'reason': decision.reason,
       });
       throw StateError(decision.reason);
     }
-    final now = DateTime.now();
+    final now = _clock();
     _sentAt.removeWhere(
       (time) => now.difference(time) >= const Duration(seconds: 1),
     );
     if (_sentAt.length >= maxFramesPerSecond || observedBusLoad >= busLoadCap) {
+      blockedCount++;
       audit.append('frame_backoff', {'identifier': frame.identifier});
       throw StateError('Gateway rate or bus-load cap reached.');
     }
@@ -130,7 +195,8 @@ class LoopbackGatewayTransport implements FrameTransport {
 
   void receive(BusFrame frame) {
     if (frame.isError) {
-      observedBusLoad = busLoadCap;
+      errorCount++;
+      _errorTimestamps.add(_clock());
       audit.append('gateway_error_backoff', {'identifier': frame.identifier});
     }
     if (!_closed) {

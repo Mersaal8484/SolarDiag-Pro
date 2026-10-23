@@ -4,6 +4,7 @@ import 'package:solardiag_pro/audit/audit_chain.dart';
 class _MemoryAuditStore implements AuditChainStore {
   List<AuditEntry>? storedEntries;
   String? storedHead;
+  String? storedMac;
 
   @override
   StoredAuditChain? load() {
@@ -13,7 +14,7 @@ class _MemoryAuditStore implements AuditChainStore {
     if (entries == null || head == null) {
       throw const FormatException('Incomplete audit store.');
     }
-    return StoredAuditChain(entries: List.of(entries), head: head);
+    return StoredAuditChain(entries: List.of(entries), head: head, headMac: storedMac);
   }
 
   @override
@@ -22,6 +23,9 @@ class _MemoryAuditStore implements AuditChainStore {
 
   @override
   void saveHead(String head) => storedHead = head;
+
+  @override
+  void saveHeadMac(String head, String mac) => storedMac = mac;
 }
 
 void main() {

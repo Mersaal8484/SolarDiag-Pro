@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
 import 'package:solardiag_pro/parameters/parameter_models.dart';
+import 'package:solardiag_pro/parameters/write_pipeline.dart';
 import 'package:solardiag_pro/persistence/local_database.dart';
 
 void main() {
@@ -95,9 +96,32 @@ void main() {
       await session.refresh();
       await session.refreshParameters();
 
+      await session.auth.unlock(
+        tier: AuthorizationTier.technician,
+        credentials: 'pin',
+      );
+      final before = session.parameters['charge_limit']!;
+      final context = session.createWriteContext();
+      final diffHash = VerifiedWritePipeline.previewHash(
+        ParameterChange(
+          definition: DeviceSession.parameterDefinitions['charge_limit']!,
+          requestedValue: 54.8,
+        ),
+        before,
+        context,
+      );
+      final confirmation = ConfirmationToken(
+        diffHash: diffHash,
+        deviceId: context.deviceId,
+        sessionId: context.sessionId,
+        expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+      );
+
       final result = await session.applySimulatedParameterChange(
         parameterId: 'charge_limit',
         requestedValue: 54.8,
+        authorization: session.auth.current!,
+        confirmation: confirmation,
         safetyAcknowledged: true,
       );
 
@@ -117,9 +141,32 @@ void main() {
     await session.refresh();
     await session.refreshParameters();
 
+    await session.auth.unlock(
+      tier: AuthorizationTier.technician,
+      credentials: 'pin',
+    );
+    final before = session.parameters['charge_limit']!;
+    final context = session.createWriteContext();
+    final diffHash = VerifiedWritePipeline.previewHash(
+      ParameterChange(
+        definition: DeviceSession.parameterDefinitions['charge_limit']!,
+        requestedValue: 54.8,
+      ),
+      before,
+      context,
+    );
+    final confirmation = ConfirmationToken(
+      diffHash: diffHash,
+      deviceId: context.deviceId,
+      sessionId: context.sessionId,
+      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+    );
+
     final result = await session.applySimulatedParameterChange(
       parameterId: 'charge_limit',
       requestedValue: 54.8,
+      authorization: session.auth.current!,
+      confirmation: confirmation,
       safetyAcknowledged: false,
     );
 
@@ -184,15 +231,54 @@ void main() {
     await session.refresh();
     await session.refreshParameters();
     final backup = session.createParameterBackup();
+    await session.auth.unlock(
+      tier: AuthorizationTier.technician,
+      credentials: 'pin',
+    );
+    final context1 = session.createWriteContext();
+    final diffHash1 = VerifiedWritePipeline.previewHash(
+      ParameterChange(
+        definition: DeviceSession.parameterDefinitions['charge_limit']!,
+        requestedValue: 54.8,
+      ),
+      session.parameters['charge_limit']!,
+      context1,
+    );
     final changed = await session.applySimulatedParameterChange(
       parameterId: 'charge_limit',
       requestedValue: 54.8,
+      authorization: session.auth.current!,
+      confirmation: ConfirmationToken(
+        diffHash: diffHash1,
+        deviceId: context1.deviceId,
+        sessionId: context1.sessionId,
+        expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+      ),
       safetyAcknowledged: true,
     );
     expect(changed.outcome, WriteOutcome.applied);
 
+    final context2 = session.createWriteContext();
+    final diffHash2 = VerifiedWritePipeline.previewHash(
+      ParameterChange(
+        definition: DeviceSession.parameterDefinitions['charge_limit']!,
+        requestedValue: 55.2,
+      ),
+      session.parameters['charge_limit']!,
+      context2,
+    );
+    final plan = session.planRestore(backup);
     final restored = await session.restoreParameterBackup(
-      backup,
+      plan: plan,
+      authorization: session.auth.current!,
+      confirmations: [
+        ConfirmationToken(
+          diffHash: diffHash2,
+          deviceId: context2.deviceId,
+          sessionId: context2.sessionId,
+          expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+        ),
+      ],
       safetyAcknowledged: true,
     );
 
@@ -214,9 +300,30 @@ void main() {
       await session.refresh();
       await session.refreshParameters();
 
+      await session.auth.unlock(
+        tier: AuthorizationTier.technician,
+        credentials: 'pin',
+      );
+      final before = session.parameters['charge_limit']!;
+      final context = session.createWriteContext();
+      final diffHash = VerifiedWritePipeline.previewHash(
+        ParameterChange(
+          definition: DeviceSession.parameterDefinitions['charge_limit']!,
+          requestedValue: 54.8,
+        ),
+        before,
+        context,
+      );
       final result = await session.applySimulatedParameterChange(
         parameterId: 'charge_limit',
         requestedValue: 54.8,
+        authorization: session.auth.current!,
+        confirmation: ConfirmationToken(
+          diffHash: diffHash,
+          deviceId: context.deviceId,
+          sessionId: context.sessionId,
+          expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+        ),
         safetyAcknowledged: true,
       );
 

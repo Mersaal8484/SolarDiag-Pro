@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../protocol/capabilities.dart';
+import '../protocol/device_profile.dart';
 import '../protocol/profile_registry.dart';
 import 'profile_integrity.dart';
 
@@ -62,15 +64,27 @@ class LibraryPack {
 }
 
 class RevocationList {
-  const RevocationList({
-    required this.revokedPackIds,
+  RevocationList({
+    this.sequence = 1,
+    DateTime? issuedAt,
+    DateTime? validUntil,
+    this.revokedPackIds = const {},
     this.revokedProfileIds = const {},
-    required this.signature,
-  });
+    this.signature = '',
+  }) : issuedAt = issuedAt ?? DateTime.utc(2026, 1, 1),
+       validUntil = validUntil ?? DateTime.utc(2026, 12, 31);
+
+  final int sequence;
+  final DateTime issuedAt;
+  final DateTime validUntil;
   final Set<String> revokedPackIds;
   final Set<String> revokedProfileIds;
   final String signature;
+
   Map<String, Object?> get payload => {
+    'sequence': sequence,
+    'issued_at': issuedAt.toUtc().toIso8601String(),
+    'valid_until': validUntil.toUtc().toIso8601String(),
     'revoked_packs': revokedPackIds.toList()..sort(),
     'revoked_profiles': revokedProfileIds.toList()..sort(),
   };
@@ -111,16 +125,39 @@ class InstalledLibrary {
     required this.registry,
     required this.revokedProfileIds,
     required this.packRevoked,
-  });
+    required this.revocations,
+    required this.maxRevocationAge,
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now;
+
   final LibraryPack pack;
   final ProfileRegistry registry;
   final Set<String> revokedProfileIds;
   final bool packRevoked;
-  bool profileCanWrite(String profileId) =>
-      !packRevoked &&
-      !revokedProfileIds.contains(profileId) &&
-      registry.profileCanWrite(profileId);
-  bool get showRevokedBanner => packRevoked || revokedProfileIds.isNotEmpty;
+  final RevocationList revocations;
+  final Duration maxRevocationAge;
+  final DateTime Function() _clock;
+
+  bool get isRevocationStale =>
+      _clock().toUtc().difference(revocations.issuedAt) > maxRevocationAge;
+
+  String? get writeDisabledReason {
+    if (packRevoked) return 'Library pack is revoked.';
+    if (isRevocationStale) return 'revocation data stale';
+    return null;
+  }
+
+  bool profileCanWrite(
+    String profileId, [
+    DeviceCapability capability = DeviceCapability.writeParameter,
+  ]) {
+    if (packRevoked || isRevocationStale) return false;
+    if (revokedProfileIds.contains(profileId)) return false;
+    return registry.profileCanWrite(profileId, capability);
+  }
+
+  bool get showRevokedBanner =>
+      packRevoked || revokedProfileIds.isNotEmpty || isRevocationStale;
 }
 
 class LibrarySync {
@@ -128,13 +165,28 @@ class LibrarySync {
     required this.verifier,
     required this.appVersion,
     required this.store,
-  });
+    this.maxRevocationAge = const Duration(days: 14),
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now;
+
   final Ed25519TrustVerifier verifier;
   final int appVersion;
   final LibraryPackStore store;
+  final Duration maxRevocationAge;
+  final DateTime Function() _clock;
   InstalledLibrary? _installed;
+  int _highestRevocationSequence = 0;
+
   InstalledLibrary? get installed => _installed;
   LibraryPack? get lastKnownGood => _installed?.pack;
+  int get highestRevocationSequence => _highestRevocationSequence;
+
+  void recordRevocationSequence(int sequence) {
+    if (_highestRevocationSequence > 0 && sequence <= _highestRevocationSequence) {
+      throw StateError('Revocation list sequence rollback: $sequence <= $_highestRevocationSequence');
+    }
+    _highestRevocationSequence = sequence;
+  }
 
   Future<bool> apply(
     LibraryPack pack, {
@@ -146,6 +198,10 @@ class LibrarySync {
           revocations.signature,
         ) ||
         !await verifier.verifyPayload(pack.payload, pack.signature)) {
+      return false;
+    }
+    if (_highestRevocationSequence > 0 &&
+        revocations.sequence <= _highestRevocationSequence) {
       return false;
     }
     final hashKeys = pack.profileHashes.keys.toSet();
@@ -171,11 +227,15 @@ class LibrarySync {
       technicianMode: true,
     );
     await store.save(pack);
+    _highestRevocationSequence = revocations.sequence;
     _installed = InstalledLibrary(
       pack: pack,
       registry: registry,
       revokedProfileIds: Set.unmodifiable(revocations.revokedProfileIds),
       packRevoked: false,
+      revocations: revocations,
+      maxRevocationAge: maxRevocationAge,
+      clock: _clock,
     );
     return true;
   }
@@ -197,6 +257,10 @@ class LibrarySync {
     )) {
       return false;
     }
+    if (revocations.sequence <= _highestRevocationSequence) {
+      return false;
+    }
+    _highestRevocationSequence = revocations.sequence;
     final current = _installed;
     if (current == null) return true;
     _installed = InstalledLibrary(
@@ -204,6 +268,9 @@ class LibrarySync {
       registry: current.registry,
       revokedProfileIds: Set.unmodifiable(revocations.revokedProfileIds),
       packRevoked: revocations.revokedPackIds.contains(current.pack.id),
+      revocations: revocations,
+      maxRevocationAge: maxRevocationAge,
+      clock: _clock,
     );
     return true;
   }

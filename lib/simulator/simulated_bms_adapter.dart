@@ -4,7 +4,7 @@ import '../protocol/bms_adapter.dart';
 import '../protocol/capabilities.dart';
 import 'simulation_scenario.dart';
 
-class SimulatedBmsAdapter implements BmsAdapter {
+class SimulatedBmsAdapter implements BmsAdapter, SimulatedParameterBackend {
   SimulatedBmsAdapter({
     this.scenario = SimulationScenario.healthy,
     int initialTick = 0,
@@ -19,10 +19,14 @@ class SimulatedBmsAdapter implements BmsAdapter {
   ScenarioFrame get frame => ScenarioFactory.create(scenario, tick: _tick);
   void advance() => _tick++;
   @override
-  Future<IdentificationResult> identify() async => const IdentificationResult(
+  Future<IdentificationResult> identify() async => IdentificationResult(
     confidence: 1,
-    evidence: ['simulator:deterministic-id'],
-    candidateProfileIds: ['solardiag.simulated.lfp16.v2'],
+    evidence: const ['simulator:deterministic-id'],
+    candidateProfileIds: const ['solardiag.simulated.lfp16.v2'],
+    model: scenario == SimulationScenario.identityMismatch
+        ? 'LFP-UNKNOWN-MISMATCH'
+        : 'LFP-16S-SIM',
+    firmware: 'simulator-v2',
   );
   @override
   Future<TelemetrySnapshot> readTelemetry() async {
@@ -38,25 +42,34 @@ class SimulatedBmsAdapter implements BmsAdapter {
   @override
   Future<Map<String, num>> readParameters() async =>
       Map.unmodifiable(_parameters);
+
+  @override
+  Future<num> readParameter(String id) async {
+    final value = _parameters[id]!;
+    if (_mismatchPending) {
+      _mismatchPending = false;
+      return value + 1;
+    }
+    return value;
+  }
+
+  @override
+  Future<Map<String, num>> readConfiguration() async => Map.of(_parameters);
+
+  @override
+  Future<void> writeParameter(String id, int raw, String idempotencyKey) async {
+    if (scenario == SimulationScenario.parameterProfile &&
+        frame.metadata['write_failure'] == true) {
+      throw StateError('Injected simulated write failure.');
+    }
+    _parameters[id] = raw * .1;
+    _mismatchPending = frame.metadata['readback_mismatch'] == true;
+  }
+
   @override
   ParameterTransport parameterTransport() => createSimulatedParameterTransport(
-    read: (id) async {
-      final value = _parameters[id]!;
-      if (_mismatchPending) {
-        _mismatchPending = false;
-        return value + 1;
-      }
-      return value;
-    },
-    readAll: () async => Map.of(_parameters),
-    write: (id, raw, _) async {
-      if (scenario == SimulationScenario.parameterProfile &&
-          frame.metadata['write_failure'] == true) {
-        throw StateError('Injected simulated write failure.');
-      }
-      _parameters[id] = raw * .1;
-      _mismatchPending = frame.metadata['readback_mismatch'] == true;
-    },
+    this,
+    SimulatorToken.instance,
   );
   @override
   Future<CapabilitySet> capabilities() async => CapabilitySet({

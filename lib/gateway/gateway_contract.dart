@@ -10,6 +10,8 @@ class GatewayInterfaceDescriptor {
     required this.type,
     required this.isolated,
     required this.listenOnlyCapable,
+    this.activeReadCapable = true,
+    this.writeCapable = true,
     this.bitrates = const {},
     this.baudRates = const {},
   });
@@ -17,6 +19,8 @@ class GatewayInterfaceDescriptor {
   final InterfaceType type;
   final bool isolated;
   final bool listenOnlyCapable;
+  final bool activeReadCapable;
+  final bool writeCapable;
   final Set<int> bitrates;
   final Set<int> baudRates;
 
@@ -29,6 +33,8 @@ class GatewayInterfaceDescriptor {
       type: InterfaceType.values.byName(type),
       isolated: json['isolated'] == true,
       listenOnlyCapable: json['listen_only_capable'] == true,
+      activeReadCapable: json['active_read_capable'] != false,
+      writeCapable: json['write_capable'] != false,
       bitrates: _integerSet(json['bitrates'], 'bitrates'),
       baudRates: _integerSet(json['baud_rates'], 'baud_rates'),
     );
@@ -176,6 +182,14 @@ class GatewaySessionNegotiator {
     required double busLoadCap,
   }) {
     final passive = negotiatePassive(gateway, requirement);
+    final interface = gateway.interfaces.firstWhere(
+      (candidate) => candidate.type == requirement.interfaceType,
+    );
+    if (!interface.activeReadCapable) {
+      throw const GatewayContractException(
+        'Gateway interface does not declare active-read support.',
+      );
+    }
     final verified =
         capabilityStatus == VerificationStatus.verifiedDocument ||
         capabilityStatus == VerificationStatus.verifiedHardware;
@@ -203,6 +217,14 @@ class GatewaySessionNegotiator {
     required bool explicitlyStarted,
   }) {
     final passive = negotiatePassive(gateway, requirement);
+    final interface = gateway.interfaces.firstWhere(
+      (candidate) => candidate.type == requirement.interfaceType,
+    );
+    if (!interface.writeCapable) {
+      throw const GatewayContractException(
+        'Gateway interface does not declare write support.',
+      );
+    }
     if (!writeVerifiedOnHardware || !explicitlyStarted) {
       throw const GatewayContractException(
         'Write mode requires verified hardware capability and explicit start.',

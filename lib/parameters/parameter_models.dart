@@ -16,6 +16,7 @@ class AuthorizationSession {
   final AuthorizationTier tier;
   final DateTime expiresAt;
   bool isValidAt(DateTime time) => time.isBefore(expiresAt);
+  bool isExpiredAt(DateTime time) => !isValidAt(time);
 }
 
 class ParameterCodec {
