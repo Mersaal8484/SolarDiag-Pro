@@ -5,9 +5,11 @@ import '../protocol/bms_adapter.dart';
 import '../protocol/capabilities.dart';
 import '../protocol/inverter_adapter.dart';
 import '../protocols/modbus/modbus_models.dart';
+import '../protocols/modbus/crc16.dart';
 import '../protocols/modbus/rtu_codec.dart';
 
-class SimulatedInverterAdapter implements InverterAdapter, SimulatedParameterBackend {
+class SimulatedInverterAdapter
+    implements InverterAdapter, SimulatedParameterBackend {
   SimulatedInverterAdapter({this.tick = 0});
   int tick;
   final Map<String, num> _parameters = {'output_frequency_limit': 50};
@@ -30,7 +32,7 @@ class SimulatedInverterAdapter implements InverterAdapter, SimulatedParameterBac
       acCurrent: Measurement.value(2.2, 'A', timestamp: now),
       acPower: Measurement.value(506, 'W', timestamp: now),
       frequency: Measurement.value(50, 'Hz', timestamp: now),
-      temperature: Measurement.value(36, 'C', timestamp: now),
+      temperature: Measurement.value(36, '°C', timestamp: now),
       timestamp: now,
     );
   }
@@ -48,7 +50,7 @@ class SimulatedInverterAdapter implements InverterAdapter, SimulatedParameterBac
   Future<Map<String, num>> readConfiguration() async => Map.of(_parameters);
 
   @override
-  Future<void> writeParameter(
+  Future<void> applyRawParameter(
     String id,
     int rawValue,
     String idempotencyKey,
@@ -57,10 +59,8 @@ class SimulatedInverterAdapter implements InverterAdapter, SimulatedParameterBac
   }
 
   @override
-  ParameterTransport parameterTransport() => createSimulatedParameterTransport(
-    this,
-    SimulatorToken.instance,
-  );
+  ParameterTransport parameterTransport() =>
+      createSimulatedParameterTransport(this, SimulatorToken.instance);
   @override
   Future<CapabilitySet> capabilities() async => CapabilitySet({
     for (final value in DeviceCapability.values)
@@ -107,18 +107,7 @@ class SimulatedInverterAdapter implements InverterAdapter, SimulatedParameterBac
 
   List<int> _exception(ModbusRtuFrame request, int code) {
     final body = [request.address, request.functionCode | 0x80, code];
-    final crc = _crc(body);
+    final crc = ModbusCrc16.calculate(body);
     return [...body, crc & 0xff, crc >> 8];
-  }
-
-  int _crc(List<int> bytes) {
-    var crc = 0xffff;
-    for (final byte in bytes) {
-      crc ^= byte;
-      for (var bit = 0; bit < 8; bit++) {
-        crc = crc & 1 != 0 ? (crc >> 1) ^ 0xa001 : crc >> 1;
-      }
-    }
-    return crc & 0xffff;
   }
 }

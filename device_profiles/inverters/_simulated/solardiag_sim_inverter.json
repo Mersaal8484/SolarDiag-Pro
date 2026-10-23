@@ -1,0 +1,46 @@
+{
+  "schema_version": 2,
+  "id": "solardiag.simulated.inverter.v1",
+  "category": "inverter",
+  "manufacturer": "SolarDiag",
+  "family": "Deterministic simulator",
+  "models": ["SIM-INV-1"],
+  "firmware_ranges": ["simulator-v1"],
+  "simulated": true,
+  "provenance": {
+    "source": "bundled-simulator",
+    "document_id": "SIM-SPEC-001",
+    "retrieved_on": "2026-10-23",
+    "verified_by": "automated-simulator-tests"
+  },
+  "transport": {
+    "interface": "simulator",
+    "baud_rates": [],
+    "data_formats": [],
+    "listen_only_default": true
+  },
+  "capabilities": {
+    "identify": "simulated",
+    "read_live": "simulated",
+    "read_config": "simulated",
+    "write_parameter": "simulated",
+    "calibrate": "researchTarget"
+  },
+  "allowed_read_frames": [],
+  "allowed_modbus_read_ranges": [{"start": 0, "end": 3}],
+  "telemetry_map": [],
+  "alarm_dictionary": {},
+  "parameters": [],
+  "topology": {"application": "simulated-inverter-peer"},
+  "inverter_link": {
+    "protocol": "Modbus RTU simulator",
+    "register_map_status": "simulated"
+  },
+  "test_vectors": [],
+  "connection_checklist": [
+    {
+      "en": "Simulator only; do not use this profile with physical hardware.",
+      "ar": "للمحاكي فقط؛ لا تستخدم هذا الملف مع عتاد حقيقي."
+    }
+  ]
+}

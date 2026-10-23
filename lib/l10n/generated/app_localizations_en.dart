@@ -73,6 +73,91 @@ class AppLocalizationsEn extends AppLocalizations {
   String get highContrast => 'High contrast';
 
   @override
+  String get settings => 'Settings';
+
+  @override
+  String get language => 'Language';
+
+  @override
+  String get themeSetting => 'Theme';
+
+  @override
+  String get lightTheme => 'Light';
+
+  @override
+  String get darkTheme => 'Dark';
+
+  @override
+  String get systemTheme => 'System';
+
+  @override
+  String get digitPreference => 'Digit preference';
+
+  @override
+  String get westernDigits => 'Western (0–9)';
+
+  @override
+  String get arabicIndicDigits => 'Arabic-Indic (٠–٩)';
+
+  @override
+  String get workshopMode => 'Workshop mode';
+
+  @override
+  String get workshopModeDescription =>
+      'Use controls at least 56 points high and keep the display active during sessions.';
+
+  @override
+  String get outdoorMode => 'Outdoor high contrast';
+
+  @override
+  String get outdoorModeDescription =>
+      'Increase contrast and separator strength for bright environments.';
+
+  @override
+  String get timeAxisDirection => 'Time axis left to right';
+
+  @override
+  String get timeAxisDirectionDescription =>
+      'Keep technical time charts progressing left to right.';
+
+  @override
+  String get reduceTransparency => 'Reduce transparency';
+
+  @override
+  String get reduceTransparencyDescription =>
+      'Use opaque navigation and overlay surfaces.';
+
+  @override
+  String get voltageUnit => 'V';
+
+  @override
+  String get pipelineValidate => 'Validate';
+
+  @override
+  String get pipelineIdentify => 'Verify identity';
+
+  @override
+  String get pipelineBackup => 'Create backup';
+
+  @override
+  String get pipelineAuthorize => 'Authorize';
+
+  @override
+  String get pipelineConfirm => 'Confirm diff';
+
+  @override
+  String get pipelineWrite => 'Write';
+
+  @override
+  String get pipelineReadback => 'Read back';
+
+  @override
+  String get pipelineVerify => 'Verify';
+
+  @override
+  String get pipelineAudit => 'Append audit';
+
+  @override
   String get readOnly => 'READ-ONLY';
 
   @override
@@ -82,7 +167,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bank => '48V Battery Bank';
 
   @override
-  String get healthy => '16-cell LiFePO₄ · Connected';
+  String get healthy => '16-cell LiFePO₄ · nominal scenario';
 
   @override
   String get current => 'Current';
@@ -957,4 +1042,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get export => 'Export';
+
+  @override
+  String get operatingMode => 'Operating mode';
+
+  @override
+  String get activeRead => 'Active read';
+
+  @override
+  String get writeMode => 'Write';
+
+  @override
+  String get noTransmissionAttempted => 'No transmission attempted';
+
+  @override
+  String get guardAllowed => 'Allowed';
+
+  @override
+  String get guardBlocked => 'Blocked';
+
+  @override
+  String get allowedFrames => 'Allowed frames';
+
+  @override
+  String get blockedFrames => 'Blocked frames';
+
+  @override
+  String get droppedFrames => 'Dropped frames';
+
+  @override
+  String get observedBusLoad => 'Observed bus load';
+
+  @override
+  String get negotiationState => 'Negotiation state';
+
+  @override
+  String get notNegotiated => 'Not negotiated';
+
+  @override
+  String get passiveNegotiated => 'Passive session accepted';
+
+  @override
+  String get activeReadNegotiated => 'Active-read session accepted';
+
+  @override
+  String get writeNegotiated => 'Write session accepted';
+
+  @override
+  String get lastGuardDecision => 'Last guard decision';
+
+  @override
+  String get compatibilityCompatible => 'Compatible';
+
+  @override
+  String get compatibilityCompatibleWithLimits => 'Compatible with limits';
+
+  @override
+  String get compatibilityIncompatible => 'Incompatible profile';
+
+  @override
+  String get compatibilityStateCompatible => 'Compatible';
+
+  @override
+  String get compatibilityStateAttention => 'Attention';
+
+  @override
+  String get compatibilityStateIncompatible => 'Incompatible';
 }

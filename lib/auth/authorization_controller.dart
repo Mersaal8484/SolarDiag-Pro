@@ -35,8 +35,10 @@ final class LockedAuthorizationState extends AuthorizationState {
 }
 
 final class UnlockedAuthorizationState extends AuthorizationState {
-  const UnlockedAuthorizationState(this.session);
-  final AuthorizationSession session;
+  const UnlockedAuthorizationState(this._authSession);
+  final AuthorizationSession _authSession;
+  @override
+  AuthorizationSession? get session => _authSession;
 }
 
 class AuthorizationController extends ChangeNotifier {
@@ -56,8 +58,8 @@ class AuthorizationController extends ChangeNotifier {
 
   AuthorizationState _checkExpiry() {
     if (_state is UnlockedAuthorizationState) {
-      final session = (_state as UnlockedAuthorizationState).session;
-      if (session.isExpiredAt(_clock())) {
+      final unlocked = _state as UnlockedAuthorizationState;
+      if (unlocked.session?.isExpiredAt(_clock()) ?? false) {
         _state = const LockedAuthorizationState('Session expired');
         notifyListeners();
       }
@@ -81,10 +83,7 @@ class AuthorizationController extends ChangeNotifier {
     }
     final now = _clock().toUtc();
     _state = UnlockedAuthorizationState(
-      AuthorizationSession(
-        tier: tier,
-        expiresAt: now.add(duration),
-      ),
+      AuthorizationSession(tier: tier, expiresAt: now.add(duration)),
     );
     notifyListeners();
     return true;

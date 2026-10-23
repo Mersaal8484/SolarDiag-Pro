@@ -74,7 +74,9 @@ enum ParameterAccess {
   static ParameterAccess from(String raw) => fromString(raw);
   static ParameterAccess fromString(String raw) => switch (raw.toLowerCase()) {
     'readonly' || 'read_only' || 'read' => ParameterAccess.readOnly,
-    'readwrite' || 'read_write' => ParameterAccess.readWrite,
+    'readwrite' ||
+    'read_write' ||
+    'simulated-write' => ParameterAccess.readWrite,
     'writeonly' || 'write_only' || 'write' => ParameterAccess.writeOnly,
     'calibrate' => ParameterAccess.calibrate,
     'factory' => ParameterAccess.factory,
@@ -97,16 +99,18 @@ class ProfileApproval {
   final List<String> verifiedCapabilities;
   final DateTime? approvedAt;
 
-  factory ProfileApproval.fromJson(Map<String, Object?> json) => ProfileApproval(
-    lifecycleStage: json['lifecycle_stage'] as String? ?? '',
-    approvedByRole: json['approved_by_role'] as String? ?? '',
-    hardwareValidationRecordId:
-        json['hardware_validation_record_id'] as String? ?? '',
-    verifiedCapabilities: [
-      for (final cap in (json['verified_capabilities'] as List? ?? const []))
-        cap.toString(),
-    ],
-  );
+  factory ProfileApproval.fromJson(Map<String, Object?> json) =>
+      ProfileApproval(
+        lifecycleStage: json['lifecycle_stage'] as String? ?? '',
+        approvedByRole: json['approved_by_role'] as String? ?? '',
+        hardwareValidationRecordId:
+            json['hardware_validation_record_id'] as String? ?? '',
+        verifiedCapabilities: [
+          for (final cap
+              in (json['verified_capabilities'] as List? ?? const []))
+            cap.toString(),
+        ],
+      );
 
   bool isApprovedFor(DeviceCapability capability) {
     if (lifecycleStage != 'published' || approvedByRole != 'approvalEngineer') {
@@ -184,7 +188,8 @@ class DeviceProfile {
       DeviceCapability.calibrate,
     ];
     final hasCap = writeCapabilities.any(
-      (cap) => capabilities.statusOf(cap) == VerificationStatus.verifiedHardware,
+      (cap) =>
+          capabilities.statusOf(cap) == VerificationStatus.verifiedHardware,
     );
     final hasParamWrite = parameters.any(
       (p) => p.access != ParameterAccess.readOnly,

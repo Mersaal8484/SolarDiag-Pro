@@ -9,6 +9,7 @@ void main() {
   final spacing = json['spacing'] as Map<String, Object?>;
   final radii = json['radii'] as Map<String, Object?>;
   final durations = json['durations_ms'] as Map<String, Object?>;
+  final spring = json['spring'] as Map<String, Object?>;
   String fields(Map<String, Object?> values, String type, String prefix) =>
       values.entries
           .map(
@@ -19,6 +20,11 @@ void main() {
   String palette(String name) {
     final values = json[name] as Map<String, Object?>;
     return '  static const SolarPalette $name = SolarPalette(${values.entries.map((entry) => '${entry.key}: Color(0x${entry.value})').join(', ')});';
+  }
+
+  String energyPalette(String name) {
+    final values = json[name] as Map<String, Object?>;
+    return '  static const SolarEnergyPalette $name = SolarEnergyPalette(${values.entries.map((entry) => '${entry.key}: Color(0x${entry.value})').join(', ')});';
   }
 
   final output =
@@ -36,6 +42,8 @@ ${fields(radii, 'double', '')}
 
 abstract final class SolarMotion {
 ${durations.entries.map((entry) => '  static const Duration ${entry.key} = Duration(milliseconds: ${entry.value});').join('\n')}
+  static const Duration springResponse = Duration(milliseconds: ${spring['response_ms']});
+  static const double springDamping = ${spring['damping']};
 }
 
 class SolarPalette {
@@ -43,13 +51,16 @@ class SolarPalette {
   final Color background, surface, surfaceRaised, labelPrimary, labelSecondary, separator, tint, ok, warning, critical, info, simulated;
 }
 
+class SolarEnergyPalette {
+  const SolarEnergyPalette({required this.solar, required this.battery, required this.grid, required this.load});
+  final Color solar, battery, grid, load;
+}
+
 abstract final class SolarPalettes {
 ${palette('light')}
 ${palette('dark')}
-  static const Color energySolar = Color(0x${(json['energy'] as Map)['solar']});
-  static const Color energyBattery = Color(0x${(json['energy'] as Map)['battery']});
-  static const Color energyGrid = Color(0x${(json['energy'] as Map)['grid']});
-  static const Color energyLoad = Color(0x${(json['energy'] as Map)['load']});
+${energyPalette('energyLight')}
+${energyPalette('energyDark')}
 }
 ''';
   File('lib/design/tokens.g.dart').writeAsStringSync(output);

@@ -11,7 +11,10 @@
       "obligations": ["Internal project use only"],
       "scope": "Deterministic simulator behavior and test vectors",
       "used_for": ["simulator profile", "automated tests"],
-      "derived_artifacts": ["device_profiles/batteries/_simulated/solardiag_sim.json"],
+      "derived_artifacts": [
+        "device_profiles/batteries/_simulated/solardiag_sim.json",
+        "device_profiles/inverters/_simulated/solardiag_sim_inverter.json"
+      ],
       "profile_document_ids": ["SIM-SPEC-001"],
       "verification_status": "internal-test-specification",
       "legal_review": false,

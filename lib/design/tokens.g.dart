@@ -26,6 +26,8 @@ abstract final class SolarMotion {
   static const Duration fast = Duration(milliseconds: 150);
   static const Duration normal = Duration(milliseconds: 250);
   static const Duration slow = Duration(milliseconds: 400);
+  static const Duration springResponse = Duration(milliseconds: 350);
+  static const double springDamping = 0.85;
 }
 
 class SolarPalette {
@@ -57,6 +59,16 @@ class SolarPalette {
       simulated;
 }
 
+class SolarEnergyPalette {
+  const SolarEnergyPalette({
+    required this.solar,
+    required this.battery,
+    required this.grid,
+    required this.load,
+  });
+  final Color solar, battery, grid, load;
+}
+
 abstract final class SolarPalettes {
   static const SolarPalette light = SolarPalette(
     background: Color(0xFFF5F5F7),
@@ -86,8 +98,16 @@ abstract final class SolarPalettes {
     info: Color(0xFF64D2FF),
     simulated: Color(0xFFBF5AF2),
   );
-  static const Color energySolar = Color(0xFFFFB020);
-  static const Color energyBattery = Color(0xFF30B35A);
-  static const Color energyGrid = Color(0xFF3B82F6);
-  static const Color energyLoad = Color(0xFFA855F7);
+  static const SolarEnergyPalette energyLight = SolarEnergyPalette(
+    solar: Color(0xFF9A6700),
+    battery: Color(0xFF187A38),
+    grid: Color(0xFF1261A0),
+    load: Color(0xFF7A3EA1),
+  );
+  static const SolarEnergyPalette energyDark = SolarEnergyPalette(
+    solar: Color(0xFFFFC14D),
+    battery: Color(0xFF55D477),
+    grid: Color(0xFF66B5FF),
+    load: Color(0xFFD08AFF),
+  );
 }

@@ -17,14 +17,12 @@ class ProfileRegistry {
   bool canWrite(
     String id, [
     DeviceCapability capability = DeviceCapability.writeParameter,
-  ]) =>
-      profileCanWrite(id, capability);
+  ]) => profileCanWrite(id, capability);
 
   bool profileCanWrite(
     String id, [
     DeviceCapability capability = DeviceCapability.writeParameter,
-  ]) =>
-      _writeCapabilities[id]?.contains(capability) ?? false;
+  ]) => _writeCapabilities[id]?.contains(capability) ?? false;
 
   void registerExternalProfile(DeviceProfile profile) {
     _profiles[profile.id] = profile;

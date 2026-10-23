@@ -9,10 +9,12 @@ class SolarTokens extends ThemeExtension<SolarTokens> {
     required this.palette,
     required this.highContrast,
     required this.workshop,
+    required this.reduceTransparency,
   });
   final SolarPalette palette;
   final bool highContrast;
   final bool workshop;
+  final bool reduceTransparency;
   Color get success => palette.ok;
   Color get warning => palette.warning;
   Color get simulated => palette.simulated;
@@ -24,35 +26,23 @@ class SolarTokens extends ThemeExtension<SolarTokens> {
     SolarPalette? palette,
     bool? highContrast,
     bool? workshop,
+    bool? reduceTransparency,
   }) => SolarTokens(
     palette: palette ?? this.palette,
     highContrast: highContrast ?? this.highContrast,
     workshop: workshop ?? this.workshop,
+    reduceTransparency: reduceTransparency ?? this.reduceTransparency,
   );
   @override
   SolarTokens lerp(covariant SolarTokens? other, double t) =>
       other == null || t < .5 ? this : other;
 }
 
-abstract final class SolarColors {
-  static const ink = Color(0xFF1D1D1F);
-  static const deep = Color(0xFF1D1D1F);
-  static const green = Color(0xFF0071E3);
-  static const lime = Color(0xFFBF5AF2);
-  static const mist = Color(0xFFF5F5F7);
-  static const line = Color(0xFFD2D2D7);
-  static const amber = Color(0xFFB25000);
-  static const onDark = Color(0xFFFFFFFF);
-  static const onDarkStrong = Color(0xB3FFFFFF);
-  static const onDarkMuted = Color(0x99FFFFFF);
-  static const onDarkFaint = Color(0x8AFFFFFF);
-  static const transparent = Color(0x00000000);
-}
-
 ThemeData solarTheme({
   required Brightness brightness,
   bool highContrast = false,
   bool workshop = false,
+  bool reduceTransparency = false,
 }) {
   final palette = brightness == Brightness.dark
       ? SolarPalettes.dark
@@ -81,6 +71,7 @@ ThemeData solarTheme({
         palette: palette,
         highContrast: highContrast,
         workshop: workshop,
+        reduceTransparency: reduceTransparency,
       ),
     ],
     textTheme: TextTheme(
@@ -118,7 +109,7 @@ ThemeData solarTheme({
       color: palette.surface,
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
+      shape: RoundedSuperellipseBorder(
         borderRadius: BorderRadius.circular(SolarRadius.card),
         side: BorderSide(
           color: palette.separator,
@@ -127,17 +118,23 @@ ThemeData solarTheme({
       ),
     ),
     appBarTheme: AppBarTheme(
-      backgroundColor: palette.background,
-      surfaceTintColor: Colors.transparent,
+      backgroundColor: reduceTransparency
+          ? palette.background
+          : palette.background.withValues(alpha: .88),
+      surfaceTintColor: palette.background.withValues(alpha: 0),
       elevation: 0,
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: palette.surface,
+      backgroundColor: reduceTransparency
+          ? palette.surface
+          : palette.surface.withValues(alpha: .88),
       indicatorColor: palette.tint.withValues(alpha: .14),
       height: workshop ? 72 : 64,
     ),
     navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: palette.surface,
+      backgroundColor: reduceTransparency
+          ? palette.surface
+          : palette.surface.withValues(alpha: .88),
       indicatorColor: palette.tint.withValues(alpha: .14),
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
@@ -149,8 +146,45 @@ ThemeData solarTheme({
       },
     ),
     tooltipTheme: const TooltipThemeData(waitDuration: SolarMotion.normal),
-    visualDensity: workshop
-        ? VisualDensity.comfortable
-        : VisualDensity.standard,
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        minimumSize: Size(0, workshop ? 56 : 44),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(SolarRadius.control),
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        minimumSize: Size(0, workshop ? 56 : 44),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(SolarRadius.control),
+        ),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        minimumSize: Size(0, workshop ? 56 : 44),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(SolarRadius.control),
+        ),
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(minimumSize: Size.square(workshop ? 56 : 44)),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: WidgetStatePropertyAll(Size(0, workshop ? 56 : 44)),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SolarRadius.control),
+        borderSide: BorderSide(color: palette.separator),
+      ),
+    ),
+    materialTapTargetSize: MaterialTapTargetSize.padded,
+    visualDensity: VisualDensity.standard,
   );
 }

@@ -15,6 +15,33 @@ class BusFrame {
 
 enum TransmissionPurpose { documentedRead, verifiedParameterWrite }
 
+enum GatewayNegotiationState {
+  notNegotiated,
+  passiveAccepted,
+  activeReadAccepted,
+  writeAccepted,
+}
+
+class GatewayRuntimeStatus {
+  const GatewayRuntimeStatus({
+    required this.mode,
+    required this.negotiationState,
+    required this.allowedFrames,
+    required this.blockedFrames,
+    required this.droppedFrames,
+    required this.observedBusLoad,
+    required this.lastDecision,
+  });
+
+  final GatewayOperatingMode mode;
+  final GatewayNegotiationState negotiationState;
+  final int allowedFrames;
+  final int blockedFrames;
+  final int droppedFrames;
+  final double observedBusLoad;
+  final TransmissionDecision? lastDecision;
+}
+
 class TransmissionDecision {
   const TransmissionDecision._(this.allowed, this.reason);
   const TransmissionDecision.allow() : this._(true, 'allowed');
@@ -124,9 +151,13 @@ class LoopbackGatewayTransport implements FrameTransport {
     required this.maxFramesPerSecond,
     required this.busLoadCap,
     required this.audit,
+    this.negotiationState = GatewayNegotiationState.notNegotiated,
     this.cooldown = const Duration(seconds: 1),
     DateTime Function()? clock,
-  }) : _guard = guard,
+  }) : // Keep the public `guard:` parameter instead of exposing a private
+       // field name through the constructor API.
+       // ignore: prefer_initializing_formals
+       _guard = guard,
        _clock = clock ?? DateTime.now {
     audit.append('gateway_mode_started', {'mode': mode.name});
   }
@@ -136,6 +167,7 @@ class LoopbackGatewayTransport implements FrameTransport {
   final int maxFramesPerSecond;
   final double busLoadCap;
   final AuditChain audit;
+  final GatewayNegotiationState negotiationState;
   final Duration cooldown;
   final DateTime Function() _clock;
   final List<BusFrame> wire = [];
@@ -143,16 +175,27 @@ class LoopbackGatewayTransport implements FrameTransport {
   final List<DateTime> _sentAt = [];
   final List<DateTime> _errorTimestamps = [];
   int errorCount = 0;
+  int allowedCount = 0;
   int blockedCount = 0;
+  int droppedCount = 0;
+  TransmissionDecision? lastDecision;
   bool _closed = false;
 
   double get observedBusLoad {
     final now = _clock();
-    _errorTimestamps.removeWhere(
-      (time) => now.difference(time) >= cooldown,
-    );
+    _errorTimestamps.removeWhere((time) => now.difference(time) >= cooldown);
     return _errorTimestamps.isNotEmpty ? busLoadCap : 0.0;
   }
+
+  GatewayRuntimeStatus get status => GatewayRuntimeStatus(
+    mode: mode,
+    negotiationState: negotiationState,
+    allowedFrames: allowedCount,
+    blockedFrames: blockedCount,
+    droppedFrames: droppedCount,
+    observedBusLoad: observedBusLoad,
+    lastDecision: lastDecision,
+  );
 
   @override
   Stream<BusFrame> get frames => _controller.stream;
@@ -161,36 +204,44 @@ class LoopbackGatewayTransport implements FrameTransport {
   Future<void> send(BusFrame frame, TransmissionPurpose purpose) async {
     if (_closed) throw StateError('Transport is closed.');
     if (mode == GatewayOperatingMode.listenOnly) {
-      throw StateError('Passive mode cannot transmit.');
+      _reject(frame, 'Passive mode cannot transmit.');
     }
     if (mode == GatewayOperatingMode.activeRead &&
         purpose != TransmissionPurpose.documentedRead) {
-      throw StateError('Active-read mode cannot write.');
+      _reject(frame, 'Active-read mode cannot write.');
     }
     final decision = _guard.evaluate(frame, purpose);
+    lastDecision = decision;
     if (!decision.allowed) {
-      blockedCount++;
-      audit.append('frame_rejected', {
-        'identifier': frame.identifier,
-        'reason': decision.reason,
-      });
-      throw StateError(decision.reason);
+      _reject(frame, decision.reason);
     }
     final now = _clock();
     _sentAt.removeWhere(
       (time) => now.difference(time) >= const Duration(seconds: 1),
     );
     if (_sentAt.length >= maxFramesPerSecond || observedBusLoad >= busLoadCap) {
-      blockedCount++;
       audit.append('frame_backoff', {'identifier': frame.identifier});
-      throw StateError('Gateway rate or bus-load cap reached.');
+      _reject(frame, 'Gateway rate or bus-load cap reached.');
     }
     _sentAt.add(now);
     wire.add(frame);
+    allowedCount++;
+    lastDecision = const TransmissionDecision.allow();
     audit.append('frame_sent', {
       'identifier': frame.identifier,
       'purpose': purpose.name,
     });
+  }
+
+  Never _reject(BusFrame frame, String reason) {
+    blockedCount++;
+    droppedCount++;
+    lastDecision = TransmissionDecision.deny(reason);
+    audit.append('frame_rejected', {
+      'identifier': frame.identifier,
+      'reason': reason,
+    });
+    throw StateError(reason);
   }
 
   void receive(BusFrame frame) {

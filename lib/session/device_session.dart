@@ -11,6 +11,7 @@ import '../core/inverter_models.dart';
 import '../integration/compatibility_engine.dart';
 import '../integration/compatibility_models.dart';
 import '../integration/link_diagnostics.dart';
+import '../gateway/gateway_contract.dart';
 import '../parameters/parameter_backup.dart';
 import '../parameters/parameter_models.dart' hide RestorePlan;
 import '../parameters/write_pipeline.dart';
@@ -19,6 +20,7 @@ import '../protocol/bms_adapter.dart';
 import '../simulator/simulated_bms_adapter.dart';
 import '../simulator/simulated_inverter_adapter.dart';
 import '../simulator/simulation_scenario.dart';
+import '../transport/safe_frame_transport.dart';
 
 enum DeviceSessionMode { readOnly, writeAuthorized }
 
@@ -29,6 +31,7 @@ class DeviceSession extends ChangeNotifier {
     SimulationScenario scenario = SimulationScenario.communicationFaults,
     this.pollInterval = const Duration(milliseconds: 500),
     this.database,
+    LoopbackGatewayTransport? gatewayTransport,
     bool autoStart = true,
   }) : _scenario = scenario,
        _snapshot = ScenarioFactory.create(
@@ -38,8 +41,22 @@ class DeviceSession extends ChangeNotifier {
        _adapter = SimulatedBmsAdapter(
          scenario: scenario,
          initialTick: _initialTick(scenario),
-       ) {
+       ),
+       _providedGatewayTransport = gatewayTransport {
     _beginSession();
+    _gatewayTransport =
+        _providedGatewayTransport ??
+        LoopbackGatewayTransport(
+          mode: GatewayOperatingMode.listenOnly,
+          guard: const TransmissionGuard(
+            activeSession: true,
+            profileVerifiedForHardware: false,
+          ),
+          maxFramesPerSecond: 1,
+          busLoadCap: 0.1,
+          audit: _audit,
+          negotiationState: GatewayNegotiationState.passiveAccepted,
+        );
     auth.addListener(notifyListeners);
     if (database != null) _backups.addAll(database!.listBackups());
     if (autoStart) start();
@@ -48,6 +65,8 @@ class DeviceSession extends ChangeNotifier {
   final Duration pollInterval;
   final LocalDatabase? database;
   final AuthorizationController auth = AuthorizationController();
+  final LoopbackGatewayTransport? _providedGatewayTransport;
+  late final LoopbackGatewayTransport _gatewayTransport;
   SimulationScenario _scenario;
   TelemetrySnapshot _snapshot;
   SimulatedBmsAdapter _adapter;
@@ -75,8 +94,9 @@ class DeviceSession extends ChangeNotifier {
   SimulationScenario get scenario => _scenario;
   TelemetrySnapshot get snapshot => _snapshot;
   BmsAdapter get adapter => _adapter;
-  DeviceSessionMode get mode =>
-      auth.isUnlocked ? DeviceSessionMode.writeAuthorized : DeviceSessionMode.readOnly;
+  DeviceSessionMode get mode => auth.isUnlocked
+      ? DeviceSessionMode.writeAuthorized
+      : DeviceSessionMode.readOnly;
   DeviceSessionLinkState get linkState => _linkState;
   LinkHealth? get linkHealth => _linkHealth;
   Set<String> get alarmCodes => _alarmCodes;
@@ -87,9 +107,14 @@ class DeviceSession extends ChangeNotifier {
   Object? get lastError => _lastError;
   bool get simulated => true;
   InverterTelemetrySnapshot? get inverterSnapshot => _inverterSnapshot;
+  GatewayRuntimeStatus get gatewayStatus => _gatewayTransport.status;
   List<DiagnosticSessionRecord> get history => database?.listSessions() ?? [];
   List<DiagnosticEventRecord> eventsFor(String sessionId) =>
       database?.listEvents(sessionId) ?? [];
+  List<TelemetrySampleRecord> samplesFor(String sessionId) =>
+      database?.listTelemetrySamples(sessionId) ?? [];
+  String auditHeadFor(String sessionId) =>
+      database?.loadAuditHead(sessionId) ?? 'GENESIS';
 
   static const parameterDefinitions = <String, ParameterDefinition>{
     'charge_limit': ParameterDefinition(
@@ -171,12 +196,11 @@ class DeviceSession extends ChangeNotifier {
     // يُشتق عدد الرسائل المتوقعة من معدل الاستطلاع الفعلي:
     // بافتراض رسالتين لكل دورة استطلاع (telemetry + alarms) وفق الـ protocol
     // المحاكى. عند توفر profile حقيقي، يُمرَّر هذا الرقم من الـ adapter.
-    final expectedMessages =
-        pollInterval.inMilliseconds > 0
-            ? (const Duration(seconds: 1).inMilliseconds ~/
+    final expectedMessages = pollInterval.inMilliseconds > 0
+        ? (const Duration(seconds: 1).inMilliseconds ~/
                   pollInterval.inMilliseconds) *
-                2
-            : 2;
+              2
+        : 2;
     final receivedMessages = _linkState == DeviceSessionLinkState.online
         ? (expectedMessages * (1 - (_linkHealth?.errorRate ?? 0))).round()
         : 0;
@@ -191,7 +215,7 @@ class DeviceSession extends ChangeNotifier {
         window: Duration(seconds: 1),
         expectedMessages: expectedMessages,
         receivedMessages: receivedMessages,
-        timeouts: _linkHealth?.timeouts ?? 1,
+        timeouts: _linkHealth?.timeouts ?? 0,
         crcFailures: _linkHealth?.crcFailures ?? 0,
         inverterSoc: const SourcedValue.unavailable('inverter_not_connected'),
         batterySoc: batterySoc,
@@ -290,7 +314,8 @@ class DeviceSession extends ChangeNotifier {
       connectedModel: connectedModel,
       connectedFirmware: connectedFirmware,
       linkHealthy: _linkState == DeviceSessionLinkState.online,
-      writeLocked: !auth.isUnlocked ||
+      writeLocked:
+          !auth.isUnlocked ||
           _linkState != DeviceSessionLinkState.online ||
           _lastError != null,
       state: DeviceWriteState.known,
@@ -302,10 +327,7 @@ class DeviceSession extends ChangeNotifier {
     activeDeviceIdentity: 'SOLARDIAG-SIM-BMS',
     activeFirmware: 'simulator-v2',
     definitions: parameterDefinitions,
-    current: ParameterSnapshot(
-      _parameters,
-      capturedAt: DateTime.now().toUtc(),
-    ),
+    current: ParameterSnapshot(_parameters, capturedAt: DateTime.now().toUtc()),
   );
 
   /// استعادة نسخة احتياطية من المعاملات وفق خطة استعادة [RestorePlan].
@@ -358,17 +380,18 @@ class DeviceSession extends ChangeNotifier {
       definition: definition,
       requestedValue: requestedValue,
     );
-    final result = await VerifiedWritePipeline(
-      transport: _adapter.parameterTransport(),
-      audit: _audit,
-    ).execute(
-      change: change,
-      authorization: authorization,
-      safetyAcknowledged: safetyAcknowledged,
-      context: context,
-      confirmation: confirmation,
-      idempotencyKey: 'sim-${_writeSequence++}-$parameterId',
-    );
+    final result =
+        await VerifiedWritePipeline(
+          transport: _adapter.parameterTransport(),
+          audit: _audit,
+        ).execute(
+          change: change,
+          authorization: authorization,
+          safetyAcknowledged: safetyAcknowledged,
+          context: context,
+          confirmation: confirmation,
+          idempotencyKey: 'sim-${_writeSequence++}-$parameterId',
+        );
     _lastWriteResult = result;
     await refreshParameters();
     return result;
@@ -446,6 +469,24 @@ class DeviceSession extends ChangeNotifier {
         snapshotJson: snapshotJson,
         dataHash: sha256.convert(utf8.encode(snapshotJson)).toString(),
       ),
+    );
+    store.saveTelemetrySample(
+      sessionId: _sessionId,
+      capturedAt: snapshot.timestamp,
+      snapshotJson: snapshotJson,
+      qualityFlags: {
+        'voltage': snapshot.voltage.quality.name,
+        'current': snapshot.current.quality.name,
+        'soc': snapshot.soc.quality.name,
+        'soh': snapshot.soh.quality.name,
+        'cells': [
+          for (final cell in snapshot.cellMeasurements) cell.quality.name,
+        ],
+        'temperatures': [
+          for (final sensor in snapshot.temperatureSensors)
+            sensor.measurement.quality.name,
+        ],
+      },
     );
     _persistStateEvents();
   }

@@ -120,11 +120,7 @@ class ParameterBackup {
         .map((c) => '${c.definition.id}:${c.requestedValue}')
         .join('|');
     final hash = sha256.convert(utf8.encode(diffBuffer)).toString();
-    return RestorePlan(
-      backup: this,
-      changes: changes,
-      orderedDiffHash: hash,
-    );
+    return RestorePlan(backup: this, changes: changes, orderedDiffHash: hash);
   }
 
   List<ParameterDifference> compare(Map<String, num> currentValues) {

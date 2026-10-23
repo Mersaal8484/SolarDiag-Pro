@@ -10,7 +10,25 @@ enum IntegrationVerdict {
 enum EvidenceSource {
   deviceReported,
   verifiedProfile,
+  communitySourced, // C4: community-sourced data; downgrades compatible→attention
   userProvided,
+  unavailable,
+}
+
+/// Summarises the trust level of the weakest evidence source in a finding.
+/// Used by [CompatibilityEngine] to apply evidence-quality weighting (C4).
+enum EvidenceQuality {
+  /// Both configured value and reference came from verified sources.
+  verified,
+
+  /// At least one value came from community-sourced data; reduced confidence.
+  communitySourced,
+
+  /// At least one value was entered by a user and is not independently
+  /// verified; a compatible result is capped at attention.
+  userProvided,
+
+  /// At least one value is unavailable; no quality assertion possible.
   unavailable,
 }
 
@@ -74,11 +92,15 @@ class CompatibilityFinding {
     required this.state,
     required this.evidence,
     required this.message,
+    this.evidenceQuality = EvidenceQuality.verified,
   });
   final String code;
   final CompatibilityState state;
   final Map<String, Object?> evidence;
   final String message;
+
+  /// Quality of the weakest evidence source that produced this finding (C4).
+  final EvidenceQuality evidenceQuality;
 }
 
 class CompatibilityAssessment {

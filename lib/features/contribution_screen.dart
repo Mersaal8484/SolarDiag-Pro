@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../app/theme.dart';
 import '../contribution/redaction.dart';
+import '../design/solar_icon.dart';
+import '../design/solar_icons.g.dart';
 import '../l10n/generated/app_localizations.dart';
 
 class ContributionScreen extends StatefulWidget {
@@ -60,7 +62,7 @@ class _ContributionScreenState extends State<ContributionScreen> {
               title: Text(l10n.selectData),
               isActive: step >= 0,
               content: _Panel(
-                icon: Icons.folder_open_outlined,
+                icon: SolarIcons.library,
                 title: l10n.ownedDeviceLog,
                 detail: l10n.syntheticExcluded,
               ),
@@ -93,7 +95,7 @@ class _ContributionScreenState extends State<ContributionScreen> {
               title: Text(l10n.submit),
               isActive: step >= 3,
               content: _Panel(
-                icon: Icons.cloud_off_outlined,
+                icon: SolarIcons.offline,
                 title: l10n.mockPortalOnly,
                 detail: logs || notes ? l10n.packageReady : l10n.selectConsent,
               ),
@@ -106,7 +108,12 @@ class _ContributionScreenState extends State<ContributionScreen> {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                const Icon(Icons.system_update_alt, color: SolarColors.green),
+                SolarIcon(
+                  SolarIcons.librarySync,
+                  color: Theme.of(
+                    context,
+                  ).extension<SolarTokens>()!.palette.tint,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -131,7 +138,7 @@ class _ContributionScreenState extends State<ContributionScreen> {
 
 class _Panel extends StatelessWidget {
   const _Panel({required this.icon, required this.title, required this.detail});
-  final IconData icon;
+  final SolarIconData icon;
   final String title;
   final String detail;
   @override
@@ -143,7 +150,10 @@ class _Panel extends StatelessWidget {
     ),
     child: Row(
       children: [
-        Icon(icon, color: SolarColors.green),
+        SolarIcon(
+          icon,
+          color: Theme.of(context).extension<SolarTokens>()!.palette.tint,
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -164,32 +174,32 @@ class _Preview extends StatelessWidget {
   const _Preview({required this.preview});
   final RedactionResult preview;
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: SolarColors.deep,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          preview.redacted,
-          style: const TextStyle(
-            color: SolarColors.onDarkStrong,
-            fontFamily: 'monospace',
+  Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: palette.labelPrimary,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            preview.redacted,
+            style: TextStyle(
+              color: palette.background.withValues(alpha: .72),
+              fontFamily: 'monospace',
+            ),
           ),
         ),
-      ),
-      const SizedBox(height: 10),
-      Text(
-        AppLocalizations.of(context).redactedFields(preview.changes.length),
-        style: const TextStyle(
-          fontWeight: FontWeight.w800,
-          color: SolarColors.green,
+        const SizedBox(height: 10),
+        Text(
+          AppLocalizations.of(context).redactedFields(preview.changes.length),
+          style: TextStyle(fontWeight: FontWeight.w800, color: palette.tint),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }

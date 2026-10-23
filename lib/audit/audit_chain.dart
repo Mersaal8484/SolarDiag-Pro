@@ -74,7 +74,7 @@ abstract interface class SecretStore {
 
 class InMemorySecretStore implements SecretStore {
   InMemorySecretStore([Map<String, List<int>>? initial])
-      : _secrets = initial ?? {};
+    : _secrets = initial ?? {};
   final Map<String, List<int>> _secrets;
 
   void setSecret(String keyId, Object secret) {
@@ -91,9 +91,9 @@ class InMemorySecretStore implements SecretStore {
 
   @override
   List<int> getOrCreateSecretSync(String keyId) => _secrets.putIfAbsent(
-        keyId,
-        () => List<int>.generate(32, (i) => (i * 31 + 17) % 256),
-      );
+    keyId,
+    () => List<int>.generate(32, (i) => (i * 31 + 17) % 256),
+  );
 }
 
 abstract interface class AuditChainStore {
@@ -191,16 +191,18 @@ class AuditChain {
     AuditChainStore? store,
     this.secretStore,
     this.keyId = 'installation_audit_key',
-  })  : _clock = clock ?? DateTime.now,
-        _store = store,
-        _entries = [];
+  }) : _clock = clock ?? DateTime.now,
+       // Keep the public `store:` parameter instead of exposing a private
+       // field name through the constructor API.
+       // ignore: prefer_initializing_formals
+       _store = store,
+       _entries = [];
 
   factory AuditChain.inMemory({
     DateTime Function()? clock,
     SecretStore? secretStore,
     String keyId = 'installation_audit_key',
-  }) =>
-      AuditChain(clock: clock, secretStore: secretStore, keyId: keyId);
+  }) => AuditChain(clock: clock, secretStore: secretStore, keyId: keyId);
 
   AuditChain._(
     this._clock,
@@ -245,8 +247,10 @@ class AuditChain {
     }
     if (secretStore != null && stored.head != 'GENESIS') {
       final secret = secretStore.getOrCreateSecretSync(keyId);
-      final expectedMac =
-          Hmac(sha256, secret).convert(utf8.encode(stored.head)).toString();
+      final expectedMac = Hmac(
+        sha256,
+        secret,
+      ).convert(utf8.encode(stored.head)).toString();
       if (stored.headMac != expectedMac) {
         throw const FormatException('Audit head MAC verification failed.');
       }
@@ -279,7 +283,7 @@ class AuditChain {
     if (secretStore != null && _store != null) {
       final secret = secretStore!.getOrCreateSecretSync(keyId);
       final mac = Hmac(sha256, secret).convert(utf8.encode(head)).toString();
-      _store!.saveHeadMac(head, mac);
+      _store.saveHeadMac(head, mac);
     }
     return entry;
   }

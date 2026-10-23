@@ -32,6 +32,8 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+*.rar
+test/golden/failures/
 
 # Symbolication related
 app.*.symbols

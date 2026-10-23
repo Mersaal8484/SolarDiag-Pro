@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
-import '../l10n/generated/app_localizations.dart';
+
 import '../app/theme.dart';
+import '../l10n/generated/app_localizations.dart';
+import '../design/solar_icon.dart';
+import '../design/solar_icons.g.dart';
+import '../design/accessibility.dart';
 import '../identification/identification_state_machine.dart';
 import '../session/device_session.dart';
+import '../gateway/gateway_contract.dart';
+import '../transport/safe_frame_transport.dart';
 import 'identification_evidence_panel.dart';
 
 class GatewayScreen extends StatelessWidget {
@@ -12,6 +18,7 @@ class GatewayScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     final session = DeviceSessionScope.of(context);
+    final gateway = session.gatewayStatus;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -30,12 +37,16 @@ class GatewayScreen extends StatelessWidget {
               runSpacing: 18,
               children: [
                 _Status(
-                  icon: Icons.visibility_outlined,
-                  label: s.defaultMode,
-                  value: s.listenOnly,
+                  icon: SolarIcons.readOnly,
+                  label: s.operatingMode,
+                  value: switch (gateway.mode) {
+                    GatewayOperatingMode.listenOnly => s.listenOnly,
+                    GatewayOperatingMode.activeRead => s.activeRead,
+                    GatewayOperatingMode.write => s.writeMode,
+                  },
                 ),
                 _Status(
-                  icon: Icons.thermostat_outlined,
+                  icon: SolarIcons.gateway,
                   label: s.gateway,
                   value: switch (session.linkState) {
                     DeviceSessionLinkState.connecting => s.connecting,
@@ -44,15 +55,61 @@ class GatewayScreen extends StatelessWidget {
                   },
                 ),
                 _Status(
-                  icon: Icons.security,
+                  icon: SolarIcons.locked,
                   label: s.transmissionGuard,
-                  value: s.transmissionBlocked,
+                  value: gateway.lastDecision == null
+                      ? s.noTransmissionAttempted
+                      : gateway.lastDecision!.allowed
+                      ? s.guardAllowed
+                      : s.guardBlocked,
+                ),
+                _Status(
+                  icon: SolarIcons.confirmedCheck,
+                  label: s.allowedFrames,
+                  value: '${gateway.allowedFrames}',
+                ),
+                _Status(
+                  icon: SolarIcons.critical,
+                  label: s.blockedFrames,
+                  value: '${gateway.blockedFrames}',
+                ),
+                _Status(
+                  icon: SolarIcons.warning,
+                  label: s.droppedFrames,
+                  value: '${gateway.droppedFrames}',
+                ),
+                _Status(
+                  icon: SolarIcons.currentFlow,
+                  label: s.observedBusLoad,
+                  value:
+                      '${localizedNumber(context, gateway.observedBusLoad * 100, fractionDigits: 1)}%',
+                ),
+                _Status(
+                  icon: SolarIcons.linkDiagnostics,
+                  label: s.negotiationState,
+                  value: switch (gateway.negotiationState) {
+                    GatewayNegotiationState.notNegotiated => s.notNegotiated,
+                    GatewayNegotiationState.passiveAccepted =>
+                      s.passiveNegotiated,
+                    GatewayNegotiationState.activeReadAccepted =>
+                      s.activeReadNegotiated,
+                    GatewayNegotiationState.writeAccepted => s.writeNegotiated,
+                  },
                 ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 18),
+        if (gateway.lastDecision case final decision?) ...[
+          Text(
+            s.lastGuardDecision,
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 8),
+          Text(decision.reason, key: const Key('gateway-last-decision-reason')),
+          const SizedBox(height: 18),
+        ],
         Text(
           s.connectionChecklist,
           style: Theme.of(context).textTheme.headlineSmall,
@@ -66,7 +123,7 @@ class GatewayScreen extends StatelessWidget {
         ])
           Card(
             child: ListTile(
-              leading: const Icon(Icons.check_box_outline_blank),
+              leading: const SolarIcon(SolarIcons.evidence),
               title: Text(item),
             ),
           ),
@@ -96,7 +153,7 @@ class GatewayScreen extends StatelessWidget {
 
 class _Status extends StatelessWidget {
   const _Status({required this.icon, required this.label, required this.value});
-  final IconData icon;
+  final SolarIconData icon;
   final String label;
   final String value;
   @override
@@ -104,7 +161,10 @@ class _Status extends StatelessWidget {
     width: 190,
     child: Row(
       children: [
-        Icon(icon, color: SolarColors.green),
+        SolarIcon(
+          icon,
+          color: Theme.of(context).extension<SolarTokens>()!.palette.tint,
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(

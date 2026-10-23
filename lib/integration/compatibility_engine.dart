@@ -1,7 +1,9 @@
 import 'compatibility_models.dart';
 
 class CompatibilityEngine {
-  const CompatibilityEngine();
+  const CompatibilityEngine({this.limitAttentionMargin = .05});
+
+  final double limitAttentionMargin;
 
   CompatibilityAssessment assess({
     required BatteryIntegrationProfile battery,
@@ -65,21 +67,37 @@ class CompatibilityEngine {
     }
     final value = configured.value!;
     final expected = window.value!;
+    final quality = _qualityOf([configured.source, window.source]);
+    final compatible = expected.contains(value);
+    final span = expected.maximum - expected.minimum;
+    final nearLimit =
+        compatible &&
+        span > 0 &&
+        ((value - expected.minimum).abs() / span <= limitAttentionMargin ||
+            (expected.maximum - value).abs() / span <= limitAttentionMargin);
     return CompatibilityFinding(
       code: code,
-      state: expected.contains(value)
-          ? CompatibilityState.compatible
-          : CompatibilityState.incompatible,
+      state: _weightedState(
+        compatible: compatible,
+        quality: quality,
+        nearLimit: nearLimit,
+      ),
       evidence: {
         'configured_v': value,
         'minimum_v': expected.minimum,
         'maximum_v': expected.maximum,
         'configured_source': configured.source.name,
         'window_source': window.source.name,
+        'near_limit': nearLimit,
       },
-      message: expected.contains(value)
-          ? 'Configured voltage is inside the verified battery window.'
+      message: compatible
+          ? _compatibleMessage(
+              quality,
+              normal: 'Configured voltage is inside the battery window.',
+              nearLimit: nearLimit,
+            )
           : 'Configured voltage is outside the verified battery window.',
+      evidenceQuality: quality,
     );
   }
 
@@ -100,20 +118,33 @@ class CompatibilityEngine {
       );
     }
     final safe = configured.value! <= maximum.value!;
+    final quality = _qualityOf([configured.source, maximum.source]);
+    final nearLimit =
+        safe &&
+        maximum.value! > 0 &&
+        configured.value! / maximum.value! >= 1 - limitAttentionMargin;
     return CompatibilityFinding(
       code: code,
-      state: safe
-          ? CompatibilityState.compatible
-          : CompatibilityState.incompatible,
+      state: _weightedState(
+        compatible: safe,
+        quality: quality,
+        nearLimit: nearLimit,
+      ),
       evidence: {
         'configured_a': configured.value,
         'maximum_a': maximum.value,
         'configured_source': configured.source.name,
         'maximum_source': maximum.source.name,
+        'near_limit': nearLimit,
       },
       message: safe
-          ? 'Configured current does not exceed the verified battery limit.'
+          ? _compatibleMessage(
+              quality,
+              normal: 'Configured current does not exceed the battery limit.',
+              nearLimit: nearLimit,
+            )
           : 'Configured current exceeds the verified battery limit.',
+      evidenceQuality: quality,
     );
   }
 
@@ -178,5 +209,46 @@ class CompatibilityEngine {
           ? 'A verified battery protocol is shared.'
           : 'No declared battery protocol is shared.',
     );
+  }
+
+  EvidenceQuality _qualityOf(Iterable<EvidenceSource> sources) {
+    if (sources.contains(EvidenceSource.unavailable)) {
+      return EvidenceQuality.unavailable;
+    }
+    if (sources.contains(EvidenceSource.userProvided)) {
+      return EvidenceQuality.userProvided;
+    }
+    if (sources.contains(EvidenceSource.communitySourced)) {
+      return EvidenceQuality.communitySourced;
+    }
+    return EvidenceQuality.verified;
+  }
+
+  CompatibilityState _weightedState({
+    required bool compatible,
+    required EvidenceQuality quality,
+    required bool nearLimit,
+  }) {
+    if (!compatible) return CompatibilityState.incompatible;
+    if (quality != EvidenceQuality.verified || nearLimit) {
+      return CompatibilityState.attention;
+    }
+    return CompatibilityState.compatible;
+  }
+
+  String _compatibleMessage(
+    EvidenceQuality quality, {
+    required String normal,
+    required bool nearLimit,
+  }) {
+    if (nearLimit) return '$normal The configured value is near a limit.';
+    return switch (quality) {
+      EvidenceQuality.communitySourced =>
+        '$normal Community-sourced evidence requires verification.',
+      EvidenceQuality.userProvided =>
+        '$normal User-provided evidence requires verification.',
+      EvidenceQuality.unavailable => 'Required evidence is unavailable.',
+      EvidenceQuality.verified => normal,
+    };
   }
 }

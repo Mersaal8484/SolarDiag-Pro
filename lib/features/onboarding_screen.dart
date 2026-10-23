@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../app/theme.dart';
+import '../design/solar_icon.dart';
+import '../design/solar_icons.g.dart';
+import '../design/tokens.g.dart';
 import '../l10n/generated/app_localizations.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -26,13 +29,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     final pages = [
-      (
-        Icons.energy_savings_leaf_outlined,
-        s.onboardingPurpose,
-        s.onboardingPurposeDetail,
-      ),
-      (Icons.shield_outlined, s.onboardingReadOnly, s.onboardingReadOnlyDetail),
-      (Icons.cable, s.onboardingConnect, s.onboardingConnectDetail),
+      (SolarIcons.solar, s.onboardingPurpose, s.onboardingPurposeDetail),
+      (SolarIcons.readOnly, s.onboardingReadOnly, s.onboardingReadOnlyDetail),
+      (SolarIcons.gateway, s.onboardingConnect, s.onboardingConnectDetail),
     ];
     return Scaffold(
       body: SafeArea(
@@ -62,7 +61,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       width: page == i ? 28 : 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: page == i ? SolarColors.green : SolarColors.line,
+                        color: page == i
+                            ? Theme.of(
+                                context,
+                              ).extension<SolarTokens>()!.palette.tint
+                            : Theme.of(
+                                context,
+                              ).extension<SolarTokens>()!.palette.separator,
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
@@ -74,7 +79,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     onPressed: page == pages.length - 1
                         ? widget.onComplete
                         : () => controller.nextPage(
-                            duration: const Duration(milliseconds: 220),
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : SolarMotion.normal,
                             curve: Curves.easeOut,
                           ),
                     child: Text(
@@ -99,43 +106,46 @@ class _OnboardingPage extends StatelessWidget {
     required this.title,
     required this.detail,
   });
-  final IconData icon;
+  final SolarIconData icon;
   final String title;
   final String detail;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(32),
-    child: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 620),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: SolarColors.lime,
-                borderRadius: BorderRadius.circular(30),
+  Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: palette.simulated,
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: SolarIcon(icon, size: 46, color: palette.labelPrimary),
               ),
-              child: Icon(icon, size: 46, color: SolarColors.deep),
-            ),
-            const SizedBox(height: 30),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.displaySmall,
-            ),
-            const SizedBox(height: 14),
-            Text(
-              detail,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ],
+              const SizedBox(height: 30),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.displaySmall,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                detail,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../protocol/capabilities.dart';
-import '../protocol/device_profile.dart';
 import '../protocol/profile_registry.dart';
 import 'profile_integrity.dart';
 
@@ -182,8 +181,11 @@ class LibrarySync {
   int get highestRevocationSequence => _highestRevocationSequence;
 
   void recordRevocationSequence(int sequence) {
-    if (_highestRevocationSequence > 0 && sequence <= _highestRevocationSequence) {
-      throw StateError('Revocation list sequence rollback: $sequence <= $_highestRevocationSequence');
+    if (_highestRevocationSequence > 0 &&
+        sequence <= _highestRevocationSequence) {
+      throw StateError(
+        'Revocation list sequence rollback: $sequence <= $_highestRevocationSequence',
+      );
     }
     _highestRevocationSequence = sequence;
   }

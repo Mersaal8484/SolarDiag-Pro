@@ -14,6 +14,32 @@ class ModbusRtuFrame {
   bool get isException => functionCode & 0x80 != 0;
 }
 
+// ── C1 fix: sealed result type so exception frames are returned, not thrown ──
+
+/// A discriminated result from [ModbusRtuStreamDecoder.add].
+/// Use [isException] to branch; cast to the concrete subtype to access fields.
+sealed class ModbusFrameResult {
+  const ModbusFrameResult();
+  bool get isException;
+}
+
+/// A successfully decoded data frame.
+final class SuccessFrameResult extends ModbusFrameResult {
+  const SuccessFrameResult(this.frame);
+  final ModbusRtuFrame frame;
+  @override
+  bool get isException => false;
+}
+
+/// A decoded Modbus exception-response frame.
+/// The device answered with an error code instead of data.
+final class ExceptionFrameResult extends ModbusFrameResult {
+  const ExceptionFrameResult(this.exception);
+  final ModbusExceptionResponse exception;
+  @override
+  bool get isException => true;
+}
+
 class ModbusRtuCodec {
   const ModbusRtuCodec();
   List<int> encode(ModbusRtuFrame frame) {
@@ -69,12 +95,16 @@ class ModbusRtuStreamDecoder {
   ModbusRtuStreamDecoder({this.maximumFrameLength = 256});
   final int maximumFrameLength;
   final List<int> _buffer = [];
-  List<ModbusRtuFrame> add(List<int> bytes) {
+
+  /// Feeds [bytes] into the decoder buffer and returns all complete frames
+  /// found. Exception-response frames from the device are returned as
+  /// [ExceptionFrameResult] instead of being re-thrown (C1 fix).
+  List<ModbusFrameResult> add(List<int> bytes) {
     _buffer.addAll(bytes);
     if (_buffer.length > maximumFrameLength * 2) {
       _buffer.removeRange(0, _buffer.length - maximumFrameLength);
     }
-    final frames = <ModbusRtuFrame>[];
+    final results = <ModbusFrameResult>[];
     while (_buffer.length >= 5) {
       var found = false;
       for (var start = 0; start <= _buffer.length - 5 && !found; start++) {
@@ -86,12 +116,18 @@ class ModbusRtuStreamDecoder {
           final candidate = _buffer.sublist(start, end);
           if (!ModbusCrc16.valid(candidate)) continue;
           try {
-            frames.add(const ModbusRtuCodec().decode(candidate));
+            final frame = const ModbusRtuCodec().decode(candidate);
+            results.add(SuccessFrameResult(frame));
             _buffer.removeRange(0, end);
             found = true;
             break;
-          } on ModbusExceptionResponse {
-            rethrow;
+          } on ModbusExceptionResponse catch (e) {
+            // C1: exception responses are valid protocol messages; capture them
+            // as ExceptionFrameResult rather than re-throwing through the caller.
+            results.add(ExceptionFrameResult(e));
+            _buffer.removeRange(0, end);
+            found = true;
+            break;
           } on FormatException {
             continue;
           }
@@ -102,6 +138,6 @@ class ModbusRtuStreamDecoder {
         break;
       }
     }
-    return frames;
+    return results;
   }
 }
