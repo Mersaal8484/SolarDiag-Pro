@@ -327,11 +327,9 @@ class AuditChain {
     }
     final keyAvailable = secret != null;
     if (!keyAvailable) _hasUnsignedEntries = true;
-    final persistentMac = store == null || !keyAvailable
+    final persistentMac = store == null || secret == null
         ? null
-        : Hmac(sha256, secret!)
-              .convert(utf8.encode(entry.hash))
-              .toString();
+        : Hmac(sha256, secret).convert(utf8.encode(entry.hash)).toString();
     _entries.add(entry);
     if (store != null && persistentMac != null) {
       store.saveEntries(entries);

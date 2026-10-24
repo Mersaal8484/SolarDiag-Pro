@@ -31,12 +31,11 @@ class DeviceSession extends ChangeNotifier {
     SimulationScenario scenario = SimulationScenario.communicationFaults,
     this.pollInterval = const Duration(milliseconds: 500),
     this.database,
-    SecretStore? auditSecretStore,
+    this.auditSecretStore,
     TechnicianAuthenticator? authenticator,
     LoopbackGatewayTransport? gatewayTransport,
     bool autoStart = true,
-  }) : _auditSecretStore = auditSecretStore,
-       _scenario = scenario,
+  }) : _scenario = scenario,
        _snapshot = ScenarioFactory.create(
          scenario,
          tick: _initialTick(scenario),
@@ -68,7 +67,7 @@ class DeviceSession extends ChangeNotifier {
 
   final Duration pollInterval;
   final LocalDatabase? database;
-  final SecretStore? _auditSecretStore;
+  final SecretStore? auditSecretStore;
   final AuthorizationController auth;
   final LoopbackGatewayTransport? _providedGatewayTransport;
   late final LoopbackGatewayTransport _gatewayTransport;
@@ -252,7 +251,7 @@ class DeviceSession extends ChangeNotifier {
               database: database!,
               sessionId: _sessionId,
             ),
-      secretStore: _auditSecretStore,
+      secretStore: auditSecretStore,
     );
   }
 

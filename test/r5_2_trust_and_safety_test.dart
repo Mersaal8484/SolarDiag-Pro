@@ -196,16 +196,29 @@ void main() {
         'family': 'Family',
         'models': ['M1'],
         'firmware_ranges': ['v1'],
-        'provenance': {'source': 'test', 'verified_by': 'automated-tests'},
+        'simulated': false,
+        'provenance': {
+          'source': 'test',
+          'document_id': 'fixture-doc-1',
+          'retrieved_on': '2026-10-24',
+          'verified_by': 'automated-tests',
+        },
         'transport': {
           'interface': 'can',
           'data_formats': ['candump'],
         },
-        'allowed_modbus_read_ranges': [
-          {'start': 0, 'end': 1},
+        'allowed_read_frames': <int>[],
+        'allowed_modbus_read_ranges': <Map<String, dynamic>>[
+          <String, dynamic>{'start': 0, 'end': 1},
         ],
+        'telemetry_map': <Map<String, dynamic>>[],
+        'alarm_dictionary': <String, dynamic>{},
         'capabilities': capabilities,
         'parameters': parameters,
+        'topology': <String, dynamic>{},
+        'inverter_link': <String, dynamic>{},
+        'test_vectors': <Map<String, dynamic>>[],
+        'connection_checklist': <Map<String, dynamic>>[],
       });
     }
 
@@ -475,7 +488,15 @@ class _MemoryAuditStore implements AuditChainStore {
   String? savedMac;
 
   @override
-  StoredAuditChain? load() => chain;
+  StoredAuditChain? load() {
+    final stored = chain;
+    if (stored == null) return null;
+    return StoredAuditChain(
+      entries: stored.entries,
+      head: stored.head,
+      headMac: savedMac,
+    );
+  }
 
   @override
   void saveEntries(List<AuditEntry> entries) {

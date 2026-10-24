@@ -182,23 +182,20 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final authorization = session.auth.current;
     if (authorization == null) return;
     final contextObj = session.createWriteContext();
-    final tokens = <ConfirmationToken>[];
-    for (final change in plan.changes) {
+    final tokens = plan.changes.map((change) {
       final before = session.parameters[change.definition.id] ?? 0;
       final diffHash = VerifiedWritePipeline.previewHash(
         change,
         before,
         contextObj,
       );
-      tokens.add(
-        createConfirmationToken(
-          shownPlanHash: diffHash,
-          deviceId: contextObj.deviceId,
-          sessionId: contextObj.sessionId,
-          expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
-        ),
+      return createConfirmationToken(
+        shownPlanHash: diffHash,
+        deviceId: contextObj.deviceId,
+        sessionId: contextObj.sessionId,
+        expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
       );
-    }
+    }).toList();
     final results = await session.restoreParameterBackup(
       plan: plan,
       authorization: authorization,
