@@ -284,7 +284,7 @@ class LibrarySync {
     }
   }
 
-  void recordRevocationSequence(int sequence) {
+  Future<void> recordRevocationSequence(int sequence) async {
     if (_highestRevocationSequence > 0 &&
         sequence < _highestRevocationSequence) {
       throw StateError(
@@ -292,7 +292,7 @@ class LibrarySync {
       );
     }
     _highestRevocationSequence = sequence;
-    store.saveHighestRevocationSequence(sequence);
+    await store.saveHighestRevocationSequence(sequence);
   }
 
   Future<bool> apply(
