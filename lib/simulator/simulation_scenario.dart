@@ -14,16 +14,20 @@ enum SimulationScenario {
   identityMismatch,
 }
 
-class SimulatedModule {
+class SimulatedModule implements ModuleStatus {
   const SimulatedModule({
     required this.address,
     required this.role,
     required this.soc,
     required this.current,
   });
+  @override
   final int address;
+  @override
   final String role;
+  @override
   final double soc;
+  @override
   final double current;
 }
 

@@ -31,6 +31,9 @@ class DeviceSession extends ChangeNotifier {
     this.pollInterval = const Duration(milliseconds: 500),
     this.database,
     this.auditSecretStore,
+    this.batteryIntegrationProfile,
+    this.inverterIntegrationProfile,
+    this.linkHealthReader,
     TechnicianAuthenticator? authenticator,
     LoopbackGatewayTransport? gatewayTransport,
     bool autoStart = true,
@@ -67,6 +70,9 @@ class DeviceSession extends ChangeNotifier {
   final Duration pollInterval;
   final LocalDatabase? database;
   final SecretStore? auditSecretStore;
+  final BatteryIntegrationProfile? batteryIntegrationProfile;
+  final InverterIntegrationProfile? inverterIntegrationProfile;
+  final LinkHealth Function()? linkHealthReader;
   final AuthorizationController auth;
   final LoopbackGatewayTransport? _providedGatewayTransport;
   late final LoopbackGatewayTransport _gatewayTransport;
@@ -159,7 +165,7 @@ class DeviceSession extends ChangeNotifier {
   };
 
   CompatibilityAssessment get compatibilityAssessment {
-    final battery = BatteryIntegrationProfile(
+    final battery = batteryIntegrationProfile ?? BatteryIntegrationProfile(
       chargeVoltageWindow: _snapshot.chargeVoltageLimit.value == null
           ? const SourcedValue.unavailable('not_reported')
           : SourcedValue.reported(
@@ -185,7 +191,7 @@ class DeviceSession extends ChangeNotifier {
       chemistry: const SourcedValue.unavailable('profile_required'),
       spokenProtocols: const {},
     );
-    const inverter = InverterIntegrationProfile(
+    final inverter = inverterIntegrationProfile ?? const InverterIntegrationProfile(
       configuredChargeVoltage: SourcedValue.unavailable(
         'inverter_not_connected',
       ),
@@ -208,16 +214,15 @@ class DeviceSession extends ChangeNotifier {
   }
 
   LinkDiagnosticResult get linkDiagnostics {
-    // يُشتق عدد الرسائل المتوقعة من معدل الاستطلاع الفعلي:
-    // بافتراض رسالتين لكل دورة استطلاع (telemetry + alarms) وفق الـ protocol
-    // المحاكى. عند توفر profile حقيقي، يُمرَّر هذا الرقم من الـ adapter.
-    final expectedMessages = pollInterval.inMilliseconds > 0
+    final countersAvailable = _linkHealth != null;
+    final expectedMessages = countersAvailable && pollInterval.inMilliseconds > 0
         ? (const Duration(seconds: 1).inMilliseconds ~/
                   pollInterval.inMilliseconds) *
               2
-        : 2;
-    final receivedMessages = _linkState == DeviceSessionLinkState.online
-        ? (expectedMessages * (1 - (_linkHealth?.errorRate ?? 0))).round()
+        : 0;
+    final receivedMessages = countersAvailable &&
+            _linkState == DeviceSessionLinkState.online
+        ? (expectedMessages * (1 - _linkHealth!.errorRate)).round()
         : 0;
     final batterySoc = _snapshot.soc.value == null
         ? const SourcedValue<double>.unavailable('not_reported')
@@ -436,7 +441,8 @@ class DeviceSession extends ChangeNotifier {
     try {
       _lastIdentification ??= await _adapter.identify();
       final next = await _adapter.readTelemetry();
-      final health = await _adapter.health();
+      final health =
+          linkHealthReader?.call() ?? await _adapter.health();
       final alarms = await _adapter.readAlarms();
       _inverterSnapshot = await _inverterAdapter.readTelemetry();
       _inverterAdapter.simulationClock?.advance();

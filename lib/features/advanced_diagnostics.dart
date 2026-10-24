@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../app/theme.dart';
+import '../core/battery_models.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../design/accessibility.dart';
 import '../design/solar_icon.dart';
@@ -30,7 +31,7 @@ class AdvancedDiagnosticsScreen extends StatelessWidget {
           const SizedBox(height: 10),
           Text(s.diagnosticEvidenceNote),
           const SizedBox(height: 24),
-          _SohUnavailable(reason: assessment.reason),
+          _SohCard(assessment: assessment),
           const SizedBox(height: 16),
           for (final finding in assessment.findings)
             Padding(
@@ -43,13 +44,21 @@ class AdvancedDiagnosticsScreen extends StatelessWidget {
   }
 }
 
-class _SohUnavailable extends StatelessWidget {
-  const _SohUnavailable({required this.reason});
-  final String reason;
+class _SohCard extends StatelessWidget {
+  const _SohCard({required this.assessment});
+  final HealthAssessment assessment;
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
+    final measurement = assessment.stateOfHealth;
+    final value = measurement.value;
+    final description = value == null
+        ? assessment.reason == DataAbsenceReason.notReported
+              ? s.sohUnavailableReason
+              : s.diagnosticEvidenceNote
+        : '${localizedNumber(context, value, fractionDigits: 1)}'
+              '${measurement.unit == null ? '' : ' ${measurement.unit}'}';
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -65,7 +74,7 @@ class _SohUnavailable extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  s.sohUnavailable,
+                  value == null ? s.sohUnavailable : s.stateOfHealth,
                   style: TextStyle(
                     color: palette.background,
                     fontWeight: FontWeight.w800,
@@ -74,7 +83,7 @@ class _SohUnavailable extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  s.sohUnavailableReason,
+                  description,
                   style: TextStyle(
                     color: palette.background.withValues(alpha: .72),
                   ),
@@ -176,6 +185,7 @@ class _FindingCard extends StatelessWidget {
     'temperature_unavailable' => s.temperatureUnavailable,
     'temperature_normal' => s.temperatureNormal,
     'temperature_high' => s.temperatureHigh,
+    'cellOvervoltageAlarm' => s.cellOvervoltageAlarm,
     'cell_overvoltage' => s.cellOvervoltageAlarm,
     _ => s.unrecognizedAlarm,
   };
@@ -185,6 +195,7 @@ class _FindingCard extends StatelessWidget {
     'temperature_unavailable_detail' => s.temperatureUnavailableDetail,
     'temperature_normal_detail' => s.temperatureNormalDetail,
     'temperature_high_detail' => s.temperatureHighDetail,
+    'cellOvervoltageDetail' => s.cellOvervoltageDetail,
     'cell_overvoltage_detail' => s.cellOvervoltageDetail,
     _ => s.rawCodePreserved,
   };

@@ -1,6 +1,7 @@
+import 'dart:math' as math;
+
 import '../core/battery_models.dart';
 import 'diagnostic_models.dart';
-import '../simulator/simulation_scenario.dart';
 
 class DiagnosticThresholds {
   const DiagnosticThresholds({
@@ -31,9 +32,13 @@ class BatteryDiagnostics {
         (code) => FaultInterpreter.interpret(code, faultDictionary),
       ),
     ];
+    final stateOfHealth = snapshot.soh;
     return HealthAssessment(
-      stateOfHealth: null,
-      reason: 'SOH_NOT_REPORTED_OR_DERIVABLE',
+      stateOfHealth: stateOfHealth,
+      source: stateOfHealth.isReported
+          ? DiagnosticEvidenceSource.deviceReported
+          : DiagnosticEvidenceSource.unavailable,
+      reason: stateOfHealth.absenceReason,
       findings: List.unmodifiable(findings),
     );
   }
@@ -129,8 +134,8 @@ abstract final class FaultInterpreter {
     return DiagnosticFinding(
       code: rawCode,
       severity: definition.severity,
-      titleKey: definition.titleEn,
-      detailKey: definition.titleAr,
+      titleKey: definition.titleKey,
+      detailKey: definition.detailKey,
       evidence: {
         'raw_code': rawCode,
         'checks_en': definition.suggestedChecksEn.join('|'),
@@ -202,7 +207,7 @@ extension CompletedBatteryDiagnostics on BatteryDiagnostics {
     );
   }
 
-  ParallelDiagnosticResult analyzeParallel(List<SimulatedModule> modules) {
+  ParallelDiagnosticResult analyzeParallel(List<ModuleStatus> modules) {
     if (modules.isEmpty) {
       return const ParallelDiagnosticResult(
         socSpread: null,
@@ -307,10 +312,6 @@ extension CompletedBatteryDiagnostics on BatteryDiagnostics {
   }
 
   double _sqrt(double value) {
-    var estimate = value;
-    for (var i = 0; i < 12; i++) {
-      estimate = (estimate + value / estimate) / 2;
-    }
-    return estimate;
+    return math.sqrt(value);
   }
 }

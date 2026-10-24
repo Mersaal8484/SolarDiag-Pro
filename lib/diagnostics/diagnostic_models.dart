@@ -2,6 +2,8 @@ enum DiagnosticSeverity { info, attention, warning, critical }
 
 enum DiagnosticConfidence { unavailable, low, medium, high }
 
+enum DiagnosticEvidenceSource { deviceReported, unavailable }
+
 class DiagnosticFinding {
   const DiagnosticFinding({
     required this.code,
@@ -22,11 +24,13 @@ class DiagnosticFinding {
 class HealthAssessment {
   const HealthAssessment({
     required this.stateOfHealth,
+    required this.source,
     required this.reason,
     required this.findings,
   });
-  final double? stateOfHealth;
-  final String reason;
+  final Measurement stateOfHealth;
+  final DiagnosticEvidenceSource source;
+  final DataAbsenceReason? reason;
   final List<DiagnosticFinding> findings;
 }
 
@@ -34,15 +38,15 @@ class FaultDefinition {
   const FaultDefinition({
     required this.code,
     required this.severity,
-    required this.titleEn,
-    required this.titleAr,
+    required this.titleKey,
+    required this.detailKey,
     required this.suggestedChecksEn,
     required this.suggestedChecksAr,
   });
   final String code;
   final DiagnosticSeverity severity;
-  final String titleEn;
-  final String titleAr;
+  final String titleKey;
+  final String detailKey;
   final List<String> suggestedChecksEn;
   final List<String> suggestedChecksAr;
 }
