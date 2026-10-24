@@ -175,11 +175,12 @@ class _FindingCard extends StatelessWidget {
     );
   }
 
-  static String _format(BuildContext context, Object value) => value is double
-      ? localizedNumber(context, value, fractionDigits: 3)
-      : value is num
-      ? localizedNumber(context, value)
-      : '$value';
+  static String _format(BuildContext context, Object? value) => switch (value) {
+    null => AppLocalizations.of(context).notAvailable,
+    double() => localizedNumber(context, value, fractionDigits: 3),
+    num() => localizedNumber(context, value),
+    _ => '$value',
+  };
   static String _title(AppLocalizations s, String key) => switch (key) {
     'cellVoltagesUnavailable' => s.cellVoltagesUnavailable,
     'cellCountMismatch' => s.cellCountMismatch,
