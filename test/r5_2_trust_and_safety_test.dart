@@ -79,7 +79,7 @@ void main() {
       'confirmation_factory builds valid token and refuses mismatched/empty hash',
       () {
         expect(
-          () => createConfirmationToken(
+          () => mintShownPlanConfirmation(
             shownPlanHash: '',
             deviceId: 'dev-1',
             sessionId: 'ses-1',
@@ -88,7 +88,7 @@ void main() {
           throwsArgumentError,
         );
 
-        final token = createConfirmationToken(
+        final token = mintShownPlanConfirmation(
           shownPlanHash: 'valid-diff-hash',
           deviceId: 'dev-1',
           sessionId: 'ses-1',
@@ -234,7 +234,7 @@ void main() {
             {
               'id': 'p1',
               'label': {'en': 'P1', 'ar': 'P1'},
-              'access': 'read-only',
+              'access': 'read_only',
             },
           ],
         );
@@ -254,7 +254,7 @@ void main() {
             {
               'id': 'p1',
               'label': {'en': 'P1', 'ar': 'P1'},
-              'access': 'read-only',
+              'access': 'read_only',
             },
           ],
         );
@@ -269,7 +269,7 @@ void main() {
             {
               'id': 'p1',
               'label': {'en': 'P1', 'ar': 'P1'},
-              'access': 'technician-write',
+              'access': 'read_write',
             },
           ],
         );

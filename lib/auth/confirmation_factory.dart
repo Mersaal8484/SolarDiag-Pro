@@ -6,7 +6,7 @@ import '../parameters/parameter_models.dart';
 /// never construct [ConfirmationToken] directly. They must use this factory,
 /// which binds the token strictly to the displayed plan hash, device ID,
 /// session ID, and expiration timestamp.
-ConfirmationToken createConfirmationToken({
+ConfirmationToken mintShownPlanConfirmation({
   required String shownPlanHash,
   required String deviceId,
   required String sessionId,

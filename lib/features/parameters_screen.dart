@@ -189,7 +189,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
         before,
         contextObj,
       );
-      return createConfirmationToken(
+      return mintShownPlanConfirmation(
         shownPlanHash: diffHash,
         deviceId: contextObj.deviceId,
         sessionId: contextObj.sessionId,
@@ -377,7 +377,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
       before,
       contextObj,
     );
-    final token = createConfirmationToken(
+    final token = mintShownPlanConfirmation(
       shownPlanHash: diffHash,
       deviceId: contextObj.deviceId,
       sessionId: contextObj.sessionId,
