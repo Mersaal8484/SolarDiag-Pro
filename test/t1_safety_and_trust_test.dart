@@ -270,29 +270,26 @@ void main() {
       },
     );
 
-    test(
-      'architecture rule: AuthorizationSession and ConfirmationToken '
-      'constructors restricted',
-      () {
-        final libDir = Directory('lib');
-        for (final file in libDir.listSync(recursive: true).whereType<File>()) {
-          if (!file.path.endsWith('.dart')) continue;
-          final normalized = file.path.replaceAll(r'\', '/');
-          final content = file.readAsStringSync();
+    test('architecture rule: AuthorizationSession and ConfirmationToken '
+        'constructors restricted', () {
+      final libDir = Directory('lib');
+      for (final file in libDir.listSync(recursive: true).whereType<File>()) {
+        if (!file.path.endsWith('.dart')) continue;
+        final normalized = file.path.replaceAll(r'\', '/');
+        final content = file.readAsStringSync();
 
-          final isAllowed =
-              normalized.endsWith('lib/auth/confirmation_factory.dart') ||
-              normalized.endsWith('lib/parameters/parameter_models.dart');
-          if (!isAllowed) {
-            expect(
-              content.contains('ConfirmationToken('),
-              isFalse,
-              reason: '$normalized must not construct ConfirmationToken',
-            );
-          }
+        final isAllowed =
+            normalized.endsWith('lib/auth/confirmation_factory.dart') ||
+            normalized.endsWith('lib/parameters/parameter_models.dart');
+        if (!isAllowed) {
+          expect(
+            content.contains('ConfirmationToken('),
+            isFalse,
+            reason: '$normalized must not construct ConfirmationToken',
+          );
         }
-      },
-    );
+      }
+    });
   });
 
   group('T1 - S2: Parameter Rollback & Dynamic Write Context Integrity', () {
@@ -315,28 +312,25 @@ void main() {
       },
     );
 
-    test(
-      'SimulationScenario.identityMismatch returns unknown model and breaks '
-      'exactIdentityMatch',
-      () async {
-        final adapter = SimulatedBmsAdapter(
-          scenario: SimulationScenario.identityMismatch,
-        );
-        final id = await adapter.identify();
-        expect(id.model, 'LFP-UNKNOWN-MISMATCH');
+    test('SimulationScenario.identityMismatch returns unknown model and breaks '
+        'exactIdentityMatch', () async {
+      final adapter = SimulatedBmsAdapter(
+        scenario: SimulationScenario.identityMismatch,
+      );
+      final id = await adapter.identify();
+      expect(id.model, 'LFP-UNKNOWN-MISMATCH');
 
-        final session = DeviceSession(
-          scenario: SimulationScenario.identityMismatch,
-          autoStart: false,
-          auditSecretStore: TestSecretStore(),
-        );
-        addTearDown(session.dispose);
-        await session.refresh();
+      final session = DeviceSession(
+        scenario: SimulationScenario.identityMismatch,
+        autoStart: false,
+        auditSecretStore: TestSecretStore(),
+      );
+      addTearDown(session.dispose);
+      await session.refresh();
 
-        final context = session.createWriteContext();
-        expect(context.exactIdentityMatch, isFalse);
-      },
-    );
+      final context = session.createWriteContext();
+      expect(context.exactIdentityMatch, isFalse);
+    });
   });
 
   group('T1 - S3: SimulatedParameterTransport Isolation', () {
@@ -526,49 +520,46 @@ void main() {
   });
 
   group('T1 - S7: Spoofed Simulated Profiles', () {
-    test(
-      'ProfileRegistry rejects unbundled simulated profiles from '
-      'writes/loading',
-      () {
-        final spoofedJson = jsonEncode({
-          'schema_version': 2,
-          'id': 'external.spoofed.simulated',
-          'category': 'bms',
-          'manufacturer': 'Spoofed',
-          'family': 'Spoofed',
-          'models': ['S1'],
-          'firmware_ranges': ['1.0'],
-          'provenance': {
-            'source': 'untrusted',
-            'document_id': 'doc',
-            'retrieved_on': '2026-01-01T00:00:00Z',
-            'verified_by': 'untrusted',
-          },
-          'transport': {
-            'interface_type': 'simulator',
-            'listen_only_by_default': true,
-          },
-          'capabilities': {'writeParameter': 'simulated'},
-          'allowed_read_frames': [],
-          'allowed_modbus_read_ranges': [],
-          'telemetry_map': [],
-          'alarm_dictionary': {},
-          'parameters': [],
-          'topology': {},
-          'inverter_link': {},
-          'test_vectors': [],
-          'connection_checklist': [],
-          'simulated': true,
-        });
+    test('ProfileRegistry rejects unbundled simulated profiles from '
+        'writes/loading', () {
+      final spoofedJson = jsonEncode({
+        'schema_version': 2,
+        'id': 'external.spoofed.simulated',
+        'category': 'bms',
+        'manufacturer': 'Spoofed',
+        'family': 'Spoofed',
+        'models': ['S1'],
+        'firmware_ranges': ['1.0'],
+        'provenance': {
+          'source': 'untrusted',
+          'document_id': 'doc',
+          'retrieved_on': '2026-01-01T00:00:00Z',
+          'verified_by': 'untrusted',
+        },
+        'transport': {
+          'interface_type': 'simulator',
+          'listen_only_by_default': true,
+        },
+        'capabilities': {'writeParameter': 'simulated'},
+        'allowed_read_frames': [],
+        'allowed_modbus_read_ranges': [],
+        'telemetry_map': [],
+        'alarm_dictionary': {},
+        'parameters': [],
+        'topology': {},
+        'inverter_link': {},
+        'test_vectors': [],
+        'connection_checklist': [],
+        'simulated': true,
+      });
 
-        expect(
-          () => ProfileRegistry.fromJsonDocuments([
-            spoofedJson,
-          ], technicianMode: true),
-          throwsA(isA<FormatException>()),
-        );
-      },
-    );
+      expect(
+        () => ProfileRegistry.fromJsonDocuments([
+          spoofedJson,
+        ], technicianMode: true),
+        throwsA(isA<FormatException>()),
+      );
+    });
   });
 
   group('T1 - S8: Audit Chain HMAC & Tamper Detection', () {
