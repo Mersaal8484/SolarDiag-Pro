@@ -880,9 +880,19 @@ class DatabaseAuditChainStore implements AuditChainStore {
   StoredAuditChain? load() {
     final entriesData = database.loadAuditEntries(sessionId);
     final head = database.loadAuditHead(sessionId);
-    if (entriesData.isEmpty && head == null) return null;
+    final headMac = database.loadAuditHeadMac(sessionId);
+    if (entriesData.isEmpty && head == null) {
+      if (headMac != null) {
+        throw const FormatException('Audit head MAC exists without a chain.');
+      }
+      return null;
+    }
     final entries = [for (final map in entriesData) AuditEntry.fromJson(map)];
-    return StoredAuditChain(entries: entries, head: head ?? 'GENESIS');
+    return StoredAuditChain(
+      entries: entries,
+      head: head ?? 'GENESIS',
+      headMac: headMac,
+    );
   }
 
   @override

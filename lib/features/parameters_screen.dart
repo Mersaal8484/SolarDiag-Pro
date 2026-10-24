@@ -224,35 +224,18 @@ class _ParametersScreenState extends State<ParametersScreen> {
   Future<bool> _ensureUnlocked(DeviceSession session) async {
     if (session.auth.isUnlocked) return true;
     final s = AppLocalizations.of(context);
-    final pinController = TextEditingController();
     final pin = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(s.technicianAuthentication),
-        content: TextField(
-          controller: pinController,
-          obscureText: true,
-          decoration: InputDecoration(
-            labelText: s.technicianPin,
-            hintText: s.pinAuthorizationHint,
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(s.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, pinController.text),
-            child: Text(s.authenticateAction),
-          ),
-        ],
+      builder: (_) => _PinDialog(
+        title: s.technicianAuthentication,
+        label: s.technicianPin,
+        hint: s.pinAuthorizationHint,
+        cancelLabel: s.cancel,
+        authenticateLabel: s.authenticateAction,
       ),
     );
-    pinController.dispose();
     if (pin == null || pin.isEmpty) return false;
-    return await session.auth.unlock(
+    return session.auth.unlock(
       tier: AuthorizationTier.technician,
       credentials: pin,
     );
@@ -443,6 +426,71 @@ class _ParametersScreenState extends State<ParametersScreen> {
         '${unit.isEmpty ? '' : ' $unit'} · ${definition.step}'
         '${unit.isEmpty ? '' : ' $unit'}';
   }
+}
+
+class _PinDialog extends StatefulWidget {
+  const _PinDialog({
+    required this.title,
+    required this.label,
+    required this.hint,
+    required this.cancelLabel,
+    required this.authenticateLabel,
+  });
+
+  final String title;
+  final String label;
+  final String hint;
+  final String cancelLabel;
+  final String authenticateLabel;
+
+  @override
+  State<_PinDialog> createState() => _PinDialogState();
+}
+
+class _PinDialogState extends State<_PinDialog> {
+  late final TextEditingController _pinController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pinController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final pin = _pinController.text;
+    _pinController.clear();
+    Navigator.pop(context, pin);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: TextField(
+      controller: _pinController,
+      obscureText: true,
+      decoration: InputDecoration(
+        labelText: widget.label,
+        hintText: widget.hint,
+      ),
+      autofocus: true,
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: Text(widget.cancelLabel),
+      ),
+      FilledButton(
+        onPressed: _submit,
+        child: Text(widget.authenticateLabel),
+      ),
+    ],
+  );
 }
 
 class _ParameterTile extends StatelessWidget {

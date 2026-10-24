@@ -40,8 +40,7 @@ void main() {
       clock: () => DateTime.utc(2026),
       store: store,
       secretStore: secretStore,
-    )
-      ..append('finding_promoted', const {'id': 'f1'});
+    )..append('finding_promoted', const {'id': 'f1'});
 
     final restored = AuditChain.load(store, secretStore: secretStore);
     expect(restored.verify(), isTrue);
@@ -52,9 +51,11 @@ void main() {
 
   test('tampered audit entry is detected during load', () {
     final store = _MemoryAuditStore();
+    final secretStore = InMemorySecretStore();
     AuditChain(
       clock: () => DateTime.utc(2026),
       store: store,
+      secretStore: secretStore,
     ).append('finding_promoted', const {'id': 'f1'});
     final original = store.storedEntries!.single;
     store.storedEntries = [
@@ -67,26 +68,34 @@ void main() {
         hash: original.hash,
       ),
     ];
-    expect(() => AuditChain.load(store), throwsFormatException);
+    expect(
+      () => AuditChain.load(store, secretStore: secretStore),
+      throwsFormatException,
+    );
   });
 
   test('tampered separately stored audit head is detected', () {
     final store = _MemoryAuditStore();
+    final secretStore = InMemorySecretStore();
     AuditChain(
       clock: () => DateTime.utc(2026),
       store: store,
+      secretStore: secretStore,
     ).append('finding_promoted', const {'id': 'f1'});
     store.storedHead = 'forged-head';
-    expect(() => AuditChain.load(store), throwsFormatException);
+    expect(
+      () => AuditChain.load(store, secretStore: secretStore),
+      throwsFormatException,
+    );
   });
 
   test('missing audit head MAC is rejected when loading', () {
     final store = _MemoryAuditStore();
     final secretStore = InMemorySecretStore();
-    AuditChain(store: store, secretStore: secretStore).append(
-      'finding_promoted',
-      const {'id': 'f1'},
-    );
+    AuditChain(
+      store: store,
+      secretStore: secretStore,
+    ).append('finding_promoted', const {'id': 'f1'});
     store.storedMac = null;
 
     expect(
@@ -97,18 +106,44 @@ void main() {
 
   test('non-empty chain without a MAC cannot load without a secret store', () {
     final store = _MemoryAuditStore();
-    AuditChain(store: store).append('finding_promoted', const {'id': 'f1'});
+    final secretStore = InMemorySecretStore();
+    AuditChain(
+      store: store,
+      secretStore: secretStore,
+    ).append('finding_promoted', const {'id': 'f1'});
 
     expect(() => AuditChain.load(store), throwsFormatException);
+  });
+
+  test('stored empty genesis chain without a MAC is rejected', () {
+    final store = _MemoryAuditStore()
+      ..chain = const StoredAuditChain(entries: [], head: 'GENESIS');
+
+    expect(
+      () => AuditChain.load(store, secretStore: InMemorySecretStore()),
+      throwsFormatException,
+    );
+  });
+
+  test('persistent audit append is blocked without a secret store', () {
+    final store = _MemoryAuditStore();
+    final chain = AuditChain(store: store);
+
+    expect(
+      () => chain.append('finding_promoted', const {'id': 'f1'}),
+      throwsStateError,
+    );
+    expect(store.storedEntries, isNull);
+    expect(store.storedHead, isNull);
   });
 
   test('replacing entries and head without the secret is rejected', () {
     final store = _MemoryAuditStore();
     final secretStore = InMemorySecretStore();
-    AuditChain(store: store, secretStore: secretStore).append(
-      'finding_promoted',
-      const {'id': 'f1'},
-    );
+    AuditChain(
+      store: store,
+      secretStore: secretStore,
+    ).append('finding_promoted', const {'id': 'f1'});
     final originalMac = store.storedMac;
     final replacement = AuditChain()
       ..append('replacement', const {'id': 'forged'});
