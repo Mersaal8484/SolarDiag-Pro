@@ -1,3 +1,5 @@
+import '../core/battery_models.dart';
+
 enum DiagnosticSeverity { info, attention, warning, critical }
 
 enum DiagnosticConfidence { unavailable, low, medium, high }

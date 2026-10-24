@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:solardiag_pro/tool/profile_schema_validator.dart';
+import '../tool/profile_schema_validator.dart';
 
 void main() {
   final schema = jsonDecode(
