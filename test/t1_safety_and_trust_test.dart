@@ -474,10 +474,12 @@ void main() {
 
   group('T1 - S6: Revocation List Anti-Rollback & 14-Day Staleness', () {
     test('LibrarySync rejects revocation list with sequence rollback', () {
+      final directory = Directory.systemTemp.createTempSync('t1_revocation_');
+      addTearDown(() => directory.deleteSync(recursive: true));
       final sync = LibrarySync(
         verifier: Ed25519TrustVerifier(List<int>.filled(32, 1)),
         appVersion: 1,
-        store: const FileLibraryPackStore('test_store.json'),
+        store: FileLibraryPackStore('${directory.path}/test_store.json'),
       );
       sync.recordRevocationSequence(5);
       expect(sync.highestRevocationSequence, 5);
