@@ -18,11 +18,18 @@ import 'support/test_signer.dart';
 
 class _MemoryPackStore implements LibraryPackStore {
   LibraryPack? value;
+  RevocationList? revocations;
   int highestSequence = 0;
   @override
   Future<LibraryPack?> load() async => value;
   @override
   Future<void> save(LibraryPack pack) async => value = pack;
+  @override
+  Future<RevocationList?> loadRevocations() async => revocations;
+  @override
+  Future<void> saveRevocations(RevocationList revocations) async {
+    this.revocations = revocations;
+  }
   @override
   Future<int> loadHighestRevocationSequence() async => highestSequence;
   @override

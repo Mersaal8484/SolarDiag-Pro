@@ -421,34 +421,30 @@ void main() {
   });
 
   group('Y7: Trust Anchors & Purpose', () {
-    test(
-      'TrustAnchorKey has purpose and rejects development keys without flag',
-      () {
-        final devKey = TrustAnchorKey(
-          keyId: 'dev-key-1',
-          publicKeyBytes: const [1, 2, 3],
-          notBefore: DateTime.utc(2026),
-          notAfter: DateTime.utc(2028),
-          purpose: TrustAnchorPurpose.development,
-        );
-        expect(devKey.purpose, TrustAnchorPurpose.development);
-        expect(
-          TrustAnchorRegistry([devKey], false).findKey('dev-key-1'),
-          isNull,
-          reason:
-              'Development keys must be rejected when allowDevelopmentAnchors is false',
-        );
-        expect(
-          TrustAnchorRegistry([devKey], true).findKey('dev-key-1'),
-          isNotNull,
-        );
-      },
-    );
+    test('development trust requires the compile-time opt-in', () {
+      const allowDevelopmentTrust = bool.fromEnvironment(
+        'ALLOW_DEV_TRUST',
+        defaultValue: false,
+      );
+      final devKey = TrustAnchorKey(
+        keyId: 'dev-key-1',
+        publicKeyBytes: const [1, 2, 3],
+        notBefore: DateTime.utc(2026),
+        notAfter: DateTime.utc(2028),
+        purpose: TrustAnchorPurpose.development,
+      );
+      expect(devKey.purpose, TrustAnchorPurpose.development);
+      expect(
+        TrustAnchorRegistry([devKey]).findKey('dev-key-1') != null,
+        allowDevelopmentTrust,
+      );
+    });
   });
 }
 
 class _TestPackStore implements LibraryPackStore {
   LibraryPack? pack;
+  RevocationList? revocations;
   int highestSequence = 0;
 
   @override
@@ -457,6 +453,14 @@ class _TestPackStore implements LibraryPackStore {
   @override
   Future<void> save(LibraryPack pack) async {
     this.pack = pack;
+  }
+
+  @override
+  Future<RevocationList?> loadRevocations() async => revocations;
+
+  @override
+  Future<void> saveRevocations(RevocationList revocations) async {
+    this.revocations = revocations;
   }
 
   @override

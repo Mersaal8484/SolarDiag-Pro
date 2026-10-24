@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../audit/audit_chain.dart';
 import '../config/feature_flags.dart';
@@ -21,6 +23,8 @@ import '../design/accessibility.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../persistence/local_database.dart';
 import '../session/device_session.dart';
+import '../trust/signed_tokens.dart';
+import '../trust/trust_anchors.dart';
 import 'theme.dart';
 
 class SolarDiagApp extends StatefulWidget {
@@ -53,6 +57,7 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
   bool _highContrast = false;
   bool _wakelockEnabled = false;
   late bool _onboardingVisible;
+  InstalledLibrary? _installedLibrary;
   @override
   void initState() {
     super.initState();
@@ -66,6 +71,10 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
         );
     _onboardingVisible = widget.showOnboarding;
     _restoreSettings();
+    if (widget.flags.libraryEnabled) {
+      _deviceSession.setLibraryWriteBlocked(true);
+      unawaited(_loadOfflineLibrary());
+    }
     if (_designPreferences.workshopMode) {
       unawaited(_applyWorkshopMode());
     }
@@ -76,6 +85,34 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
     if (_wakelockEnabled == enabled) return;
     await WakelockPlus.toggle(enable: enabled);
     _wakelockEnabled = enabled;
+  }
+
+  Future<void> _loadOfflineLibrary() async {
+    final anchors = TrustAnchorRegistry();
+    final now = DateTime.now().toUtc();
+    final trustedAnchor = anchors.keys
+        .where((key) => key.isValidAt(now))
+        .firstOrNull;
+    if (trustedAnchor == null) {
+      _deviceSession.setLibraryWriteBlocked(true);
+      return;
+    }
+    final directory = await getApplicationSupportDirectory();
+    final sync = LibrarySync(
+      verifier: trustedAnchor.createVerifier(),
+      appVersion: 1,
+      store: FileLibraryPackStore(
+        '${directory.path}${Platform.pathSeparator}library.pack.json',
+      ),
+    );
+    await sync.restoreOffline(now: now);
+    final installed = sync.installed;
+    final blocked =
+        installed == null ||
+        installed.blocksWritesFor(_deviceSession.activeProfileId);
+    _installedLibrary = installed;
+    _deviceSession.setLibraryWriteBlocked(blocked);
+    if (mounted) setState(() {});
   }
 
   void _restoreSettings() {
@@ -148,7 +185,9 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
           '/diagnostics': (_) => const AdvancedDiagnosticsScreen(),
           '/inverter': (_) => const InverterDiagnosticsScreen(),
           '/link': (_) => const LinkScreen(),
-          '/library': (_) => const DeviceLibraryScreen(),
+          '/library': (_) => DeviceLibraryScreen(
+            installedLibrary: _installedLibrary,
+          ),
           '/history': (_) => const SessionHistoryScreen(),
           '/gateway': (_) => const GatewayScreen(),
           '/parameters': (_) => const ParametersScreen(),
@@ -233,6 +272,7 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
                   Navigator.of(context).pushNamed('/settings'),
               studioEnabled: widget.flags.studioEnabled,
               contributionsEnabled: widget.flags.contributionsEnabled,
+              installedLibrary: _installedLibrary,
             );
           },
         ),

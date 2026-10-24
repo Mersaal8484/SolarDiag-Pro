@@ -1,6 +1,6 @@
 import 'profile_integrity.dart';
 
-enum TrustAnchorPurpose { development, production }
+enum TrustAnchorPurpose { development, production, placeholder }
 
 class TrustAnchorKey {
   const TrustAnchorKey({
@@ -17,8 +17,13 @@ class TrustAnchorKey {
   final DateTime notAfter;
   final TrustAnchorPurpose purpose;
 
-  bool isValidAt(DateTime now, {bool allowDevelopmentAnchors = false}) {
-    if (purpose == TrustAnchorPurpose.development && !allowDevelopmentAnchors) {
+  bool isValidAt(DateTime now) {
+    if (purpose == TrustAnchorPurpose.placeholder) return false;
+    if (purpose == TrustAnchorPurpose.development &&
+        !const bool.fromEnvironment(
+          'ALLOW_DEV_TRUST',
+          defaultValue: false,
+        )) {
       return false;
     }
     return !now.isBefore(notBefore) && !now.isAfter(notAfter);
@@ -28,24 +33,15 @@ class TrustAnchorKey {
 }
 
 class TrustAnchorRegistry {
-  TrustAnchorRegistry([
-    List<TrustAnchorKey>? keys,
-    bool? allowDevelopmentAnchors,
-  ]) : keys = List.unmodifiable(keys ?? defaultAnchors),
-       allowDevelopmentAnchors =
-           allowDevelopmentAnchors ??
-           const bool.fromEnvironment('ALLOW_DEV_TRUST', defaultValue: false);
-
-  factory TrustAnchorRegistry.withOptions({
-    List<TrustAnchorKey>? keys,
-    bool allowDevelopmentAnchors = false,
-  }) => TrustAnchorRegistry(keys, allowDevelopmentAnchors);
+  TrustAnchorRegistry([List<TrustAnchorKey>? keys])
+    : keys = List.unmodifiable(keys ?? defaultAnchors);
 
   final List<TrustAnchorKey> keys;
-  final bool allowDevelopmentAnchors;
 
-  /// Default production trust anchors embedded at compile-time.
-  /// No private key is ever stored or shipped in this repository.
+  /// Bootstrap placeholders only.  They are intentionally invalid for
+  /// verification until a release process installs documented production
+  /// anchors.  This prevents arbitrary bytes from being represented as real
+  /// production trust roots.
   static final List<TrustAnchorKey> defaultAnchors = [
     TrustAnchorKey(
       keyId: 'solardiag-root-2026-v1',
@@ -85,6 +81,7 @@ class TrustAnchorRegistry {
       ],
       notBefore: DateTime.utc(2026, 1, 1),
       notAfter: DateTime.utc(2028, 1, 1),
+      purpose: TrustAnchorPurpose.placeholder,
     ),
     TrustAnchorKey(
       keyId: 'solardiag-root-2026-v2',
@@ -124,6 +121,7 @@ class TrustAnchorRegistry {
       ],
       notBefore: DateTime.utc(2026, 6, 1),
       notAfter: DateTime.utc(2029, 1, 1),
+      purpose: TrustAnchorPurpose.placeholder,
     ),
   ];
 
@@ -133,10 +131,7 @@ class TrustAnchorRegistry {
         .where(
           (key) =>
               key.keyId == keyId &&
-              key.isValidAt(
-                check,
-                allowDevelopmentAnchors: allowDevelopmentAnchors,
-              ),
+              key.isValidAt(check),
         )
         .firstOrNull;
   }

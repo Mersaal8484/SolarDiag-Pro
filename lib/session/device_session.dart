@@ -94,6 +94,7 @@ class DeviceSession extends ChangeNotifier {
   bool _sessionStartedEventSaved = false;
   DeviceSessionLinkState? _persistedLinkState;
   Set<String>? _persistedAlarmCodes;
+  bool _libraryWritesBlocked = false;
 
   SimulationScenario get scenario => _scenario;
   TelemetrySnapshot get snapshot => _snapshot;
@@ -122,6 +123,14 @@ class DeviceSession extends ChangeNotifier {
       database?.listTelemetrySamples(sessionId) ?? [];
   String auditHeadFor(String sessionId) =>
       database?.loadAuditHead(sessionId) ?? 'GENESIS';
+  String get activeProfileId => _adapter.profileIdentity.id;
+  bool get libraryWritesBlocked => _libraryWritesBlocked;
+
+  void setLibraryWriteBlocked(bool blocked) {
+    if (_libraryWritesBlocked == blocked) return;
+    _libraryWritesBlocked = blocked;
+    notifyListeners();
+  }
 
   static const parameterDefinitions = <String, ParameterDefinition>{
     'charge_limit': ParameterDefinition(
@@ -297,11 +306,12 @@ class DeviceSession extends ChangeNotifier {
     if (_parameters.isEmpty) {
       throw StateError('Parameters must be read before creating a backup.');
     }
+    final profile = _adapter.profileIdentity;
     final backup = ParameterBackup(
       schemaVersion: 1,
-      profileId: 'solardiag.simulated.lfp16.v2',
-      deviceIdentity: 'SOLARDIAG-SIM-BMS',
-      firmware: 'simulator-v2',
+      profileId: profile.id,
+      deviceIdentity: profile.deviceId,
+      firmware: profile.firmware,
       capturedAt: DateTime.now().toUtc(),
       values: Map.unmodifiable(_parameters),
     );
@@ -313,6 +323,7 @@ class DeviceSession extends ChangeNotifier {
 
   DeviceWriteContext createWriteContext() {
     final ident = _lastIdentification;
+    final profile = _adapter.profileIdentity;
     final String? connectedModel = ident?.model;
     final String? connectedFirmware = ident?.firmware;
     final DeviceWriteState state;
@@ -321,8 +332,8 @@ class DeviceSession extends ChangeNotifier {
     if (ident == null || connectedModel == null || connectedFirmware == null) {
       state = DeviceWriteState.unknownVerify;
       writeLocked = true;
-    } else if (connectedModel != 'LFP-16S-SIM' ||
-        connectedFirmware != 'simulator-v2') {
+    } else if (connectedModel != profile.model ||
+        connectedFirmware != profile.firmware) {
       state = DeviceWriteState.identityMismatch;
       writeLocked = true;
     } else {
@@ -331,14 +342,15 @@ class DeviceSession extends ChangeNotifier {
           !auth.isUnlocked ||
           _linkState != DeviceSessionLinkState.online ||
           _lastError != null ||
-          !auditIntegrityAvailable;
+          !auditIntegrityAvailable ||
+          _libraryWritesBlocked;
     }
 
     return DeviceWriteContext(
-      deviceId: connectedModel != null ? 'SOLARDIAG-SIM-BMS' : 'UNIDENTIFIED',
+      deviceId: connectedModel != null ? profile.deviceId : 'UNIDENTIFIED',
       sessionId: _sessionId,
-      profileModel: 'LFP-16S-SIM',
-      profileFirmware: 'simulator-v2',
+      profileModel: profile.model,
+      profileFirmware: profile.firmware,
       connectedModel: connectedModel,
       connectedFirmware: connectedFirmware,
       linkHealthy: _linkState == DeviceSessionLinkState.online,
@@ -348,9 +360,9 @@ class DeviceSession extends ChangeNotifier {
   }
 
   RestorePlan planRestore(ParameterBackup backup) => backup.createRestorePlan(
-    activeProfileId: 'solardiag.simulated.lfp16.v2',
-    activeDeviceIdentity: 'SOLARDIAG-SIM-BMS',
-    activeFirmware: 'simulator-v2',
+    activeProfileId: _adapter.profileIdentity.id,
+    activeDeviceIdentity: _adapter.profileIdentity.deviceId,
+    activeFirmware: _adapter.profileIdentity.firmware,
     definitions: parameterDefinitions,
     current: ParameterSnapshot(_parameters, capturedAt: DateTime.now().toUtc()),
   );

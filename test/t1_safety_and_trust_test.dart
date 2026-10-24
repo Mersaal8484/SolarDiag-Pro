@@ -338,7 +338,7 @@ void main() {
 
   group('T1 - S3: SimulatedParameterTransport Isolation', () {
     test(
-      'architecture rule: SimulatedParameterBackend & transport can only be built with token',
+      'architecture rule: simulator backend stays inside the write pipeline',
       () {
         final libDir = Directory('lib');
         for (final file in libDir.listSync(recursive: true).whereType<File>()) {
@@ -560,7 +560,6 @@ void main() {
           () => ProfileRegistry.fromJsonDocuments(
             [spoofedJson],
             technicianMode: true,
-            isBundled: false,
           ),
           throwsA(isA<FormatException>()),
         );
