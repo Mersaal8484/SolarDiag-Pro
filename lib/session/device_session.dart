@@ -8,7 +8,6 @@ import '../audit/audit_chain.dart';
 import '../auth/authorization_controller.dart';
 import '../core/battery_models.dart';
 import '../core/inverter_models.dart';
-import '../core/simulation_clock.dart';
 import '../integration/compatibility_engine.dart';
 import '../integration/compatibility_models.dart';
 import '../integration/link_diagnostics.dart';
@@ -443,8 +442,7 @@ class DeviceSession extends ChangeNotifier {
       final health = await _adapter.health();
       final alarms = await _adapter.readAlarms();
       _inverterSnapshot = await _inverterAdapter.readTelemetry();
-      final inverterAdapter = _inverterAdapter;
-      if (inverterAdapter is SimulationClock) inverterAdapter.advance();
+      _inverterAdapter.simulationClock?.advance();
       _snapshot = next;
       _linkHealth = health;
       _alarmCodes = Set.unmodifiable(alarms);
@@ -456,8 +454,7 @@ class DeviceSession extends ChangeNotifier {
       _lastError = error;
       _persistStateEvents();
     } finally {
-      final adapter = _adapter;
-      if (adapter is SimulationClock) adapter.advance();
+      _adapter.simulationClock?.advance();
       _polling = false;
       if (!_disposed) notifyListeners();
     }

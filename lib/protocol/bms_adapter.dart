@@ -1,4 +1,5 @@
 import '../core/battery_models.dart';
+import '../core/simulation_clock.dart';
 import 'capabilities.dart';
 import '../parameters/write_pipeline.dart';
 
@@ -46,6 +47,7 @@ class DeviceProfileIdentity {
 
 abstract interface class BmsAdapter {
   DeviceProfileIdentity get profileIdentity;
+  SimulationClock? get simulationClock;
   Future<IdentificationResult> identify();
   Future<TelemetrySnapshot> readTelemetry();
   Future<List<Measurement>> readCellVoltages();

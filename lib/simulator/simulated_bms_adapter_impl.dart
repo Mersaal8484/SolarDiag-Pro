@@ -9,6 +9,8 @@ class SimulatedBmsAdapter extends SimulatedParameterBackend
   final SimulationScenario scenario;
   int _tick;
   @override
+  SimulationClock get simulationClock => this;
+  @override
   int get tick => _tick;
   @override
   set tick(int value) => _tick = value;

@@ -5,6 +5,8 @@ class SimulatedInverterAdapter extends SimulatedParameterBackend
   SimulatedInverterAdapter({this.tick = 0});
   @override
   int tick;
+  @override
+  SimulationClock get simulationClock => this;
   final Map<String, num> _parameters = {'output_frequency_limit': 50};
   final Map<int, int> _registers = {0: 540, 1: 102, 2: 2300, 3: 5000};
 
