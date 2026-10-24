@@ -3,6 +3,7 @@ import 'package:solardiag_pro/integration/compatibility_models.dart';
 import 'package:solardiag_pro/protocol/bms_adapter.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
+
 import 'support/test_secret_store.dart';
 
 BatteryIntegrationProfile _batteryProfile() => const BatteryIntegrationProfile(
@@ -110,7 +111,7 @@ void main() {
     final finding = session.compatibilityAssessment.findings.singleWhere(
       (item) => item.code == 'CHARGE_VOLTAGE',
     );
-    expect(finding.state, CompatibilityState.attention);
+    expect(finding.state, CompatibilityState.attention); 
     expect(finding.evidenceQuality, EvidenceQuality.userProvided);
   });
 
