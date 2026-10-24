@@ -66,17 +66,29 @@ class GatewayScreen extends StatelessWidget {
                 _Status(
                   icon: SolarIcons.confirmedCheck,
                   label: s.allowedFrames,
-                  value: '${gateway.allowedFrames}',
+                  value: localizedNumber(
+                    context,
+                    gateway.allowedFrames,
+                    fractionDigits: 0,
+                  ),
                 ),
                 _Status(
                   icon: SolarIcons.critical,
                   label: s.blockedFrames,
-                  value: '${gateway.blockedFrames}',
+                  value: localizedNumber(
+                    context,
+                    gateway.blockedFrames,
+                    fractionDigits: 0,
+                  ),
                 ),
                 _Status(
                   icon: SolarIcons.warning,
                   label: s.droppedFrames,
-                  value: '${gateway.droppedFrames}',
+                  value: localizedNumber(
+                    context,
+                    gateway.droppedFrames,
+                    fractionDigits: 0,
+                  ),
                 ),
                 _Status(
                   icon: SolarIcons.currentFlow,

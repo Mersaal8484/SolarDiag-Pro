@@ -6,6 +6,7 @@ import 'package:solardiag_pro/studio/capture_models.dart';
 import 'package:solardiag_pro/studio/findings.dart';
 import 'package:solardiag_pro/studio/research_bundle.dart';
 import 'package:solardiag_pro/studio/research_repository.dart';
+import 'package:solardiag_pro/studio/sdcap_codec.dart';
 
 void main() {
   CaptureSession session({bool nda = false}) => CaptureSession(
@@ -49,9 +50,11 @@ void main() {
     await repository.saveFinding(finding);
 
     final restoredSession = await repository.session('restricted');
+    final restoredSessions = await repository.sessions();
     final restoredFindings = await repository.findings();
     expect(restoredSession!.containsNdaMaterial, isTrue);
     expect(restoredSession.frames.single.identifier, 0x351);
+    expect(restoredSessions.single.id, 'restricted');
     expect(restoredFindings.single.id, finding.id);
     expect(restoredFindings.single.evidence.single.reference, 'shareable:0');
   });
@@ -84,5 +87,12 @@ void main() {
     final payload = root['payload']! as Map<String, Object?>;
     payload['reference_ids'] = ['injected'];
     expect(() => codec.decode(jsonEncode(root)), throwsFormatException);
+  });
+
+  test('NDA capture is blocked from external .sdcap export', () {
+    expect(
+      () => const SdcapCodec().encode(session(nda: true)),
+      throwsFormatException,
+    );
   });
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../protocol/capabilities.dart';
 import '../protocol/profile_registry.dart';
+import 'library_write_reason.dart';
 import 'profile_integrity.dart';
 
 class LibraryPack {
@@ -224,17 +225,22 @@ class InstalledLibrary {
       _clock().toUtc().isAfter(revocations.validUntil);
 
   bool blocksWritesFor(String profileId) =>
-      packRevoked ||
-      isRevocationStale ||
-      isRevocationExpired ||
-      revokedProfileIds.contains(profileId);
+      writeDisabledReasonFor(profileId) != null;
 
-  String? get writeDisabledReason {
-    if (packRevoked) return 'Library pack is revoked.';
-    if (isRevocationExpired) return 'Revocation list expired';
-    if (isRevocationStale) return 'revocation data stale';
+  LibraryWriteDisabledReason? get writeDisabledReason {
+    if (packRevoked) return LibraryWriteDisabledReason.revoked;
+    if (isRevocationExpired) {
+      return LibraryWriteDisabledReason.revocationListExpired;
+    }
+    if (isRevocationStale) return LibraryWriteDisabledReason.stale;
     return null;
   }
+
+  LibraryWriteDisabledReason? writeDisabledReasonFor(String profileId) =>
+      writeDisabledReason ??
+      (revokedProfileIds.contains(profileId)
+          ? LibraryWriteDisabledReason.revoked
+          : null);
 
   bool profileCanWrite(
     String profileId, [
@@ -273,6 +279,9 @@ class LibrarySync {
   InstalledLibrary? get installed => _installed;
   LibraryPack? get lastKnownGood => _installed?.pack;
   int get highestRevocationSequence => _highestRevocationSequence;
+  LibraryWriteDisabledReason? writeDisabledReasonFor(String profileId) =>
+      _installed?.writeDisabledReasonFor(profileId) ??
+      (_installed == null ? LibraryWriteDisabledReason.libraryMissing : null);
 
   /// Loads the persisted anti-rollback floor before any asynchronous library
   /// operation.  The previous fire-and-forget initialization allowed a pack

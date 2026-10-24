@@ -6,11 +6,15 @@ import '../design/components.dart';
 import '../design/solar_icon.dart';
 import '../design/solar_icons.g.dart';
 import '../l10n/generated/app_localizations.dart';
-import '../trust/signed_tokens.dart';
+import '../trust/library_write_reason.dart';
+import 'library_write_reason_label.dart';
 
 class DeviceLibraryScreen extends StatelessWidget {
-  const DeviceLibraryScreen({super.key, this.installedLibrary});
-  final InstalledLibrary? installedLibrary;
+  const DeviceLibraryScreen({
+    super.key,
+    this.writeDisabledReason,
+  });
+  final LibraryWriteDisabledReason? writeDisabledReason;
   static const freconName = 'FRECON PV100 / PV200';
   static const targets = [
     'Pylontech',
@@ -30,8 +34,11 @@ class DeviceLibraryScreen extends StatelessWidget {
       title: s.deviceLibrary,
       subtitle: s.libraryVerificationNote,
       children: [
-        if (installedLibrary?.showRevokedBanner ?? false)
-          RevokedBanner(title: s.warning, message: s.physicalWriteLocked),
+        if (writeDisabledReason case final reason?)
+          RevokedBanner(
+            title: s.warning,
+            message: localizedLibraryWriteReason(context, reason),
+          ),
         Card(
           child: ListTile(
             contentPadding: const EdgeInsets.all(20),

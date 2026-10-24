@@ -10,6 +10,7 @@ import '../l10n/generated/app_localizations.dart';
 import '../parameters/parameter_models.dart';
 import '../parameters/write_pipeline.dart';
 import '../session/device_session.dart';
+import 'library_write_reason_label.dart';
 
 class ParametersScreen extends StatefulWidget {
   const ParametersScreen({super.key});
@@ -65,6 +66,16 @@ class _ParametersScreenState extends State<ParametersScreen> {
             ],
           ),
         ),
+        if (session.libraryWriteDisabledReason case final reason?) ...[
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              leading: const SolarIcon(SolarIcons.locked),
+              title: Text(s.physicalWriteLocked),
+              subtitle: Text(localizedLibraryWriteReason(context, reason)),
+            ),
+          ),
+        ],
         const SizedBox(height: 18),
         if (entries.isEmpty)
           Text(s.noParametersReported)

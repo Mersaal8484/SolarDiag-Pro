@@ -1,0 +1,1 @@
+# Direct Material icons are not allowed in feature or design code.

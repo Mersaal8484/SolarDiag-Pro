@@ -14,6 +14,7 @@ import 'package:solardiag_pro/protocol/profile_registry.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
 import 'package:solardiag_pro/transport/safe_frame_transport.dart';
+import 'package:solardiag_pro/trust/library_write_reason.dart';
 import 'package:solardiag_pro/trust/profile_integrity.dart';
 import 'package:solardiag_pro/trust/signed_tokens.dart';
 import 'package:solardiag_pro/trust/trust_anchors.dart';
@@ -520,7 +521,10 @@ void main() {
       );
 
       expect(installed.isRevocationStale, isTrue);
-      expect(installed.writeDisabledReason, contains('stale'));
+      expect(
+        installed.writeDisabledReason,
+        LibraryWriteDisabledReason.stale,
+      );
       expect(installed.profileCanWrite('test.bms'), isFalse);
     });
   });

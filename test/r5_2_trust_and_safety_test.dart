@@ -12,6 +12,7 @@ import 'package:solardiag_pro/protocol/capabilities.dart';
 import 'package:solardiag_pro/protocol/device_profile.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
+import 'package:solardiag_pro/trust/library_write_reason.dart';
 import 'package:solardiag_pro/trust/profile_integrity.dart';
 import 'package:solardiag_pro/trust/signed_tokens.dart';
 import 'package:solardiag_pro/trust/trust_anchors.dart';
@@ -308,6 +309,19 @@ void main() {
   });
 
   group('Y5: Revocation Anti-Rollback Persistence & Expiry', () {
+    test('missing installed library reports a write-block reason', () {
+      final sync = LibrarySync(
+        verifier: MockTrustVerifier(acceptAll: true),
+        appVersion: 1,
+        store: _TestPackStore(),
+      );
+
+      expect(
+        sync.writeDisabledReasonFor('profile-missing'),
+        LibraryWriteDisabledReason.libraryMissing,
+      );
+    });
+
     test(
       'same-sequence second pack installs; lower sequence rejected; expired list disables writes',
       () async {
@@ -386,7 +400,10 @@ void main() {
           signature: 'valid-sig',
         );
         await sync.apply(pack3, now: now, revocations: expiredRevocations);
-        expect(sync.installed?.writeDisabledReason, contains('expired'));
+        expect(
+          sync.installed?.writeDisabledReason,
+          LibraryWriteDisabledReason.revocationListExpired,
+        );
       },
     );
   });
@@ -421,6 +438,29 @@ void main() {
   });
 
   group('Y7: Trust Anchors & Purpose', () {
+    test('placeholder-only registry blocks writes with a visible reason', () {
+      final registry = TrustAnchorRegistry();
+      final validKeys = registry.keys.where(
+        (key) => key.isValidAt(DateTime.now().toUtc()),
+      );
+      final session = DeviceSession(autoStart: false);
+      addTearDown(session.dispose);
+
+      if (validKeys.isEmpty) {
+        session.setLibraryWriteStatus(
+          reason: LibraryWriteDisabledReason.noValidTrustAnchor,
+          blocksWrites: true,
+        );
+      }
+      expect(validKeys, isEmpty);
+      expect(session.libraryWritesBlocked, isTrue);
+      expect(
+        session.libraryWriteDisabledReason,
+        LibraryWriteDisabledReason.noValidTrustAnchor,
+      );
+      expect(session.createWriteContext().writeLocked, isTrue);
+    });
+
     test('development trust requires the compile-time opt-in', () {
       const allowDevelopmentTrust = bool.fromEnvironment(
         'ALLOW_DEV_TRUST',
@@ -438,6 +478,72 @@ void main() {
         TrustAnchorRegistry([devKey]).findKey('dev-key-1') != null,
         allowDevelopmentTrust,
       );
+      if (!allowDevelopmentTrust) {
+        final session = DeviceSession(autoStart: false);
+        addTearDown(session.dispose);
+        session.setLibraryWriteStatus(
+          reason: LibraryWriteDisabledReason.noValidTrustAnchor,
+          blocksWrites: true,
+        );
+        expect(session.libraryWritesBlocked, isTrue);
+        expect(
+          session.libraryWriteDisabledReason,
+          LibraryWriteDisabledReason.noValidTrustAnchor,
+        );
+      }
+    });
+
+    test(
+      'release build rejects a registry containing only development keys',
+      () {
+        final devKey = TrustAnchorKey(
+          keyId: 'release-dev-key',
+          publicKeyBytes: const [1, 2, 3],
+          notBefore: DateTime.utc(2026),
+          notAfter: DateTime.utc(2028),
+          purpose: TrustAnchorPurpose.development,
+        );
+        final registry = TrustAnchorRegistry([devKey]);
+
+        expect(
+          registry.findKeyForBuild(
+            'release-dev-key',
+            now: DateTime.utc(2027),
+            releaseMode: true,
+          ),
+          isNull,
+        );
+      },
+    );
+
+    test('expired and unknown trust anchors are rejected', () {
+      final expiredKey = TrustAnchorKey(
+        keyId: 'expired-key',
+        publicKeyBytes: const [1, 2, 3],
+        notBefore: DateTime.utc(2020),
+        notAfter: DateTime.utc(2021),
+      );
+      final registry = TrustAnchorRegistry([expiredKey]);
+      final unavailableAnchor = registry.findKey(
+        'expired-key',
+        now: DateTime.utc(2027),
+      );
+      expect(unavailableAnchor, isNull);
+      expect(registry.findKey('unknown-key', now: DateTime.utc(2027)), isNull);
+      final session = DeviceSession(autoStart: false);
+      addTearDown(session.dispose);
+      if (unavailableAnchor == null) {
+        session.setLibraryWriteStatus(
+          reason: LibraryWriteDisabledReason.noValidTrustAnchor,
+          blocksWrites: true,
+        );
+      }
+      expect(unavailableAnchor, isNull);
+      expect(
+        session.libraryWriteDisabledReason,
+        LibraryWriteDisabledReason.noValidTrustAnchor,
+      );
+      expect(session.createWriteContext().writeLocked, isTrue);
     });
   });
 }

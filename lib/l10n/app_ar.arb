@@ -136,8 +136,14 @@
   ,"studioDraft": "مسودة الاستوديو",
   "studioEngineering": "الاستوديو / هندسة",
   "replayLock": "قفل إعادة الإرسال"
+  ,"studioPersistenceError": "حفظ بيانات الاستوديو غير متاح أو تعذر. قد لا تُحفظ بيانات البحث المستوردة."
   ,"deviceLibrary": "مكتبة الأجهزة",
   "libraryVerificationNote": "تظهر حالة التحقق لكل ملف. مخطط لا تعني مدعوم.",
+  "productionTrustAnchorMissing": "لم يتم إعداد مرساة ثقة إنتاجية صالحة. تظل تحديثات المكتبة الموقعة والكتابة الفعلية محظورة.",
+  "libraryWriteBlockedMissing": "لم تُثبّت مكتبة أجهزة موثّقة. تظل الكتابة على الأجهزة الفعلية محظورة.",
+  "libraryWriteBlockedRevoked": "حُظرت حزمة المكتبة النشطة أو ملف الجهاز. تظل الكتابة على الأجهزة الفعلية محظورة.",
+  "libraryWriteBlockedStale": "بيانات الإلغاء قديمة. حدّثها قبل تمكين الكتابة على الأجهزة الفعلية.",
+  "libraryWriteBlockedExpired": "انتهت صلاحية قائمة الإلغاء. حدّثها قبل تمكين الكتابة على الأجهزة الفعلية.",
   "deterministicBms": "محاكي نظام إدارة البطارية الحتمي من SolarDiag",
   "simulatorOnly": "LFP-16S-SIM · محاكاة فقط",
   "researchTargets": "أهداف البحث",

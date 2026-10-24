@@ -731,6 +731,13 @@ class LocalDatabase implements LifecycleHistoryStore {
   String? researchSessionDocument(String id) =>
       _researchDocument('research_sessions', id);
 
+  List<String> researchSessionDocuments() => [
+    for (final row in _database.select(
+      'SELECT document_json FROM research_sessions ORDER BY id ASC',
+    ))
+      row['document_json'] as String,
+  ];
+
   void saveResearchFindingDocument(String id, String documentJson) {
     _saveResearchDocument('research_findings', id, documentJson);
   }

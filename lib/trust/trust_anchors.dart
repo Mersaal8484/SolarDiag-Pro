@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'profile_integrity.dart';
 
 enum TrustAnchorPurpose { development, production, placeholder }
@@ -18,10 +20,16 @@ class TrustAnchorKey {
   final TrustAnchorPurpose purpose;
 
   bool isValidAt(DateTime now) {
+    return _isValidAt(now, releaseMode: kReleaseMode);
+  }
+
+  bool _isValidAt(DateTime now, {required bool releaseMode}) {
     if (purpose == TrustAnchorPurpose.placeholder) return false;
-    if (purpose == TrustAnchorPurpose.development &&
-        !const bool.fromEnvironment('ALLOW_DEV_TRUST', defaultValue: false)) {
-      return false;
+    if (purpose == TrustAnchorPurpose.development) {
+      if (releaseMode ||
+          !const bool.fromEnvironment('ALLOW_DEV_TRUST', defaultValue: false)) {
+        return false;
+      }
     }
     return !now.isBefore(notBefore) && !now.isAfter(notAfter);
   }
@@ -128,6 +136,18 @@ class TrustAnchorRegistry {
         .where((key) => key.keyId == keyId && key.isValidAt(check))
         .firstOrNull;
   }
+
+  @visibleForTesting
+  TrustAnchorKey? findKeyForBuild(
+    String keyId, {
+    required DateTime now,
+    required bool releaseMode,
+  }) => keys
+      .where(
+        (key) =>
+            key.keyId == keyId && key._isValidAt(now, releaseMode: releaseMode),
+      )
+      .firstOrNull;
 
   Ed25519TrustVerifier? verifierFor(String keyId, {DateTime? now}) =>
       findKey(keyId, now: now)?.createVerifier();

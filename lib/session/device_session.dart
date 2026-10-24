@@ -20,6 +20,7 @@ import '../protocol/bms_adapter.dart';
 import '../protocol/inverter_adapter.dart';
 import '../simulator/simulation_scenario.dart';
 import '../transport/safe_frame_transport.dart';
+import '../trust/library_write_reason.dart';
 
 enum DeviceSessionMode { readOnly, writeAuthorized }
 
@@ -99,6 +100,7 @@ class DeviceSession extends ChangeNotifier {
   bool _sessionStartedEventSaved = false;
   DeviceSessionLinkState? _persistedLinkState;
   Set<String>? _persistedAlarmCodes;
+  LibraryWriteDisabledReason? _libraryWriteDisabledReason;
   bool _libraryWritesBlocked = false;
 
   SimulationScenario get scenario => _scenario;
@@ -135,10 +137,26 @@ class DeviceSession extends ChangeNotifier {
   }
 
   bool get libraryWritesBlocked => _libraryWritesBlocked;
+  LibraryWriteDisabledReason? get libraryWriteDisabledReason =>
+      _libraryWriteDisabledReason;
 
-  void setLibraryWriteBlocked(bool blocked) {
-    if (_libraryWritesBlocked == blocked) return;
-    _libraryWritesBlocked = blocked;
+  void setLibraryWriteStatus({
+    required LibraryWriteDisabledReason? reason,
+    required bool blocksWrites,
+  }) {
+    if (blocksWrites && reason == null) {
+      throw ArgumentError.value(
+        reason,
+        'reason',
+        'A block reason is required.',
+      );
+    }
+    if (_libraryWriteDisabledReason == reason &&
+        _libraryWritesBlocked == blocksWrites) {
+      return;
+    }
+    _libraryWriteDisabledReason = reason;
+    _libraryWritesBlocked = blocksWrites;
     notifyListeners();
   }
 
@@ -356,7 +374,7 @@ class DeviceSession extends ChangeNotifier {
           _linkState != DeviceSessionLinkState.online ||
           _lastError != null ||
           !auditIntegrityAvailable ||
-          _libraryWritesBlocked;
+          libraryWritesBlocked;
     }
 
     return DeviceWriteContext(

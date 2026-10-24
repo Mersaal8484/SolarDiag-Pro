@@ -884,6 +884,12 @@ abstract class AppLocalizations {
   /// **'REPLAY LOCK'**
   String get replayLock;
 
+  /// No description provided for @studioPersistenceError.
+  ///
+  /// In en, this message translates to:
+  /// **'Studio persistence is unavailable or failed. Imported research may not be saved.'**
+  String get studioPersistenceError;
+
   /// No description provided for @deviceLibrary.
   ///
   /// In en, this message translates to:
@@ -895,6 +901,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Verification status is shown per profile. Planned is not supported.'**
   String get libraryVerificationNote;
+
+  /// No description provided for @productionTrustAnchorMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No valid production trust anchor is configured. Signed library updates and physical writes remain blocked.'**
+  String get productionTrustAnchorMissing;
+
+  /// No description provided for @libraryWriteBlockedMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No verified device library is installed. Physical library writes remain blocked.'**
+  String get libraryWriteBlockedMissing;
+
+  /// No description provided for @libraryWriteBlockedRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'The active library pack or profile is revoked. Physical library writes remain blocked.'**
+  String get libraryWriteBlockedRevoked;
+
+  /// No description provided for @libraryWriteBlockedStale.
+  ///
+  /// In en, this message translates to:
+  /// **'The revocation data is stale. Refresh it before physical writes can be enabled.'**
+  String get libraryWriteBlockedStale;
+
+  /// No description provided for @libraryWriteBlockedExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'The revocation list has expired. Refresh it before physical writes can be enabled.'**
+  String get libraryWriteBlockedExpired;
 
   /// No description provided for @deterministicBms.
   ///

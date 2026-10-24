@@ -175,7 +175,11 @@ class _Health extends StatelessWidget {
           runSpacing: 12,
           children: [
             _MeasurementCard(s.stateOfHealth, snapshot.soh),
-            _MeasurementCard(s.cycleCount, snapshot.cycleCount),
+            _MeasurementCard(
+              s.cycleCount,
+              snapshot.cycleCount,
+              fractionDigits: 0,
+            ),
             _MeasurementCard(s.fullChargeCapacity, snapshot.fullChargeCapacity),
           ],
         ),
@@ -273,7 +277,7 @@ class _Overview extends StatelessWidget {
         _MeasurementCard(s.current, snapshot.current),
         _MeasurementCard(s.power, snapshot.power),
         _MeasurementCard(s.stateOfHealth, snapshot.soh),
-        _MeasurementCard(s.cycleCount, snapshot.cycleCount),
+        _MeasurementCard(s.cycleCount, snapshot.cycleCount, fractionDigits: 0),
       ],
     );
   }
@@ -326,30 +330,39 @@ class _Cells extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 18),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final cell in cells)
-              SizedBox(
-                width: 132,
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      children: [
-                        Text(s.cellNumber(cell.index + 1)),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${localizedNumber(context, cell.value, fractionDigits: 3)} V',
-                          style: Theme.of(context).textTheme.titleLarge,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const spacing = 12.0;
+            final columns = constraints.maxWidth >= 600 ? 2 : 1;
+            final cardWidth =
+                (constraints.maxWidth - spacing * (columns - 1)) / columns;
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: [
+                for (final cell in cells)
+                  SizedBox(
+                    key: Key('battery-cell-card-${cell.index + 1}'),
+                    width: cardWidth,
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          children: [
+                            Text(s.cellNumber(cell.index + 1)),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${localizedNumber(context, cell.value, fractionDigits: 3)} V',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ),
-          ],
+              ],
+            );
+          },
         ),
         const SizedBox(height: 18),
         CellGrid(values: orderedValues),
@@ -421,15 +434,16 @@ class _Faults extends StatelessWidget {
 }
 
 class _MeasurementCard extends StatelessWidget {
-  const _MeasurementCard(this.label, this.value);
+  const _MeasurementCard(this.label, this.value, {this.fractionDigits = 1});
   final String label;
   final Measurement value;
+  final int fractionDigits;
 
   @override
   Widget build(BuildContext context) {
     final valueLabel = value.value == null
         ? AppLocalizations.of(context).notReportedByDevice
-        : '${localizedNumber(context, value.value!, fractionDigits: 1)} ${value.unit}';
+        : '${localizedNumber(context, value.value!, fractionDigits: fractionDigits)} ${value.unit}';
     return Semantics(
       label: '$label, $valueLabel',
       child: SizedBox(

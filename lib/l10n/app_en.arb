@@ -136,8 +136,14 @@
   ,"studioDraft": "STUDIO-DRAFT",
   "studioEngineering": "STUDIO / ENGINEERING",
   "replayLock": "REPLAY LOCK"
+  ,"studioPersistenceError": "Studio persistence is unavailable or failed. Imported research may not be saved."
   ,"deviceLibrary": "Device library",
   "libraryVerificationNote": "Verification status is shown per profile. Planned is not supported.",
+  "productionTrustAnchorMissing": "No valid production trust anchor is configured. Signed library updates and physical writes remain blocked.",
+  "libraryWriteBlockedMissing": "No verified device library is installed. Physical library writes remain blocked.",
+  "libraryWriteBlockedRevoked": "The active library pack or profile is revoked. Physical library writes remain blocked.",
+  "libraryWriteBlockedStale": "The revocation data is stale. Refresh it before physical writes can be enabled.",
+  "libraryWriteBlockedExpired": "The revocation list has expired. Refresh it before physical writes can be enabled.",
   "deterministicBms": "SolarDiag deterministic BMS",
   "simulatorOnly": "LFP-16S-SIM · Simulator only",
   "researchTargets": "Research targets",
