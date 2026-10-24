@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:solardiag_pro/audit/audit_chain.dart';
@@ -262,14 +263,16 @@ void main() {
             content.contains('safetyAcknowledged: true'),
             isFalse,
             reason:
-                '${file.path} must not contain literal safetyAcknowledged: true',
+                '${file.path} must not contain literal '
+                'safetyAcknowledged: true',
           );
         }
       },
     );
 
     test(
-      'architecture rule: AuthorizationSession and ConfirmationToken constructors restricted',
+      'architecture rule: AuthorizationSession and ConfirmationToken '
+      'constructors restricted',
       () {
         final libDir = Directory('lib');
         for (final file in libDir.listSync(recursive: true).whereType<File>()) {
@@ -313,7 +316,8 @@ void main() {
     );
 
     test(
-      'SimulationScenario.identityMismatch returns unknown model and breaks exactIdentityMatch',
+      'SimulationScenario.identityMismatch returns unknown model and breaks '
+      'exactIdentityMatch',
       () async {
         final adapter = SimulatedBmsAdapter(
           scenario: SimulationScenario.identityMismatch,
@@ -351,7 +355,8 @@ void main() {
               content.contains('createSimulatedParameterTransport'),
               isFalse,
               reason:
-                  '$normalized must not call createSimulatedParameterTransport directly',
+                  '$normalized must not call '
+                  'createSimulatedParameterTransport directly',
             );
           }
         }
@@ -522,7 +527,8 @@ void main() {
 
   group('T1 - S7: Spoofed Simulated Profiles', () {
     test(
-      'ProfileRegistry rejects unbundled simulated profiles from writes/loading',
+      'ProfileRegistry rejects unbundled simulated profiles from '
+      'writes/loading',
       () {
         final spoofedJson = jsonEncode({
           'schema_version': 2,

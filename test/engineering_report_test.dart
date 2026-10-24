@@ -34,7 +34,9 @@ void main() {
 
   test('JSON report includes watermark, readings, and session hash', () {
     final session = record();
-    final report = const EngineeringReportService().buildJson(data([session]));
+    final report = const EngineeringReportService().buildJson(
+      data([session]),
+    );
     expect(report['simulated'], isTrue);
     expect(report['watermark'], 'SIMULATED');
     expect(
@@ -78,7 +80,9 @@ void main() {
     () async {
       final reportData = data([record()]);
       final report = const EngineeringReportService().buildJson(reportData);
-      final bytes = await const EngineeringReportService().buildPdf(reportData);
+      final bytes = await const EngineeringReportService().buildPdf(
+        reportData,
+      );
 
       expect(report['watermark'], 'SIMULATED');
       expect(utf8.decode(bytes.take(5).toList()), '%PDF-');
@@ -162,7 +166,9 @@ void main() {
         },
       );
 
-      final report = const EngineeringReportService().buildJson(reportData);
+      final report = const EngineeringReportService().buildJson(
+        reportData,
+      );
       final exportedSession = (report['sessions'] as List).single as Map;
       expect(exportedSession['auditChainHead'], 'audit-head-1');
       expect(exportedSession['alarmHistory'], ['CELL_OVERVOLTAGE']);
@@ -185,9 +191,13 @@ void main() {
         dataHash: sha256.convert(utf8.encode(snapshot2)).toString(),
       );
       final reportData = data([record(), session2]);
-      final report = const EngineeringReportService().buildJson(reportData);
+      final report = const EngineeringReportService().buildJson(
+        reportData,
+      );
       final exportedSessions = report['sessions'] as List;
-      final bytes = await const EngineeringReportService().buildPdf(reportData);
+      final bytes = await const EngineeringReportService().buildPdf(
+        reportData,
+      );
 
       expect(
         exportedSessions.map((session) => (session as Map)['id']),

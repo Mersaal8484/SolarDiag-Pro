@@ -211,12 +211,12 @@ void main() {
       secretStore: secretStore,
     ).append('replacement', const {});
     File(macPath).writeAsStringSync(originalMac);
-    File(
-      entriesPath,
-    ).writeAsStringSync(File(replacementEntriesPath).readAsStringSync());
-    File(
-      headPath,
-    ).writeAsStringSync(File(replacementHeadPath).readAsStringSync());
+    File(entriesPath).writeAsStringSync(
+      File(replacementEntriesPath).readAsStringSync(),
+    );
+    File(headPath).writeAsStringSync(
+      File(replacementHeadPath).readAsStringSync(),
+    );
     expect(
       () => AuditChain.load(store, secretStore: secretStore),
       throwsFormatException,
