@@ -230,13 +230,14 @@ void main() {
           ),
         ),
       );
-      expect(tester.takeException(), isNull);
-      expect(
-        tester
-            .getSize(find.byKey(const Key('battery-cell-card-1')).first)
-            .width,
-        closeTo(342, 1),
+      final cellCard = find.byKey(const Key('battery-cell-card-1'));
+      await tester.scrollUntilVisible(
+        cellCard,
+        300,
+        scrollable: find.byType(Scrollable).first,
       );
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(cellCard).width, closeTo(342, 1));
     });
 
     testWidgets(

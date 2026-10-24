@@ -526,24 +526,27 @@ class _Stat extends StatelessWidget {
   final String label;
   final String value;
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 180,
-    height: 120,
-    child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(minHeight: 120),
+    child: SizedBox(
+      width: 180,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
-            const Spacer(),
-            Text(value, style: Theme.of(context).textTheme.headlineSmall),
-          ],
+              const SizedBox(height: 12),
+              Text(value, style: Theme.of(context).textTheme.headlineSmall),
+            ],
+          ),
         ),
       ),
     ),
