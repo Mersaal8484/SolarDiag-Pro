@@ -17,6 +17,7 @@ import 'package:solardiag_pro/transport/safe_frame_transport.dart';
 import 'package:solardiag_pro/trust/profile_integrity.dart';
 import 'package:solardiag_pro/trust/signed_tokens.dart';
 import 'package:solardiag_pro/trust/trust_anchors.dart';
+import 'support/test_secret_store.dart';
 
 void main() {
   group('T1 - S1: Authorization & Confirmation Safety in DeviceSession', () {
@@ -24,6 +25,7 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
+        auditSecretStore: TestSecretStore(),
       );
       addTearDown(session.dispose);
       await session.refresh();
@@ -71,6 +73,7 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
+        auditSecretStore: TestSecretStore(),
       );
       addTearDown(session.dispose);
       await session.refresh();
@@ -115,6 +118,7 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
+        auditSecretStore: TestSecretStore(),
         authenticator: const DemoConfiguration(
           isDemoMode: true,
           demoPin: 'pin',
@@ -171,6 +175,7 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
+        auditSecretStore: TestSecretStore(),
         authenticator: const DemoConfiguration(
           isDemoMode: true,
           demoPin: 'pin',
@@ -210,6 +215,7 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
+        auditSecretStore: TestSecretStore(),
         authenticator: const DemoConfiguration(
           isDemoMode: true,
           demoPin: 'pin',
@@ -294,6 +300,7 @@ void main() {
         final session = DeviceSession(
           scenario: SimulationScenario.healthy,
           autoStart: false,
+          auditSecretStore: TestSecretStore(),
         );
         addTearDown(session.dispose);
         await session.refresh();
@@ -318,6 +325,7 @@ void main() {
         final session = DeviceSession(
           scenario: SimulationScenario.identityMismatch,
           autoStart: false,
+          auditSecretStore: TestSecretStore(),
         );
         addTearDown(session.dispose);
         await session.refresh();
@@ -601,11 +609,17 @@ void main() {
   });
 
   group('T1 - S9: Trust Anchors & Absence of Private Keys', () {
-    test('TrustAnchorRegistry contains valid embedded public keys', () {
+    test('default trust anchors are explicit fail-closed placeholders', () {
       final registry = TrustAnchorRegistry();
       final rootKey = registry.findKey('solardiag-root-2026-v1');
-      expect(rootKey, isNotNull);
-      expect(rootKey!.publicKeyBytes.length, 32);
+      expect(rootKey, isNull);
+      expect(TrustAnchorRegistry.defaultAnchors, isNotEmpty);
+      expect(
+        TrustAnchorRegistry.defaultAnchors.every(
+          (key) => key.purpose == TrustAnchorPurpose.placeholder,
+        ),
+        isTrue,
+      );
     });
 
     test('architecture rule: no private keys anywhere in lib/', () {

@@ -108,6 +108,23 @@ class VerifiedWritePipeline {
     String key,
   ) async {
     final now = _clock().toUtc();
+    if (audit.availability != AuditAvailability.available) {
+      return _result(
+        WriteOutcome.rejected,
+        const ValidationResult([
+          ValidationIssue(
+            ValidationCode.auditKeyUnavailable,
+            'Audit key unavailable; write operation is locked.',
+          ),
+        ]),
+        null,
+        change,
+        null,
+        context.state,
+        null,
+        null,
+      );
+    }
     audit.append('write_preflight', {
       'parameter': change.definition.id,
       'transport': transport.kind.name,

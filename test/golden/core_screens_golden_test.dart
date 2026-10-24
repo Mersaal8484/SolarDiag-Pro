@@ -18,6 +18,7 @@ import 'package:solardiag_pro/features/workspace_shell.dart';
 import 'package:solardiag_pro/l10n/generated/app_localizations.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
+import '../support/test_secret_store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -131,6 +132,7 @@ void main() {
             final session = DeviceSession(
               scenario: scenarios[screen.key] ?? SimulationScenario.healthy,
               autoStart: false,
+              auditSecretStore: TestSecretStore(),
             );
             addTearDown(session.dispose);
             for (

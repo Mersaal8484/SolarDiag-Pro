@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import '../audit/audit_chain.dart';
 import '../config/feature_flags.dart';
 import '../features/advanced_diagnostics.dart';
 import '../features/battery_workspace.dart';
@@ -28,12 +29,14 @@ class SolarDiagApp extends StatefulWidget {
     this.flags = const FeatureFlags(),
     this.session,
     this.database,
+    this.auditSecretStore,
     this.showOnboarding = false,
     this.initialRoute = '/',
   });
   final FeatureFlags flags;
   final DeviceSession? session;
   final LocalDatabase? database;
+  final SecretStore? auditSecretStore;
   final bool showOnboarding;
   final String initialRoute;
   @override
@@ -55,7 +58,12 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
     super.initState();
     _ownsDeviceSession = widget.session == null;
     _ownsDatabase = widget.session == null && widget.database != null;
-    _deviceSession = widget.session ?? DeviceSession(database: widget.database);
+    _deviceSession =
+        widget.session ??
+        DeviceSession(
+          database: widget.database,
+          auditSecretStore: widget.auditSecretStore,
+        );
     _onboardingVisible = widget.showOnboarding;
     _restoreSettings();
     if (_designPreferences.workshopMode) {
@@ -175,6 +183,25 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
           workshop: _designPreferences.workshopMode,
           reduceTransparency: _designPreferences.reduceTransparency,
         ),
+        builder: (context, child) {
+          final content = child ?? const SizedBox.shrink();
+          if (_deviceSession.auditIntegrityAvailable) return content;
+          final s = AppLocalizations.of(context);
+          return Column(
+            children: [
+              MaterialBanner(
+                content: Text(s.auditKeyUnavailable),
+                actions: [
+                  TextButton(
+                    onPressed: () {},
+                    child: Text(s.physicalWriteLocked),
+                  ),
+                ],
+              ),
+              Expanded(child: content),
+            ],
+          );
+        },
         home: Builder(
           builder: (context) {
             if (_onboardingVisible) {

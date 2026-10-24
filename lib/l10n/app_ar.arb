@@ -86,6 +86,7 @@
   "writeAppliedWithReadback": "طُبق التغيير وتحقق بالقراءة الراجعة: {value}",
   "@writeAppliedWithReadback": {"placeholders": {"value": {"type": "String"}}},
   "writeRejected": "رفض خط الأمان عملية الكتابة.",
+  "auditKeyUnavailable": "مفتاح سجل التدقيق غير متاح. عمليات الكتابة مقفلة.",
   "writeFailedVerify": "فشلت الكتابة. يجب التحقق من حالة الجهاز قبل أي تغيير آخر.",
   "symbols": "رموز SolarDiag",
   "simulated": "محاكاة",

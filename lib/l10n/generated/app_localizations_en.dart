@@ -250,8 +250,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get technicianPin => 'Technician PIN';
 
   @override
-  String get pinAuthorizationHint =>
-      'Enter PIN to authorize write operations';
+  String get pinAuthorizationHint => 'Enter PIN to authorize write operations';
 
   @override
   String get authenticateAction => 'Authenticate';
@@ -280,6 +279,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get writeRejected => 'The write was rejected by the safety pipeline.';
+
+  @override
+  String get auditKeyUnavailable =>
+      'Audit key unavailable. Write operations are locked.';
 
   @override
   String get writeFailedVerify =>

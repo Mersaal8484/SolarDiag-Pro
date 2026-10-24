@@ -69,6 +69,8 @@ class StoredAuditChain {
   final String? headMac;
 }
 
+enum AuditAvailability { available, keyUnavailable }
+
 abstract interface class SecretStore {
   Future<List<int>> getOrCreateSecret(String keyId);
   List<int> getOrCreateSecretSync(String keyId);
@@ -222,8 +224,22 @@ class AuditChain {
   final SecretStore? secretStore;
   final String keyId;
   List<AuditEntry> _entries;
+  bool _hasUnsignedEntries = false;
   List<AuditEntry> get entries => List.unmodifiable(_entries);
   String get head => _entries.isEmpty ? 'GENESIS' : _entries.last.hash;
+  bool get hasUnsignedEntries => _hasUnsignedEntries;
+  AuditAvailability get availability {
+    if (_hasUnsignedEntries) return AuditAvailability.keyUnavailable;
+    final store = secretStore;
+    if (store == null) return AuditAvailability.keyUnavailable;
+    try {
+      return store.getOrCreateSecretSync(keyId).length >= 32
+          ? AuditAvailability.available
+          : AuditAvailability.keyUnavailable;
+    } on StateError {
+      return AuditAvailability.keyUnavailable;
+    }
+  }
 
   factory AuditChain.load(
     AuditChainStore store, {
@@ -250,26 +266,37 @@ class AuditChain {
     if (!chain.verify() || stored.head != chain.head) {
       throw const FormatException('Audit chain tampering detected.');
     }
-    if (secretStore == null ||
-        stored.headMac == null ||
-        stored.headMac!.isEmpty) {
+    final mac = stored.headMac;
+    if (mac == null || mac.isEmpty) {
       throw const FormatException('Audit head MAC is required.');
     }
-    final secret = secretStore.getOrCreateSecretSync(keyId);
+    final storeSecret = secretStore;
+    if (storeSecret == null) {
+      chain._hasUnsignedEntries = true;
+      return chain;
+    }
+    late final List<int> secret;
+    try {
+      secret = storeSecret.getOrCreateSecretSync(keyId);
+    } on StateError {
+      chain._hasUnsignedEntries = true;
+      return chain;
+    }
+    if (secret.length < 32) {
+      chain._hasUnsignedEntries = true;
+      return chain;
+    }
     final expectedMac = Hmac(
       sha256,
       secret,
     ).convert(utf8.encode(stored.head)).toString();
-    if (stored.headMac != expectedMac) {
+    if (mac != expectedMac) {
       throw const FormatException('Audit head MAC verification failed.');
     }
     return chain;
   }
 
   AuditEntry append(String action, Map<String, Object?> details) {
-    if (_store != null && secretStore == null) {
-      throw StateError('Cannot persist audit chain without a secret store.');
-    }
     final timestamp = _clock().toUtc();
     final sequence = _entries.length;
     final previousHash = head;
@@ -289,17 +316,27 @@ class AuditChain {
       hash: sha256.convert(utf8.encode(payload)).toString(),
     );
     final store = _store;
-    final persistentMac = store == null
+    List<int>? secret;
+    if (!_hasUnsignedEntries) {
+      try {
+        final candidate = secretStore?.getOrCreateSecretSync(keyId);
+        if (candidate != null && candidate.length >= 32) secret = candidate;
+      } on StateError {
+        secret = null;
+      }
+    }
+    final keyAvailable = secret != null;
+    if (!keyAvailable) _hasUnsignedEntries = true;
+    final persistentMac = store == null || !keyAvailable
         ? null
-        : Hmac(
-            sha256,
-            secretStore!.getOrCreateSecretSync(keyId),
-          ).convert(utf8.encode(entry.hash)).toString();
+        : Hmac(sha256, secret!)
+              .convert(utf8.encode(entry.hash))
+              .toString();
     _entries.add(entry);
-    if (store != null) {
+    if (store != null && persistentMac != null) {
       store.saveEntries(entries);
       store.saveHead(entry.hash);
-      store.saveHeadMac(entry.hash, persistentMac!);
+      store.saveHeadMac(entry.hash, persistentMac);
     }
     return entry;
   }

@@ -602,6 +602,12 @@ abstract class AppLocalizations {
   /// **'The write was rejected by the safety pipeline.'**
   String get writeRejected;
 
+  /// No description provided for @auditKeyUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit key unavailable. Write operations are locked.'**
+  String get auditKeyUnavailable;
+
   /// No description provided for @writeFailedVerify.
   ///
   /// In en, this message translates to:

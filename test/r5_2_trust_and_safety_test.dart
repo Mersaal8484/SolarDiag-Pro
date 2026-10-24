@@ -15,6 +15,7 @@ import 'package:solardiag_pro/simulator/simulation_scenario.dart';
 import 'package:solardiag_pro/trust/profile_integrity.dart';
 import 'package:solardiag_pro/trust/signed_tokens.dart';
 import 'package:solardiag_pro/trust/trust_anchors.dart';
+import 'support/test_secret_store.dart';
 
 void main() {
   group('Y1: Fail-closed Authenticator & Confirmation Factory', () {
@@ -136,6 +137,7 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
+        auditSecretStore: TestSecretStore(),
       );
       addTearDown(session.dispose);
 
@@ -151,6 +153,7 @@ void main() {
         final session = DeviceSession(
           scenario: SimulationScenario.identityMismatch,
           autoStart: false,
+          auditSecretStore: TestSecretStore(),
         );
         addTearDown(session.dispose);
         await session.refresh();

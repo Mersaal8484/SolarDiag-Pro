@@ -394,11 +394,15 @@ class _ParametersScreenState extends State<ParametersScreen> {
       safetyAcknowledged: acknowledged,
     );
     if (!mounted) return;
+    final auditUnavailable = result.validation.issues.any(
+      (issue) => issue.code == ValidationCode.auditKeyUnavailable,
+    );
     final message = switch (result.outcome) {
       WriteOutcome.applied => s.writeAppliedWithReadback(
         _value(id, result.readback!),
       ),
-      WriteOutcome.rejected => s.writeRejected,
+      WriteOutcome.rejected =>
+        auditUnavailable ? s.auditKeyUnavailable : s.writeRejected,
       WriteOutcome.failed => s.writeFailedVerify,
     };
     ScaffoldMessenger.of(
@@ -485,10 +489,7 @@ class _PinDialogState extends State<_PinDialog> {
         onPressed: () => Navigator.pop(context),
         child: Text(widget.cancelLabel),
       ),
-      FilledButton(
-        onPressed: _submit,
-        child: Text(widget.authenticateLabel),
-      ),
+      FilledButton(onPressed: _submit, child: Text(widget.authenticateLabel)),
     ],
   );
 }

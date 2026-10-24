@@ -24,7 +24,10 @@ class NoAuthenticator implements TechnicianAuthenticator {
 /// In production, [isDemoMode] is false and authentication fails closed unless
 /// an external authentication provider is configured.
 class DemoConfiguration {
-  const DemoConfiguration({this.isDemoMode = false, this.demoPin = '1234'});
+  /// A demo authenticator is never enabled implicitly.  The credential is
+  /// supplied only by the demo/test harness and is deliberately not shipped
+  /// as a literal application secret.
+  const DemoConfiguration({this.isDemoMode = false, required this.demoPin});
 
   final bool isDemoMode;
   final String demoPin;
@@ -38,7 +41,7 @@ class DemoConfiguration {
 class MockTechnicianAuthenticator implements TechnicianAuthenticator {
   const MockTechnicianAuthenticator({
     this.acceptAll = false,
-    this.demoPin = '1234',
+    required this.demoPin,
   });
   final bool acceptAll;
   final String demoPin;

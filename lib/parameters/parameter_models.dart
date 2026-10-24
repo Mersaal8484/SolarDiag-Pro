@@ -191,6 +191,7 @@ enum ValidationCode {
   writeLocked,
   unknownDeviceState,
   invalidConfirmation,
+  auditKeyUnavailable,
 }
 
 class ValidationIssue {

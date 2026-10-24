@@ -31,9 +31,12 @@ class DeviceSession extends ChangeNotifier {
     SimulationScenario scenario = SimulationScenario.communicationFaults,
     this.pollInterval = const Duration(milliseconds: 500),
     this.database,
+    SecretStore? auditSecretStore,
+    TechnicianAuthenticator? authenticator,
     LoopbackGatewayTransport? gatewayTransport,
     bool autoStart = true,
-  }) : _scenario = scenario,
+  }) : _auditSecretStore = auditSecretStore,
+       _scenario = scenario,
        _snapshot = ScenarioFactory.create(
          scenario,
          tick: _initialTick(scenario),
@@ -42,7 +45,8 @@ class DeviceSession extends ChangeNotifier {
          scenario: scenario,
          initialTick: _initialTick(scenario),
        ),
-       _providedGatewayTransport = gatewayTransport {
+       _providedGatewayTransport = gatewayTransport,
+       auth = AuthorizationController(authenticator: authenticator) {
     _beginSession();
     _gatewayTransport =
         _providedGatewayTransport ??
@@ -64,7 +68,8 @@ class DeviceSession extends ChangeNotifier {
 
   final Duration pollInterval;
   final LocalDatabase? database;
-  final AuthorizationController auth = AuthorizationController();
+  final SecretStore? _auditSecretStore;
+  final AuthorizationController auth;
   final LoopbackGatewayTransport? _providedGatewayTransport;
   late final LoopbackGatewayTransport _gatewayTransport;
   SimulationScenario _scenario;
@@ -105,6 +110,9 @@ class DeviceSession extends ChangeNotifier {
   AuditChain get audit => _audit;
   WriteResult? get lastWriteResult => _lastWriteResult;
   Object? get lastError => _lastError;
+  AuditAvailability get auditAvailability => _audit.availability;
+  bool get auditIntegrityAvailable =>
+      auditAvailability == AuditAvailability.available;
   bool get simulated => true;
   InverterTelemetrySnapshot? get inverterSnapshot => _inverterSnapshot;
   GatewayRuntimeStatus get gatewayStatus => _gatewayTransport.status;
@@ -237,14 +245,15 @@ class DeviceSession extends ChangeNotifier {
     _persistedAlarmCodes = null;
     auth.lock('session switch');
     _lastIdentification = null;
-    _audit = database != null
-        ? AuditChain(
-            store: DatabaseAuditChainStore(
+    _audit = AuditChain(
+      store: database == null
+          ? null
+          : DatabaseAuditChainStore(
               database: database!,
               sessionId: _sessionId,
             ),
-          )
-        : AuditChain();
+      secretStore: _auditSecretStore,
+    );
   }
 
   void start() {
@@ -322,7 +331,8 @@ class DeviceSession extends ChangeNotifier {
       writeLocked =
           !auth.isUnlocked ||
           _linkState != DeviceSessionLinkState.online ||
-          _lastError != null;
+          _lastError != null ||
+          !auditIntegrityAvailable;
     }
 
     return DeviceWriteContext(

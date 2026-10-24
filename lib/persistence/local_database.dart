@@ -122,7 +122,7 @@ class LocalDatabase implements LifecycleHistoryStore {
   void _migrate() {
     _database.execute('PRAGMA foreign_keys = ON');
     final version = _database.userVersion;
-    if (version > 7) {
+    if (version > 8) {
       throw StateError('Database schema is newer than this application.');
     }
     if (version == 0) {
@@ -284,6 +284,28 @@ class LocalDatabase implements LifecycleHistoryStore {
         ON telemetry_samples(session_id, captured_at ASC, id ASC);
       ''');
       _database.userVersion = 7;
+    }
+    if (_database.userVersion < 8) {
+      final hasAuditHeads = _database
+          .select(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'audit_chain_heads'",
+          )
+          .isNotEmpty;
+      if (hasAuditHeads) {
+        _database.execute(
+          'ALTER TABLE audit_chain_heads ADD COLUMN head_mac TEXT',
+        );
+      } else {
+        // A partially-created legacy database must still migrate safely.
+        _database.execute('''
+          CREATE TABLE audit_chain_heads (
+            session_id TEXT NOT NULL PRIMARY KEY,
+            head TEXT NOT NULL,
+            head_mac TEXT
+          ) STRICT;
+        ''');
+      }
+      _database.userVersion = 8;
     }
   }
 
@@ -826,6 +848,13 @@ class LocalDatabase implements LifecycleHistoryStore {
     );
   }
 
+  void saveAuditHeadMac(String sessionId, String mac) {
+    _database.execute(
+      'UPDATE audit_chain_heads SET head_mac = ? WHERE session_id = ?',
+      [mac, sessionId],
+    );
+  }
+
   /// يُحمِّل جميع إدخالات audit الخاصة بـ [sessionId] مرتبةً حسب sequence.
   List<Map<String, Object?>> loadAuditEntries(String sessionId) => [
     for (final row in _database.select(
@@ -854,6 +883,15 @@ class LocalDatabase implements LifecycleHistoryStore {
       [sessionId],
     );
     return rows.isEmpty ? null : rows.single['head'] as String;
+  }
+
+  String? loadAuditHeadMac(String sessionId) {
+    final rows = _database.select(
+      'SELECT head_mac FROM audit_chain_heads WHERE session_id = ?',
+      [sessionId],
+    );
+    if (rows.isEmpty) return null;
+    return rows.single['head_mac'] as String?;
   }
 
   void close() => _database.close();
@@ -921,6 +959,6 @@ class DatabaseAuditChainStore implements AuditChainStore {
 
   @override
   void saveHeadMac(String head, String mac) {
-    // Session SQLite tables can persist head; MAC storage can be added to audit_chain_heads
+    database.saveAuditHeadMac(sessionId, mac);
   }
 }

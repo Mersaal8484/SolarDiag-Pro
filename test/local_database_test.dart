@@ -84,7 +84,7 @@ void main() {
 
     final database = LocalDatabase.openForTest(path);
     addTearDown(database.close);
-    expect(database.schemaVersionForTest, 7);
+    expect(database.schemaVersionForTest, 8);
     final now = DateTime.utc(2026, 10, 24);
     database.saveSession(
       DiagnosticSessionRecord(
@@ -311,6 +311,9 @@ void main() {
     // تحديث head
     database.saveAuditHead('session-x', 'hash-xyz');
     expect(database.loadAuditHead('session-x'), 'hash-xyz');
+    expect(database.loadAuditHeadMac('session-x'), isNull);
+    database.saveAuditHeadMac('session-x', 'mac-xyz');
+    expect(database.loadAuditHeadMac('session-x'), 'mac-xyz');
   });
 
   test('SQLite audit_entries append-only trigger rejects UPDATE', () {

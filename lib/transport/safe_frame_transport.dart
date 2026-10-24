@@ -158,9 +158,8 @@ class LoopbackGatewayTransport implements FrameTransport {
        // field name through the constructor API.
        // ignore: prefer_initializing_formals
        _guard = guard,
-       _clock = clock ?? DateTime.now {
-    audit.append('gateway_mode_started', {'mode': mode.name});
-  }
+       _clock = clock ?? DateTime.now,
+       _modeStartedRecorded = false;
   @override
   final GatewayOperatingMode mode;
   final TransmissionGuard _guard;
@@ -174,6 +173,7 @@ class LoopbackGatewayTransport implements FrameTransport {
   final _controller = StreamController<BusFrame>.broadcast();
   final List<DateTime> _sentAt = [];
   final List<DateTime> _errorTimestamps = [];
+  bool _modeStartedRecorded;
   int errorCount = 0;
   int allowedCount = 0;
   int blockedCount = 0;
@@ -203,6 +203,7 @@ class LoopbackGatewayTransport implements FrameTransport {
   @override
   Future<void> send(BusFrame frame, TransmissionPurpose purpose) async {
     if (_closed) throw StateError('Transport is closed.');
+    _recordModeStarted();
     if (mode == GatewayOperatingMode.listenOnly) {
       _reject(frame, 'Passive mode cannot transmit.');
     }
@@ -245,6 +246,7 @@ class LoopbackGatewayTransport implements FrameTransport {
   }
 
   void receive(BusFrame frame) {
+    _recordModeStarted();
     if (frame.isError) {
       errorCount++;
       _errorTimestamps.add(_clock());
@@ -253,6 +255,12 @@ class LoopbackGatewayTransport implements FrameTransport {
     if (!_closed) {
       _controller.add(frame);
     }
+  }
+
+  void _recordModeStarted() {
+    if (_modeStartedRecorded) return;
+    audit.append('gateway_mode_started', {'mode': mode.name});
+    _modeStartedRecorded = true;
   }
 
   @override

@@ -86,6 +86,7 @@
   "writeAppliedWithReadback": "Applied and verified by readback: {value}",
   "@writeAppliedWithReadback": {"placeholders": {"value": {"type": "String"}}},
   "writeRejected": "The write was rejected by the safety pipeline.",
+  "auditKeyUnavailable": "Audit key unavailable. Write operations are locked.",
   "writeFailedVerify": "Write failed. Device state must be verified before another change.",
   "symbols": "SolarDiag Symbols",
   "simulated": "SIMULATED",

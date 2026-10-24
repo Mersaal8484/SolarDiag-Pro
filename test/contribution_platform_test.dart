@@ -13,6 +13,7 @@ import 'package:solardiag_pro/contribution/redaction.dart';
 import 'package:solardiag_pro/protocol/device_profile.dart';
 import 'package:solardiag_pro/trust/signed_tokens.dart';
 import 'package:solardiag_pro/trust/profile_integrity.dart';
+import 'support/test_secret_store.dart';
 import 'support/test_signer.dart';
 
 class _MemoryPackStore implements LibraryPackStore {
@@ -692,10 +693,13 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const SolarDiagApp());
+    await tester.pumpWidget(SolarDiagApp(auditSecretStore: TestSecretStore()));
     expect(find.byTooltip('Contribute'), findsNothing);
     await tester.pumpWidget(
-      const SolarDiagApp(flags: FeatureFlags(contributionsEnabled: true)),
+      SolarDiagApp(
+        flags: const FeatureFlags(contributionsEnabled: true),
+        auditSecretStore: TestSecretStore(),
+      ),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Contribute'));

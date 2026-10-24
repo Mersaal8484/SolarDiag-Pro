@@ -281,6 +281,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get writeRejected => 'رفض خط الأمان عملية الكتابة.';
 
   @override
+  String get auditKeyUnavailable =>
+      'مفتاح سجل التدقيق غير متاح. عمليات الكتابة مقفلة.';
+
+  @override
   String get writeFailedVerify =>
       'فشلت الكتابة. يجب التحقق من حالة الجهاز قبل أي تغيير آخر.';
 

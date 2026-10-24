@@ -5,8 +5,14 @@ import 'package:solardiag_pro/core/battery_models.dart';
 import 'package:solardiag_pro/parameters/parameter_backup.dart';
 import 'package:solardiag_pro/parameters/parameter_models.dart';
 import 'package:solardiag_pro/parameters/write_pipeline.dart';
+import '../support/test_secret_store.dart';
 
 void main() {
+  AuditChain createAudit({DateTime Function()? clock}) => AuditChain(
+    clock: clock,
+    secretStore: TestSecretStore(),
+  );
+
   const definition = ParameterDefinition(
     id: 'charge_limit',
     unit: 'V',
@@ -81,7 +87,7 @@ void main() {
       final result =
           await VerifiedWritePipeline(
             transport: harness.physical,
-            audit: AuditChain(),
+            audit: createAudit(),
             clock: () => now,
           ).execute(
             change: change,
@@ -99,13 +105,40 @@ void main() {
     },
   );
 
+  test('unavailable audit key rejects a write before transport access', () async {
+    final harness = _Harness({'charge_limit': 54, 'service_mode': 1});
+    const change = ParameterChange(
+      definition: definition,
+      requestedValue: 55.2,
+    );
+    final result = await VerifiedWritePipeline(
+      transport: harness.physical,
+      audit: AuditChain(),
+      clock: () => now,
+    ).execute(
+      change: change,
+      authorization: auth(),
+      safetyAcknowledged: true,
+      context: context,
+      confirmation: token(change, 54),
+      idempotencyKey: 'missing-audit-key',
+    );
+
+    expect(result.outcome, WriteOutcome.rejected);
+    expect(
+      result.validation.issues.map((issue) => issue.code),
+      contains(ValidationCode.auditKeyUnavailable),
+    );
+    expect(harness.writeCount, 0);
+  });
+
   test('verified pipeline records nine stages and applies once', () async {
     final harness = _Harness({'charge_limit': 54, 'service_mode': 1});
     const change = ParameterChange(
       definition: definition,
       requestedValue: 55.2,
     );
-    final audit = AuditChain(clock: () => now);
+    final audit = createAudit(clock: () => now);
     final result =
         await VerifiedWritePipeline(
           transport: harness.physical,
@@ -151,7 +184,7 @@ void main() {
       final result =
           await VerifiedWritePipeline(
             transport: harness.physical,
-            audit: AuditChain(),
+            audit: createAudit(),
             clock: () => now,
           ).execute(
             change: change,
@@ -176,7 +209,7 @@ void main() {
     );
     final pipeline = VerifiedWritePipeline(
       transport: harness.physical,
-      audit: AuditChain(),
+      audit: createAudit(),
       clock: () => now,
     );
     final confirmation = token(change, 54);
@@ -230,7 +263,7 @@ void main() {
     );
     final pipeline = VerifiedWritePipeline(
       transport: harness.physical,
-      audit: AuditChain(),
+      audit: createAudit(),
       clock: () => now,
     );
     await pipeline.execute(
@@ -265,7 +298,7 @@ void main() {
     final result =
         await VerifiedWritePipeline(
           transport: harness.physical,
-          audit: AuditChain(),
+          audit: createAudit(),
           clock: () => now,
         ).execute(
           change: change,
@@ -291,7 +324,7 @@ void main() {
     );
     final pipeline = VerifiedWritePipeline(
       transport: harness.physical,
-      audit: AuditChain(),
+      audit: createAudit(),
       clock: () => now,
     );
     await Future.wait([
@@ -341,7 +374,7 @@ void main() {
     final result =
         await VerifiedWritePipeline(
           transport: harness.physical,
-          audit: AuditChain(),
+          audit: createAudit(),
           clock: () => now,
         ).execute(
           change: change,
@@ -380,7 +413,7 @@ void main() {
       final result =
           await VerifiedWritePipeline(
             transport: harness.physical,
-            audit: AuditChain(),
+            audit: createAudit(),
             clock: () => now,
           ).execute(
             change: change,
@@ -416,7 +449,7 @@ void main() {
     );
     final pipeline = VerifiedWritePipeline(
       transport: harness.physical,
-      audit: AuditChain(),
+      audit: createAudit(),
       clock: () => now,
     );
     final failed = await pipeline.execute(

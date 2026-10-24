@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:solardiag_pro/app/solardiag_app.dart';
 import 'package:solardiag_pro/config/feature_flags.dart';
 import 'package:solardiag_pro/studio/profile_builder.dart';
+import 'support/test_secret_store.dart';
 
 void main() {
   const validDraft = StudioProfileDraft(
@@ -65,7 +66,7 @@ void main() {
     );
   });
   testWidgets('Studio feature is absent by default', (tester) async {
-    await tester.pumpWidget(const SolarDiagApp());
+    await tester.pumpWidget(SolarDiagApp(auditSecretStore: TestSecretStore()));
     expect(find.text('Protocol Discovery Studio'), findsNothing);
     expect(find.byTooltip('Studio'), findsNothing);
   });
@@ -77,7 +78,10 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      const SolarDiagApp(flags: FeatureFlags(studioEnabled: true)),
+      SolarDiagApp(
+        flags: const FeatureFlags(studioEnabled: true),
+        auditSecretStore: TestSecretStore(),
+      ),
     );
     await tester.tap(find.byTooltip('Studio'));
     await tester.pumpAndSettle();
