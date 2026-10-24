@@ -223,6 +223,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
 
   Future<bool> _ensureUnlocked(DeviceSession session) async {
     if (session.auth.isUnlocked) return true;
+    final s = AppLocalizations.of(context);
     final pinController = TextEditingController();
     final pin = await showDialog<String>(
       context: context,

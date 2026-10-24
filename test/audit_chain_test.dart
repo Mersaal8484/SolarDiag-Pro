@@ -35,10 +35,15 @@ class _MemoryAuditStore implements AuditChainStore {
 void main() {
   test('audit chain persists, restores and exports its separate head', () {
     final store = _MemoryAuditStore();
-    final chain = AuditChain(clock: () => DateTime.utc(2026), store: store)
+    final secretStore = InMemorySecretStore();
+    final chain = AuditChain(
+      clock: () => DateTime.utc(2026),
+      store: store,
+      secretStore: secretStore,
+    )
       ..append('finding_promoted', const {'id': 'f1'});
 
-    final restored = AuditChain.load(store);
+    final restored = AuditChain.load(store, secretStore: secretStore);
     expect(restored.verify(), isTrue);
     expect(restored.head, chain.head);
     expect(restored.export(), contains(chain.head));
@@ -73,5 +78,47 @@ void main() {
     ).append('finding_promoted', const {'id': 'f1'});
     store.storedHead = 'forged-head';
     expect(() => AuditChain.load(store), throwsFormatException);
+  });
+
+  test('missing audit head MAC is rejected when loading', () {
+    final store = _MemoryAuditStore();
+    final secretStore = InMemorySecretStore();
+    AuditChain(store: store, secretStore: secretStore).append(
+      'finding_promoted',
+      const {'id': 'f1'},
+    );
+    store.storedMac = null;
+
+    expect(
+      () => AuditChain.load(store, secretStore: secretStore),
+      throwsFormatException,
+    );
+  });
+
+  test('non-empty chain without a MAC cannot load without a secret store', () {
+    final store = _MemoryAuditStore();
+    AuditChain(store: store).append('finding_promoted', const {'id': 'f1'});
+
+    expect(() => AuditChain.load(store), throwsFormatException);
+  });
+
+  test('replacing entries and head without the secret is rejected', () {
+    final store = _MemoryAuditStore();
+    final secretStore = InMemorySecretStore();
+    AuditChain(store: store, secretStore: secretStore).append(
+      'finding_promoted',
+      const {'id': 'f1'},
+    );
+    final originalMac = store.storedMac;
+    final replacement = AuditChain()
+      ..append('replacement', const {'id': 'forged'});
+    store.storedEntries = replacement.entries;
+    store.storedHead = replacement.head;
+    store.storedMac = originalMac;
+
+    expect(
+      () => AuditChain.load(store, secretStore: secretStore),
+      throwsFormatException,
+    );
   });
 }

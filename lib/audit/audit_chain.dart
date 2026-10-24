@@ -249,7 +249,12 @@ class AuditChain {
     if (!chain.verify() || stored.head != chain.head) {
       throw const FormatException('Audit chain tampering detected.');
     }
-    if (secretStore != null && stored.head != 'GENESIS') {
+    if (stored.head != 'GENESIS') {
+      if (secretStore == null ||
+          stored.headMac == null ||
+          stored.headMac!.isEmpty) {
+        throw const FormatException('Audit head MAC is required.');
+      }
       final secret = secretStore.getOrCreateSecretSync(keyId);
       final expectedMac = Hmac(
         sha256,

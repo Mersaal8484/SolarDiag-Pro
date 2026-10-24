@@ -198,6 +198,9 @@ void main() {
           'interface': 'can',
           'data_formats': ['candump'],
         },
+        'allowed_modbus_read_ranges': [
+          {'start': 0, 'end': 1},
+        ],
         'capabilities': capabilities,
         'parameters': parameters,
       });

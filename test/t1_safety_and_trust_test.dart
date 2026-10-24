@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:solardiag_pro/audit/audit_chain.dart';
+import 'package:solardiag_pro/auth/authorization_controller.dart';
 import 'package:solardiag_pro/gateway/gateway_contract.dart';
 import 'package:solardiag_pro/parameters/parameter_models.dart';
 import 'package:solardiag_pro/parameters/write_pipeline.dart';
@@ -114,6 +115,10 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
+        authenticator: const DemoConfiguration(
+          isDemoMode: true,
+          demoPin: 'pin',
+        ).createAuthenticator(),
       );
       addTearDown(session.dispose);
       await session.refresh();
@@ -166,6 +171,10 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
+        authenticator: const DemoConfiguration(
+          isDemoMode: true,
+          demoPin: 'pin',
+        ).createAuthenticator(),
       );
       addTearDown(session.dispose);
       await session.refresh();
@@ -201,6 +210,10 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
+        authenticator: const DemoConfiguration(
+          isDemoMode: true,
+          demoPin: 'pin',
+        ).createAuthenticator(),
       );
       addTearDown(session.dispose);
       await session.refresh();
@@ -423,6 +436,7 @@ void main() {
           const approvalValid = ProfileApproval(
             approvedByRole: 'approvalEngineer',
             lifecycleStage: 'published',
+            hardwareValidationRecordId: 'HVR-2026-001',
             verifiedCapabilities: ['writeParameter'],
           );
           expect(
@@ -431,6 +445,19 @@ void main() {
           );
         },
       );
+
+      test('ProfileApproval rejects an empty hardware validation record', () {
+        const approvalWithoutRecord = ProfileApproval(
+          approvedByRole: 'approvalEngineer',
+          lifecycleStage: 'published',
+          hardwareValidationRecordId: '',
+          verifiedCapabilities: ['writeParameter'],
+        );
+        expect(
+          approvalWithoutRecord.isApprovedFor(DeviceCapability.writeParameter),
+          isFalse,
+        );
+      });
 
       test('ProfileRegistry enforces approval for writes', () {
         final registry = ProfileRegistry.empty();
