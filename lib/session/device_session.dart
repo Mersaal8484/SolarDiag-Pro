@@ -17,8 +17,7 @@ import '../parameters/parameter_models.dart' hide RestorePlan;
 import '../parameters/write_pipeline.dart';
 import '../persistence/local_database.dart';
 import '../protocol/bms_adapter.dart';
-import '../simulator/simulated_bms_adapter.dart';
-import '../simulator/simulated_inverter_adapter.dart';
+import '../protocol/inverter_adapter.dart';
 import '../simulator/simulation_scenario.dart';
 import '../transport/safe_frame_transport.dart';
 
@@ -73,9 +72,9 @@ class DeviceSession extends ChangeNotifier {
   late final LoopbackGatewayTransport _gatewayTransport;
   SimulationScenario _scenario;
   TelemetrySnapshot _snapshot;
-  SimulatedBmsAdapter _adapter;
+  BmsAdapter _adapter;
   IdentificationResult? _lastIdentification;
-  final SimulatedInverterAdapter _inverterAdapter = SimulatedInverterAdapter();
+  final InverterAdapter _inverterAdapter = SimulatedInverterAdapter();
   InverterTelemetrySnapshot? _inverterSnapshot;
   Timer? _pollTimer;
   bool _polling = false;
@@ -123,7 +122,7 @@ class DeviceSession extends ChangeNotifier {
       database?.listTelemetrySamples(sessionId) ?? [];
   String auditHeadFor(String sessionId) =>
       database?.loadAuditHead(sessionId) ?? 'GENESIS';
-  String get activeProfileId => _adapter.profileIdentity.id;
+  String get activeProfileId => _adapter.profileIdentity.profileId;
   bool get libraryWritesBlocked => _libraryWritesBlocked;
 
   void setLibraryWriteBlocked(bool blocked) {
@@ -309,7 +308,7 @@ class DeviceSession extends ChangeNotifier {
     final profile = _adapter.profileIdentity;
     final backup = ParameterBackup(
       schemaVersion: 1,
-      profileId: profile.id,
+      profileId: profile.profileId,
       deviceIdentity: profile.deviceId,
       firmware: profile.firmware,
       capturedAt: DateTime.now().toUtc(),
@@ -360,7 +359,7 @@ class DeviceSession extends ChangeNotifier {
   }
 
   RestorePlan planRestore(ParameterBackup backup) => backup.createRestorePlan(
-    activeProfileId: _adapter.profileIdentity.id,
+    activeProfileId: _adapter.profileIdentity.profileId,
     activeDeviceIdentity: _adapter.profileIdentity.deviceId,
     activeFirmware: _adapter.profileIdentity.firmware,
     definitions: parameterDefinitions,

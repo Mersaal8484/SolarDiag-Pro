@@ -16,7 +16,6 @@ import 'package:solardiag_pro/protocols/modbus/rtu_codec.dart';
 import 'package:solardiag_pro/protocols/modbus/rtu_link.dart';
 import 'package:solardiag_pro/protocols/modbus/tcp_codec.dart';
 import 'package:solardiag_pro/protocols/modbus/tcp_link.dart';
-import 'package:solardiag_pro/simulator/simulated_inverter_adapter.dart';
 
 class _RecordingLink implements ModbusLink {
   _RecordingLink(this.respond);

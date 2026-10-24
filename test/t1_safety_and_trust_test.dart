@@ -11,7 +11,6 @@ import 'package:solardiag_pro/protocol/capabilities.dart';
 import 'package:solardiag_pro/protocol/device_profile.dart';
 import 'package:solardiag_pro/protocol/profile_registry.dart';
 import 'package:solardiag_pro/session/device_session.dart';
-import 'package:solardiag_pro/simulator/simulated_bms_adapter.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
 import 'package:solardiag_pro/transport/safe_frame_transport.dart';
 import 'package:solardiag_pro/trust/profile_integrity.dart';

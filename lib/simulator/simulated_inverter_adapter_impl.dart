@@ -8,6 +8,14 @@ class SimulatedInverterAdapter extends SimulatedParameterBackend
   final Map<int, int> _registers = {0: 540, 1: 102, 2: 2300, 3: 5000};
 
   @override
+  DeviceProfileIdentity get profileIdentity => const DeviceProfileIdentity(
+    profileId: 'solardiag.simulated.inverter.v1',
+    model: 'Simulated inverter',
+    firmware: 'simulator',
+    deviceId: 'SOLARDIAG-SIM-INVERTER',
+  );
+
+  @override
   Future<IdentificationResult> identify() async => const IdentificationResult(
     confidence: 1,
     evidence: ['simulator:modbus-inverter'],

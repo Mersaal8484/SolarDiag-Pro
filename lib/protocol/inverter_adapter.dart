@@ -4,6 +4,7 @@ import 'bms_adapter.dart';
 import 'capabilities.dart';
 
 abstract interface class InverterAdapter {
+  DeviceProfileIdentity get profileIdentity;
   Future<IdentificationResult> identify();
   Future<InverterTelemetrySnapshot> readTelemetry();
   Future<Set<String>> readAlarms();

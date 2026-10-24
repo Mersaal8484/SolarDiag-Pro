@@ -1,19 +1,5 @@
 part of '../parameters/write_pipeline.dart';
 
-class SimulatedDeviceProfileIdentity {
-  const SimulatedDeviceProfileIdentity({
-    required this.id,
-    required this.model,
-    required this.firmware,
-    required this.deviceId,
-  });
-
-  final String id;
-  final String model;
-  final String firmware;
-  final String deviceId;
-}
-
 class SimulatedBmsAdapter extends SimulatedParameterBackend
     implements BmsAdapter {
   SimulatedBmsAdapter({
@@ -27,19 +13,21 @@ class SimulatedBmsAdapter extends SimulatedParameterBackend
     'charge_limit': 55.2,
     'service_mode': 1,
   };
-  static const profileIdentity = SimulatedDeviceProfileIdentity(
-    id: 'solardiag.simulated.lfp16.v2',
+  @override
+  DeviceProfileIdentity get profileIdentity => const DeviceProfileIdentity(
+    profileId: 'solardiag.simulated.lfp16.v2',
     model: 'LFP-16S-SIM',
     firmware: 'simulator-v2',
     deviceId: 'SOLARDIAG-SIM-BMS',
   );
+
   ScenarioFrame get frame => ScenarioFactory.create(scenario, tick: _tick);
   void advance() => _tick++;
   @override
   Future<IdentificationResult> identify() async => IdentificationResult(
     confidence: 1,
     evidence: const ['simulator:deterministic-id'],
-    candidateProfileIds: [profileIdentity.id],
+    candidateProfileIds: [profileIdentity.profileId],
     model: scenario == SimulationScenario.identityMismatch
         ? 'LFP-UNKNOWN-MISMATCH'
         : profileIdentity.model,
