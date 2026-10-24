@@ -30,6 +30,7 @@ class _MemoryPackStore implements LibraryPackStore {
   Future<void> saveRevocations(RevocationList revocations) async {
     this.revocations = revocations;
   }
+
   @override
   Future<int> loadHighestRevocationSequence() async => highestSequence;
   @override

@@ -171,7 +171,10 @@ class FileLibraryPackStore implements LibraryPackStore {
     final target = File(_revocationsPath);
     await target.parent.create(recursive: true);
     final temporary = File('$_revocationsPath.tmp');
-    await temporary.writeAsString(jsonEncode(revocations.toJson()), flush: true);
+    await temporary.writeAsString(
+      jsonEncode(revocations.toJson()),
+      flush: true,
+    );
     await temporary.rename(_revocationsPath);
   }
 
@@ -296,12 +299,8 @@ class LibrarySync {
     LibraryPack pack, {
     required DateTime now,
     required RevocationList revocations,
-  }) => _apply(
-    pack,
-    now: now,
-    revocations: revocations,
-    allowRevokedPack: false,
-  );
+  }) =>
+      _apply(pack, now: now, revocations: revocations, allowRevokedPack: false);
 
   Future<bool> _apply(
     LibraryPack pack, {

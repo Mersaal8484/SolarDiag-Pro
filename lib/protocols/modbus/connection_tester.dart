@@ -18,16 +18,14 @@ class ModbusConnectionTester {
       );
     }
     final range = guard.readRanges.first;
-    final allowed = [
-      ModbusFunction.readHoldingRegisters,
-      ModbusFunction.readInputRegisters,
-    ].any(
-      (function) => guard.allows(
-        function: function,
-        address: range.start,
-        count: 1,
-      ),
-    );
+    final allowed =
+        [
+          ModbusFunction.readHoldingRegisters,
+          ModbusFunction.readInputRegisters,
+        ].any(
+          (function) =>
+              guard.allows(function: function, address: range.start, count: 1),
+        );
     return ConnectionTestResult(
       enabled: allowed,
       message: allowed

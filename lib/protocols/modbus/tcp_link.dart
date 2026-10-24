@@ -34,9 +34,10 @@ class TcpLink implements ModbusLink {
     );
     final responseBytes = await _collect(encoded, timeout);
     final response = const ModbusTcpCodec().decode(responseBytes);
-    if (response.transactionId != transactionId ||
-        response.unitId != unitId) {
-      throw const FormatException('MBAP transaction or unit identifier mismatch.');
+    if (response.transactionId != transactionId || response.unitId != unitId) {
+      throw const FormatException(
+        'MBAP transaction or unit identifier mismatch.',
+      );
     }
     return [unitId, response.functionCode, ...response.data];
   }

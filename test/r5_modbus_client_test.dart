@@ -24,10 +24,7 @@ class _RecordingLink implements ModbusLink {
   final requests = <List<int>>[];
 
   @override
-  Future<List<int>> exchange(
-    List<int> request, {
-    required Duration timeout,
-  }) {
+  Future<List<int>> exchange(List<int> request, {required Duration timeout}) {
     requests.add(List.unmodifiable(request));
     return respond(request);
   }
@@ -152,15 +149,10 @@ Stream<List<int>> _tcpInverterResponse(
 void main() {
   test('RTU reads simulated inverter registers', () async {
     final adapter = SimulatedInverterAdapter();
-    final bytes = _RecordingByteTransport(
-      (request) {
-        final response = adapter.respondRtu(request);
-        return Stream.fromIterable([
-          response.sublist(0, 2),
-          response.sublist(2),
-        ]);
-      },
-    );
+    final bytes = _RecordingByteTransport((request) {
+      final response = adapter.respondRtu(request);
+      return Stream.fromIterable([response.sublist(0, 2), response.sublist(2)]);
+    });
     final client = ModbusClient(
       guard: _readGuard(),
       timeout: const Duration(seconds: 1),
@@ -170,15 +162,18 @@ void main() {
     expect(await client.readRegisters(0, 2, unitId: 1), [540, 102]);
   });
 
-  test('loopback link delegates RTU frames to the simulated inverter', () async {
-    final client = ModbusClient(
-      guard: _readGuard(),
-      timeout: const Duration(seconds: 1),
-      link: LoopbackLink(SimulatedInverterAdapter()),
-    );
+  test(
+    'loopback link delegates RTU frames to the simulated inverter',
+    () async {
+      final client = ModbusClient(
+        guard: _readGuard(),
+        timeout: const Duration(seconds: 1),
+        link: LoopbackLink(SimulatedInverterAdapter()),
+      );
 
-    expect(await client.readRegisters(0, 1, unitId: 1), [540]);
-  });
+      expect(await client.readRegisters(0, 1, unitId: 1), [540]);
+    },
+  );
 
   test('TCP reads simulated inverter registers across partial reads', () async {
     final adapter = SimulatedInverterAdapter();
@@ -195,9 +190,7 @@ void main() {
   });
 
   test('input-register guard selects function code 0x04', () async {
-    final link = _RecordingLink(
-      (_) async => [1, 0x04, 2, 0, 7],
-    );
+    final link = _RecordingLink((_) async => [1, 0x04, 2, 0, 7]);
     final client = ModbusClient(
       guard: _readGuard(function: ModbusFunction.readInputRegisters),
       timeout: const Duration(seconds: 1),
@@ -232,12 +225,7 @@ void main() {
     );
 
     await expectLater(
-      client.writeRegisters(
-        0,
-        [42],
-        unitId: 1,
-        authorization: null,
-      ),
+      client.writeRegisters(0, [42], unitId: 1, authorization: null),
       throwsA(isA<ModbusGuardException>()),
     );
     expect(link.requests, isEmpty);
@@ -268,86 +256,82 @@ void main() {
       authorization: authorization,
     );
     await expectLater(
-      client.writeRegisters(
-        0,
-        [42],
-        unitId: 1,
-        authorization: authorization,
-      ),
+      client.writeRegisters(0, [42], unitId: 1, authorization: authorization),
       throwsA(isA<ModbusGuardException>()),
     );
     expect(link.requests, hasLength(1));
   });
 
-  test('pipeline authorization is bound to function and write values', () async {
-    final link = _RecordingLink(
-      (request) async => [
-        request[0],
-        request[1],
-        request[2],
-        request[3],
-        request[4],
-        request[5],
-      ],
-    );
-    final client = ModbusClient(
-      guard: _writeGuard(),
-      timeout: const Duration(seconds: 1),
-      link: link,
-    );
-    final authorization = await _authorizeWrite(address: 0, values: [42]);
-    final now = DateTime.now().toUtc();
+  test(
+    'pipeline authorization is bound to function and write values',
+    () async {
+      final link = _RecordingLink(
+        (request) async => [
+          request[0],
+          request[1],
+          request[2],
+          request[3],
+          request[4],
+          request[5],
+        ],
+      );
+      final client = ModbusClient(
+        guard: _writeGuard(),
+        timeout: const Duration(seconds: 1),
+        link: link,
+      );
+      final authorization = await _authorizeWrite(address: 0, values: [42]);
+      final now = DateTime.now().toUtc();
 
-    expect(
-      authorization.consume(
-        functionCode: 0x06,
-        address: 0,
-        values: [42],
-        now: now,
-      ),
-      isFalse,
-    );
-    expect(
-      authorization.consume(
-        functionCode: 0x10,
-        address: 1,
-        values: [42],
-        now: now,
-      ),
-      isFalse,
-    );
-    expect(
-      authorization.consume(
-        functionCode: 0x10,
-        address: 0,
-        values: [43],
-        now: now,
-      ),
-      isFalse,
-    );
-    expect(
-      authorization.consume(
-        functionCode: 0x10,
-        address: 0,
-        values: [42, 43],
-        now: now,
-      ),
-      isFalse,
-    );
+      expect(
+        authorization.consume(
+          functionCode: 0x06,
+          address: 0,
+          values: [42],
+          now: now,
+        ),
+        isFalse,
+      );
+      expect(
+        authorization.consume(
+          functionCode: 0x10,
+          address: 1,
+          values: [42],
+          now: now,
+        ),
+        isFalse,
+      );
+      expect(
+        authorization.consume(
+          functionCode: 0x10,
+          address: 0,
+          values: [43],
+          now: now,
+        ),
+        isFalse,
+      );
+      expect(
+        authorization.consume(
+          functionCode: 0x10,
+          address: 0,
+          values: [42, 43],
+          now: now,
+        ),
+        isFalse,
+      );
 
-    await client.writeRegisters(
-      0,
-      [42],
-      unitId: 1,
-      authorization: authorization,
-    );
-    expect(link.requests, hasLength(1));
-  });
+      await client.writeRegisters(
+        0,
+        [42],
+        unitId: 1,
+        authorization: authorization,
+      );
+      expect(link.requests, hasLength(1));
+    },
+  );
 
   test('link timeout becomes ModbusTimeout', () async {
-    final link = _RecordingLink(
-      (_) => Completer<List<int>>().future,
-    );
+    final link = _RecordingLink((_) => Completer<List<int>>().future);
     final client = ModbusClient(
       guard: _readGuard(),
       timeout: const Duration(milliseconds: 5),

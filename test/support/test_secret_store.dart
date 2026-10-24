@@ -10,11 +10,9 @@ class TestSecretStore implements SecretStore {
       getOrCreateSecretSync(keyId);
 
   @override
-  List<int> getOrCreateSecretSync(String keyId) => _secrets.putIfAbsent(
-    keyId,
-    () {
-      final random = Random.secure();
-      return List<int>.generate(32, (_) => random.nextInt(256));
-    },
-  );
+  List<int> getOrCreateSecretSync(String keyId) =>
+      _secrets.putIfAbsent(keyId, () {
+        final random = Random.secure();
+        return List<int>.generate(32, (_) => random.nextInt(256));
+      });
 }

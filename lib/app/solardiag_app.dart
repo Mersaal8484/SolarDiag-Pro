@@ -185,9 +185,8 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
           '/diagnostics': (_) => const AdvancedDiagnosticsScreen(),
           '/inverter': (_) => const InverterDiagnosticsScreen(),
           '/link': (_) => const LinkScreen(),
-          '/library': (_) => DeviceLibraryScreen(
-            installedLibrary: _installedLibrary,
-          ),
+          '/library': (_) =>
+              DeviceLibraryScreen(installedLibrary: _installedLibrary),
           '/history': (_) => const SessionHistoryScreen(),
           '/gateway': (_) => const GatewayScreen(),
           '/parameters': (_) => const ParametersScreen(),

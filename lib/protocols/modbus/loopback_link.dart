@@ -33,11 +33,7 @@ class LoopbackLink implements ModbusLink {
       final decoded = const ModbusRtuCodec().decode(response);
       return [decoded.address, decoded.functionCode, ...decoded.data];
     } on ModbusExceptionResponse catch (exception) {
-      return [
-        unitId,
-        exception.functionCode | 0x80,
-        exception.exceptionCode,
-      ];
+      return [unitId, exception.functionCode | 0x80, exception.exceptionCode];
     }
   }
 }

@@ -182,10 +182,10 @@ void main() {
       entriesPath: entriesPath,
       headPath: headPath,
     );
-    AuditChain(store: store, secretStore: secretStore).append(
-      'original',
-      const {},
-    );
+    AuditChain(
+      store: store,
+      secretStore: secretStore,
+    ).append('original', const {});
     final originalMac = File(macPath).readAsStringSync();
 
     File(macPath).writeAsStringSync('invalid');
@@ -211,12 +211,12 @@ void main() {
       secretStore: secretStore,
     ).append('replacement', const {});
     File(macPath).writeAsStringSync(originalMac);
-    File(entriesPath).writeAsStringSync(
-      File(replacementEntriesPath).readAsStringSync(),
-    );
-    File(headPath).writeAsStringSync(
-      File(replacementHeadPath).readAsStringSync(),
-    );
+    File(
+      entriesPath,
+    ).writeAsStringSync(File(replacementEntriesPath).readAsStringSync());
+    File(
+      headPath,
+    ).writeAsStringSync(File(replacementHeadPath).readAsStringSync());
     expect(
       () => AuditChain.load(store, secretStore: secretStore),
       throwsFormatException,

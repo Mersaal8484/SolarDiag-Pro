@@ -31,10 +31,7 @@ class DeviceLibraryScreen extends StatelessWidget {
       subtitle: s.libraryVerificationNote,
       children: [
         if (installedLibrary?.showRevokedBanner ?? false)
-          RevokedBanner(
-            title: s.warning,
-            message: s.physicalWriteLocked,
-          ),
+          RevokedBanner(title: s.warning, message: s.physicalWriteLocked),
         Card(
           child: ListTile(
             contentPadding: const EdgeInsets.all(20),

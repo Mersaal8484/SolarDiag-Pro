@@ -39,11 +39,7 @@ class ModbusClient {
       ModbusFunction.readHoldingRegisters,
       ModbusFunction.readInputRegisters,
     ]) {
-      if (guard.allows(
-        function: function,
-        address: address,
-        count: count,
-      )) {
+      if (guard.allows(function: function, address: address, count: count)) {
         return function;
       }
     }
@@ -92,11 +88,7 @@ class ModbusClient {
     int count, {
     required int unitId,
   }) async {
-    final function = checkRead(
-      address: address,
-      count: count,
-      unitId: unitId,
-    );
+    final function = checkRead(address: address, count: count, unitId: unitId);
     final request = [
       unitId,
       function.code,
@@ -161,7 +153,8 @@ class ModbusClient {
       throw const FormatException('Modbus PDU exceeds 253 bytes.');
     }
     try {
-      final response = await link.exchange(request, timeout: timeout)
+      final response = await link
+          .exchange(request, timeout: timeout)
           .timeout(timeout);
       if (response.length < 2 || response.length - 1 > 253) {
         throw const FormatException('Invalid or oversized Modbus response.');

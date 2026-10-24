@@ -20,10 +20,7 @@ class TrustAnchorKey {
   bool isValidAt(DateTime now) {
     if (purpose == TrustAnchorPurpose.placeholder) return false;
     if (purpose == TrustAnchorPurpose.development &&
-        !const bool.fromEnvironment(
-          'ALLOW_DEV_TRUST',
-          defaultValue: false,
-        )) {
+        !const bool.fromEnvironment('ALLOW_DEV_TRUST', defaultValue: false)) {
       return false;
     }
     return !now.isBefore(notBefore) && !now.isAfter(notAfter);
@@ -128,11 +125,7 @@ class TrustAnchorRegistry {
   TrustAnchorKey? findKey(String keyId, {DateTime? now}) {
     final check = now ?? DateTime.now().toUtc();
     return keys
-        .where(
-          (key) =>
-              key.keyId == keyId &&
-              key.isValidAt(check),
-        )
+        .where((key) => key.keyId == keyId && key.isValidAt(check))
         .firstOrNull;
   }
 

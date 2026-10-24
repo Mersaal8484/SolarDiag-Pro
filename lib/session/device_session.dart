@@ -255,10 +255,7 @@ class DeviceSession extends ChangeNotifier {
     _audit = AuditChain(
       store: database == null
           ? null
-          : DatabaseAuditChainStore(
-              database: database!,
-              sessionId: _sessionId,
-            ),
+          : DatabaseAuditChainStore(database: database!, sessionId: _sessionId),
       secretStore: auditSecretStore,
     );
   }

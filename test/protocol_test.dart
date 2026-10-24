@@ -40,10 +40,10 @@ void main() {
       ..['simulated'] = false;
     final document = jsonEncode(physical);
     expect(
-      () => ProfileRegistry.fromJsonDocuments(
-        [document, document],
-        technicianMode: false,
-      ),
+      () => ProfileRegistry.fromJsonDocuments([
+        document,
+        document,
+      ], technicianMode: false),
       throwsFormatException,
     );
   });

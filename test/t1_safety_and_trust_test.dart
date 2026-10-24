@@ -556,10 +556,9 @@ void main() {
         });
 
         expect(
-          () => ProfileRegistry.fromJsonDocuments(
-            [spoofedJson],
-            technicianMode: true,
-          ),
+          () => ProfileRegistry.fromJsonDocuments([
+            spoofedJson,
+          ], technicianMode: true),
           throwsA(isA<FormatException>()),
         );
       },

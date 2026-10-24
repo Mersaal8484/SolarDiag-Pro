@@ -27,11 +27,7 @@ class RtuLink implements ModbusLink {
     final functionCode = request[1];
     final data = request.sublist(2);
     final frame = const ModbusRtuCodec().encode(
-      ModbusRtuFrame(
-        address: unitId,
-        functionCode: functionCode,
-        data: data,
-      ),
+      ModbusRtuFrame(address: unitId, functionCode: functionCode, data: data),
     );
     final expectedLength = switch (functionCode) {
       0x03 || 0x04 => _readResponseLength(request),
@@ -39,9 +35,7 @@ class RtuLink implements ModbusLink {
       _ => throw const FormatException('Unsupported RTU request function.'),
     };
     final response = await _collect(frame, expectedLength, timeout);
-    if (response.length < 2 ||
-        response[0] == 0 ||
-        response[0] != unitId) {
+    if (response.length < 2 || response[0] == 0 || response[0] != unitId) {
       throw const FormatException('Invalid RTU response address.');
     }
     try {
@@ -91,7 +85,9 @@ class RtuLink implements ModbusLink {
       bytes.addAll(chunk);
       if (bytes.length >= 2 && bytes[1] & 0x80 != 0 && bytes.length >= 5) {
         if (bytes.length != 5) {
-          throw const FormatException('RTU exception response length mismatch.');
+          throw const FormatException(
+            'RTU exception response length mismatch.',
+          );
         }
         return bytes;
       }

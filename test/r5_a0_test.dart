@@ -85,11 +85,7 @@ void main() {
       store: store,
     );
     expect(
-      await firstSync.apply(
-        pack,
-        now: now,
-        revocations: initialRevocations,
-      ),
+      await firstSync.apply(pack, now: now, revocations: initialRevocations),
       isTrue,
     );
     final revocations = RevocationList(
