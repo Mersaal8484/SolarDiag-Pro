@@ -6,14 +6,80 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solardiag_pro/audit/audit_chain.dart';
+import 'package:solardiag_pro/auth/authorization_controller.dart';
+import 'package:solardiag_pro/auth/confirmation_factory.dart';
+import 'package:solardiag_pro/parameters/parameter_models.dart';
+import 'package:solardiag_pro/parameters/write_pipeline.dart';
 import 'package:solardiag_pro/protocols/modbus/rtu_codec.dart';
 import 'package:solardiag_pro/protocols/modbus/crc16.dart';
 import 'package:solardiag_pro/protocols/modbus/modbus_models.dart';
 import 'package:solardiag_pro/protocols/modbus/modbus_client.dart';
 import 'package:solardiag_pro/protocols/modbus/modbus_guard.dart';
+import 'package:solardiag_pro/protocols/modbus/modbus_link.dart';
 import 'package:solardiag_pro/integration/compatibility_engine.dart';
 import 'package:solardiag_pro/integration/compatibility_models.dart';
 import 'package:solardiag_pro/session/device_session.dart';
+
+class _CheckOnlyLink implements ModbusLink {
+  @override
+  Future<List<int>> exchange(
+    List<int> request, {
+    required Duration timeout,
+  }) async => const [];
+}
+
+Future<PipelineWriteAuthorization> _mintModbusAuthorization({
+  required int address,
+  required List<int> values,
+}) async {
+  final now = DateTime.now().toUtc();
+  final controller = AuthorizationController(
+    authenticator: const MockTechnicianAuthenticator(demoPin: 'test-pin'),
+    clock: () => now,
+  );
+  await controller.unlock(
+    tier: AuthorizationTier.technician,
+    credentials: 'test-pin',
+  );
+  final context = DeviceWriteContext(
+    deviceId: 'device',
+    sessionId: 'session',
+    profileModel: 'model',
+    profileFirmware: 'firmware',
+    connectedModel: 'model',
+    connectedFirmware: 'firmware',
+    linkHealthy: true,
+    writeLocked: false,
+    state: DeviceWriteState.known,
+  );
+  const planHash = 'shown-plan-hash';
+  final confirmation = mintShownPlanConfirmation(
+    shownPlanHash: planHash,
+    deviceId: context.deviceId,
+    sessionId: context.sessionId,
+    expiresAt: now.add(const Duration(minutes: 5)),
+  );
+  final pipeline = VerifiedWritePipeline(
+    transport: ParameterTransport.physical(
+      read: (_) async => 0,
+      readAll: () async => const {},
+      write: (_, _, _) async {},
+    ),
+    audit: AuditChain(secretStore: InMemorySecretStore()),
+    clock: () => now,
+  );
+  return pipeline.authorizeModbusWrite(
+    functionCode: ModbusFunction.writeMultipleRegisters.code,
+    address: address,
+    values: values,
+    authorizationController: controller,
+    context: context,
+    confirmation: confirmation,
+    shownPlanHash: planHash,
+    safetyAcknowledged: true,
+  );
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -125,6 +191,7 @@ void main() {
       final client = ModbusClient(
         guard: readOnlyGuard(),
         timeout: const Duration(seconds: 1),
+        link: _CheckOnlyLink(),
       );
       expect(client, isNotNull);
     });
@@ -136,6 +203,7 @@ void main() {
         final client = ModbusClient(
           guard: readOnlyGuard(),
           timeout: const Duration(seconds: 1),
+          link: _CheckOnlyLink(),
         );
         // Guard check is synchronous; call returns normally (future may fail on
         // transport, but the guard must not reject an in-range read).
@@ -153,6 +221,7 @@ void main() {
         final client = ModbusClient(
           guard: readOnlyGuard(),
           timeout: const Duration(seconds: 1),
+          link: _CheckOnlyLink(),
         );
         expect(
           () => client.checkRead(address: 200, count: 5, unitId: 1),
@@ -161,18 +230,19 @@ void main() {
       },
     );
 
-    // C2-d: write blocked when pipelineAuthorized == false
+    // C2-d: write blocked without pipeline authorization
     test('C2-d write blocked without pipeline authorization', () {
       final client = ModbusClient(
         guard: writeGuard(),
         timeout: const Duration(seconds: 1),
+        link: _CheckOnlyLink(),
       );
       expect(
         () => client.checkWrite(
           address: 0,
-          count: 2,
+          values: [1, 2],
           unitId: 1,
-          pipelineAuthorized: false,
+          authorization: null,
         ),
         throwsA(isA<ModbusGuardException>()),
       );
@@ -183,13 +253,14 @@ void main() {
       final client = ModbusClient(
         guard: readOnlyGuard(), // writeVerifiedOnHardware: false
         timeout: const Duration(seconds: 1),
+        link: _CheckOnlyLink(),
       );
       expect(
         () => client.checkWrite(
           address: 0,
-          count: 1,
+          values: [1],
           unitId: 1,
-          pipelineAuthorized: true,
+          authorization: null,
         ),
         throwsA(isA<ModbusGuardException>()),
       );
@@ -197,18 +268,23 @@ void main() {
 
     // C2-f: write succeeds (guard-check passes) when all gates open
     test(
-      'C2-f checkWrite passes when guard allows and pipelineAuthorized==true',
-      () {
+      'C2-f checkWrite passes with a valid pipeline authorization',
+      () async {
         final client = ModbusClient(
           guard: writeGuard(),
           timeout: const Duration(seconds: 1),
+          link: _CheckOnlyLink(),
+        );
+        final authorization = await _mintModbusAuthorization(
+          address: 0,
+          values: [1],
         );
         expect(
           () => client.checkWrite(
             address: 0,
-            count: 1,
+            values: [1],
             unitId: 1,
-            pipelineAuthorized: true,
+            authorization: authorization,
           ),
           returnsNormally,
         );

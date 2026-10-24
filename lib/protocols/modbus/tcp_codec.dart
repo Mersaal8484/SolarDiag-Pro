@@ -20,6 +20,9 @@ class ModbusTcpCodec {
         frame.unitId > 0xff) {
       throw const FormatException('Invalid MBAP identifiers.');
     }
+    if (frame.data.length + 1 > 253) {
+      throw const FormatException('Modbus PDU exceeds 253 bytes.');
+    }
     final length = frame.data.length + 2;
     return [
       frame.transactionId >> 8,
@@ -42,6 +45,9 @@ class ModbusTcpCodec {
     final length = bytes[4] << 8 | bytes[5];
     if (length < 2 || bytes.length != 6 + length) {
       throw const FormatException('Invalid MBAP length.');
+    }
+    if (length - 1 > 253) {
+      throw const FormatException('Modbus PDU exceeds 253 bytes.');
     }
     return ModbusTcpFrame(
       transactionId: bytes[0] << 8 | bytes[1],

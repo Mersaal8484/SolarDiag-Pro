@@ -1,11 +1,10 @@
 import 'dart:async';
 
+import '../../parameters/write_pipeline.dart';
 import 'modbus_guard.dart';
+import 'modbus_link.dart';
 import 'modbus_models.dart';
 
-/// Thrown when [ModbusClient] rejects a request because [ModbusGuard] does not
-/// permit the operation. This is a programming-time safety gate; it must never
-/// be silently ignored by callers.
 class ModbusGuardException implements Exception {
   const ModbusGuardException(this.reason);
   final String reason;
@@ -13,158 +12,206 @@ class ModbusGuardException implements Exception {
   String toString() => 'ModbusGuardException: $reason';
 }
 
-/// Raised when a Modbus request is not answered within the configured timeout.
 class ModbusTimeout implements Exception {
   const ModbusTimeout();
   @override
   String toString() => 'Modbus request timed out.';
 }
 
-/// A Modbus client that wraps a [ModbusGuard] to enforce read/write permissions
-/// before any transport-layer I/O occurs.
-///
-/// Two synchronous guard-check helpers ([checkRead] / [checkWrite]) allow unit
-/// tests to verify the permission logic without needing a live transport.
-/// The async [readRegisters] / [writeRegisters] methods call those checks first,
-/// then delegate to the provided transport callback.
-///
-/// **Write gate (C2):** a write request is blocked unless ALL of:
-///   1. [ModbusGuard.writeVerifiedOnHardware] is `true`, AND
-///   2. [pipelineAuthorized] is `true`, AND
-///   3. the address/count falls within [ModbusGuard.writeRanges].
 class ModbusClient {
   const ModbusClient({
     required this.guard,
     required this.timeout,
-    this.transport,
+    required this.link,
   });
 
   final ModbusGuard guard;
   final Duration timeout;
+  final ModbusLink link;
 
-  /// Optional transport backend. When `null`, [readRegisters] and
-  /// [writeRegisters] throw [ModbusTimeout] after guard-check passes (test mode).
-  final Future<List<int>> Function({
-    required int address,
-    required int count,
-    required int unitId,
-    required bool isWrite,
-    List<int>? values,
-  })?
-  transport;
-
-  // ── Synchronous guard-check helpers ─────────────────────────────────────
-
-  /// Validates that a read of [count] registers starting at [address] for
-  /// [unitId] is permitted by [guard]. Throws [ModbusGuardException] if not.
-  void checkRead({
+  ModbusFunction checkRead({
     required int address,
     required int count,
     required int unitId,
   }) {
-    final allowed = guard.allows(
-      function: ModbusFunction.readHoldingRegisters,
-      address: address,
-      count: count,
-      pipelineAuthorized: true, // reads never need pipeline auth
-    );
-    if (!allowed) {
-      throw ModbusGuardException(
-        'Read of $count register(s) at $address (unit $unitId) '
-        'is not permitted by the active guard.',
-      );
+    _validateRange(address, count, unitId, maximumCount: 125);
+    for (final function in [
+      ModbusFunction.readHoldingRegisters,
+      ModbusFunction.readInputRegisters,
+    ]) {
+      if (guard.allows(
+        function: function,
+        address: address,
+        count: count,
+      )) {
+        return function;
+      }
     }
+    throw ModbusGuardException(
+      'Read of $count register(s) at $address (unit $unitId) '
+      'is not permitted by the active guard.',
+    );
   }
 
-  /// Validates that a write of [count] registers at [address] for [unitId]
-  /// is permitted. Throws [ModbusGuardException] if the guard rejects it or
-  /// if [pipelineAuthorized] is `false`.
   void checkWrite({
     required int address,
-    required int count,
+    required List<int> values,
     required int unitId,
-    required bool pipelineAuthorized,
+    required PipelineWriteAuthorization? authorization,
   }) {
-    final allowed = guard.allows(
-      function: ModbusFunction.writeMultipleRegisters,
+    _validateRange(address, values.length, unitId, maximumCount: 123);
+    if (values.any((value) => value < 0 || value > 0xffff)) {
+      throw ArgumentError.value(values, 'values');
+    }
+    final function = ModbusFunction.writeMultipleRegisters;
+    if (!guard.allows(
+      function: function,
       address: address,
-      count: count,
-      pipelineAuthorized: pipelineAuthorized,
-    );
-    if (!allowed) {
+      count: values.length,
+    )) {
       throw ModbusGuardException(
-        'Write of $count register(s) at $address (unit $unitId) rejected. '
-        'Ensure writeVerifiedOnHardware and pipelineAuthorized are both true '
-        'and the address is within allowed write ranges.',
+        'Write of ${values.length} register(s) at $address '
+        '(unit $unitId) is not permitted by the active guard.',
+      );
+    }
+    if (authorization == null ||
+        !authorization.consume(
+          functionCode: function.code,
+          address: address,
+          values: values,
+          now: DateTime.now().toUtc(),
+        )) {
+      throw const ModbusGuardException(
+        'A valid, unused pipeline authorization is required.',
       );
     }
   }
 
-  // ── Async transport wrappers ─────────────────────────────────────────────
-
-  /// Reads [count] holding registers starting at [address] from [unitId].
-  ///
-  /// Guard check runs synchronously before any I/O.
   Future<List<int>> readRegisters(
     int address,
     int count, {
     required int unitId,
   }) async {
-    checkRead(address: address, count: count, unitId: unitId);
-    if (transport == null) {
-      return Future.delayed(
-        timeout + const Duration(milliseconds: 1),
-        () => throw const ModbusTimeout(),
-      );
+    final function = checkRead(
+      address: address,
+      count: count,
+      unitId: unitId,
+    );
+    final request = [
+      unitId,
+      function.code,
+      address >> 8,
+      address & 0xff,
+      count >> 8,
+      count & 0xff,
+    ];
+    final response = await _exchange(request);
+    _validateUnitAndException(response, unitId, function);
+    final byteCount = count * 2;
+    if (response.length != byteCount + 3 ||
+        response[2] != byteCount ||
+        response.length - 1 > 253) {
+      throw const FormatException('Modbus read byte count mismatch.');
     }
-    try {
-      return await transport!(
-        address: address,
-        count: count,
-        unitId: unitId,
-        isWrite: false,
-      ).timeout(timeout);
-    } on TimeoutException {
-      throw const ModbusTimeout();
-    }
+    return List.unmodifiable([
+      for (var index = 3; index < response.length; index += 2)
+        response[index] << 8 | response[index + 1],
+    ]);
   }
 
-  /// Writes [values] to registers starting at [address] on [unitId].
-  ///
-  /// Guard check (including [pipelineAuthorized]) runs synchronously first.
   Future<void> writeRegisters(
     int address,
     List<int> values, {
     required int unitId,
-    required bool pipelineAuthorized,
+    required PipelineWriteAuthorization? authorization,
   }) async {
     checkWrite(
       address: address,
-      count: values.length,
+      values: values,
       unitId: unitId,
-      pipelineAuthorized: pipelineAuthorized,
+      authorization: authorization,
     );
-    if (transport == null) {
-      return Future.delayed(
-        timeout + const Duration(milliseconds: 1),
-        () => throw const ModbusTimeout(),
-      );
+    final request = <int>[
+      unitId,
+      ModbusFunction.writeMultipleRegisters.code,
+      address >> 8,
+      address & 0xff,
+      values.length >> 8,
+      values.length & 0xff,
+      values.length * 2,
+      for (final value in values) ...[value >> 8, value & 0xff],
+    ];
+    final response = await _exchange(request);
+    _validateUnitAndException(
+      response,
+      unitId,
+      ModbusFunction.writeMultipleRegisters,
+    );
+    if (response.length != 6 ||
+        response[2] != (address >> 8) ||
+        response[3] != (address & 0xff) ||
+        response[4] != (values.length >> 8) ||
+        response[5] != (values.length & 0xff)) {
+      throw const FormatException('Modbus write acknowledgement mismatch.');
+    }
+  }
+
+  Future<List<int>> _exchange(List<int> request) async {
+    if (request.length - 1 > 253) {
+      throw const FormatException('Modbus PDU exceeds 253 bytes.');
     }
     try {
-      await transport!(
-        address: address,
-        count: values.length,
-        unitId: unitId,
-        isWrite: true,
-        values: values,
-      ).timeout(timeout);
+      final response = await link.exchange(request, timeout: timeout)
+          .timeout(timeout);
+      if (response.length < 2 || response.length - 1 > 253) {
+        throw const FormatException('Invalid or oversized Modbus response.');
+      }
+      return response;
     } on TimeoutException {
       throw const ModbusTimeout();
     }
   }
+
+  void _validateUnitAndException(
+    List<int> response,
+    int unitId,
+    ModbusFunction function,
+  ) {
+    if (response.first != unitId) {
+      throw const FormatException('Modbus unit identifier mismatch.');
+    }
+    if (response[1] == (function.code | 0x80)) {
+      if (response.length != 3) {
+        throw const FormatException('Malformed Modbus exception response.');
+      }
+      throw ModbusExceptionResponse(
+        functionCode: function.code,
+        exceptionCode: response[2],
+      );
+    }
+    if (response[1] != function.code) {
+      throw const FormatException('Modbus function code mismatch.');
+    }
+  }
+
+  void _validateRange(
+    int address,
+    int count,
+    int unitId, {
+    required int maximumCount,
+  }) {
+    if (address < 0 ||
+        address > 0xffff ||
+        count < 1 ||
+        count > maximumCount ||
+        address + count > 0x10000 ||
+        unitId < 1 ||
+        unitId > 247) {
+      throw ArgumentError('Invalid Modbus unit, address, or register count.');
+    }
+  }
 }
 
-// Keep the standalone helper for callers that only need timeout wrapping.
 Future<T> withModbusTimeout<T>(Future<T> response, Duration timeout) async {
   try {
     return await response.timeout(timeout);

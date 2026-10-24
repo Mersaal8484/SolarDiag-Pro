@@ -197,7 +197,7 @@ void main() {
   });
 
   test(
-    'guard requires ranges, pipeline authorization, and hardware verification',
+    'guard requires allowed functions, ranges, and hardware verification',
     () {
       const guarded = ModbusGuard(
         allowedFunctions: {
@@ -213,16 +213,14 @@ void main() {
           function: ModbusFunction.readHoldingRegisters,
           address: 10,
           count: 2,
-          pipelineAuthorized: false,
         ),
         isTrue,
       );
       expect(
         guarded.allows(
           function: ModbusFunction.writeSingleRegister,
-          address: 30,
+          address: 31,
           count: 1,
-          pipelineAuthorized: false,
         ),
         isFalse,
       );
@@ -231,7 +229,6 @@ void main() {
           function: ModbusFunction.writeSingleRegister,
           address: 30,
           count: 1,
-          pipelineAuthorized: true,
         ),
         isTrue,
       );
