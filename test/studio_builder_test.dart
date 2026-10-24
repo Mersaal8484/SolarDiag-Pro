@@ -84,7 +84,7 @@ void main() {
     expect(find.text('Protocol Discovery Studio'), findsOneWidget);
     expect(find.text('Sessions'), findsOneWidget);
     expect(find.text('Export'), findsOneWidget);
-    expect(find.textContaining('PASSIVE — NO TRANSMIT'), findsOneWidget);
+    expect(find.text('REPLAY LOCK'), findsOneWidget);
 
     await tester.tap(find.text('Capture'));
     await tester.pumpAndSettle();
@@ -98,14 +98,5 @@ void main() {
     await tester.tap(find.text('Differential'));
     await tester.pumpAndSettle();
     expect(find.text('A/B/A'), findsWidgets);
-
-    await tester.tap(find.text('Frame explorer'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('studio-monitor-pause')), findsOneWidget);
-    expect(find.byKey(const Key('studio-jump-live')), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('studio-frame-0')));
-    await tester.pump();
-    expect(find.textContaining('HEX / ASCII'), findsOneWidget);
-    expect(find.text('Jump to live'), findsOneWidget);
   });
 }

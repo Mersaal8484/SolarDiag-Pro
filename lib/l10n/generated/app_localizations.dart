@@ -224,6 +224,168 @@ abstract class AppLocalizations {
   /// **'High contrast'**
   String get highContrast;
 
+  /// No description provided for @settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings;
+
+  /// No description provided for @language.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language;
+
+  /// No description provided for @themeSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get themeSetting;
+
+  /// No description provided for @lightTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get lightTheme;
+
+  /// No description provided for @darkTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get darkTheme;
+
+  /// No description provided for @systemTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get systemTheme;
+
+  /// No description provided for @digitPreference.
+  ///
+  /// In en, this message translates to:
+  /// **'Digit preference'**
+  String get digitPreference;
+
+  /// No description provided for @westernDigits.
+  ///
+  /// In en, this message translates to:
+  /// **'Western (0–9)'**
+  String get westernDigits;
+
+  /// No description provided for @arabicIndicDigits.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic-Indic (٠–٩)'**
+  String get arabicIndicDigits;
+
+  /// No description provided for @workshopMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Workshop mode'**
+  String get workshopMode;
+
+  /// No description provided for @workshopModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use controls at least 56 points high and keep the display active during sessions.'**
+  String get workshopModeDescription;
+
+  /// No description provided for @outdoorMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Outdoor high contrast'**
+  String get outdoorMode;
+
+  /// No description provided for @outdoorModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase contrast and separator strength for bright environments.'**
+  String get outdoorModeDescription;
+
+  /// No description provided for @timeAxisDirection.
+  ///
+  /// In en, this message translates to:
+  /// **'Time axis left to right'**
+  String get timeAxisDirection;
+
+  /// No description provided for @timeAxisDirectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep technical time charts progressing left to right.'**
+  String get timeAxisDirectionDescription;
+
+  /// No description provided for @reduceTransparency.
+  ///
+  /// In en, this message translates to:
+  /// **'Reduce transparency'**
+  String get reduceTransparency;
+
+  /// No description provided for @reduceTransparencyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use opaque navigation and overlay surfaces.'**
+  String get reduceTransparencyDescription;
+
+  /// No description provided for @voltageUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'V'**
+  String get voltageUnit;
+
+  /// No description provided for @pipelineValidate.
+  ///
+  /// In en, this message translates to:
+  /// **'Validate'**
+  String get pipelineValidate;
+
+  /// No description provided for @pipelineIdentify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify identity'**
+  String get pipelineIdentify;
+
+  /// No description provided for @pipelineBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Create backup'**
+  String get pipelineBackup;
+
+  /// No description provided for @pipelineAuthorize.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorize'**
+  String get pipelineAuthorize;
+
+  /// No description provided for @pipelineConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm diff'**
+  String get pipelineConfirm;
+
+  /// No description provided for @pipelineWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Write'**
+  String get pipelineWrite;
+
+  /// No description provided for @pipelineReadback.
+  ///
+  /// In en, this message translates to:
+  /// **'Read back'**
+  String get pipelineReadback;
+
+  /// No description provided for @pipelineVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get pipelineVerify;
+
+  /// No description provided for @pipelineAudit.
+  ///
+  /// In en, this message translates to:
+  /// **'Append audit'**
+  String get pipelineAudit;
+
   /// No description provided for @readOnly.
   ///
   /// In en, this message translates to:
@@ -245,7 +407,7 @@ abstract class AppLocalizations {
   /// No description provided for @healthy.
   ///
   /// In en, this message translates to:
-  /// **'16-cell LiFePO₄ · Connected'**
+  /// **'16-cell LiFePO₄ · nominal scenario'**
   String get healthy;
 
   /// No description provided for @current.
@@ -1759,6 +1921,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Export'**
   String get export;
+
+  /// No description provided for @operatingMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Operating mode'**
+  String get operatingMode;
+
+  /// No description provided for @activeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Active read'**
+  String get activeRead;
+
+  /// No description provided for @writeMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Write'**
+  String get writeMode;
+
+  /// No description provided for @noTransmissionAttempted.
+  ///
+  /// In en, this message translates to:
+  /// **'No transmission attempted'**
+  String get noTransmissionAttempted;
+
+  /// No description provided for @guardAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed'**
+  String get guardAllowed;
+
+  /// No description provided for @guardBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get guardBlocked;
+
+  /// No description provided for @allowedFrames.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed frames'**
+  String get allowedFrames;
+
+  /// No description provided for @blockedFrames.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked frames'**
+  String get blockedFrames;
+
+  /// No description provided for @droppedFrames.
+  ///
+  /// In en, this message translates to:
+  /// **'Dropped frames'**
+  String get droppedFrames;
+
+  /// No description provided for @observedBusLoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed bus load'**
+  String get observedBusLoad;
+
+  /// No description provided for @negotiationState.
+  ///
+  /// In en, this message translates to:
+  /// **'Negotiation state'**
+  String get negotiationState;
+
+  /// No description provided for @notNegotiated.
+  ///
+  /// In en, this message translates to:
+  /// **'Not negotiated'**
+  String get notNegotiated;
+
+  /// No description provided for @passiveNegotiated.
+  ///
+  /// In en, this message translates to:
+  /// **'Passive session accepted'**
+  String get passiveNegotiated;
+
+  /// No description provided for @activeReadNegotiated.
+  ///
+  /// In en, this message translates to:
+  /// **'Active-read session accepted'**
+  String get activeReadNegotiated;
+
+  /// No description provided for @writeNegotiated.
+  ///
+  /// In en, this message translates to:
+  /// **'Write session accepted'**
+  String get writeNegotiated;
+
+  /// No description provided for @lastGuardDecision.
+  ///
+  /// In en, this message translates to:
+  /// **'Last guard decision'**
+  String get lastGuardDecision;
+
+  /// No description provided for @compatibilityCompatible.
+  ///
+  /// In en, this message translates to:
+  /// **'Compatible'**
+  String get compatibilityCompatible;
+
+  /// No description provided for @compatibilityCompatibleWithLimits.
+  ///
+  /// In en, this message translates to:
+  /// **'Compatible with limits'**
+  String get compatibilityCompatibleWithLimits;
+
+  /// No description provided for @compatibilityIncompatible.
+  ///
+  /// In en, this message translates to:
+  /// **'Incompatible profile'**
+  String get compatibilityIncompatible;
+
+  /// No description provided for @compatibilityStateCompatible.
+  ///
+  /// In en, this message translates to:
+  /// **'Compatible'**
+  String get compatibilityStateCompatible;
+
+  /// No description provided for @compatibilityStateAttention.
+  ///
+  /// In en, this message translates to:
+  /// **'Attention'**
+  String get compatibilityStateAttention;
+
+  /// No description provided for @compatibilityStateIncompatible.
+  ///
+  /// In en, this message translates to:
+  /// **'Incompatible'**
+  String get compatibilityStateIncompatible;
 }
 
 class _AppLocalizationsDelegate

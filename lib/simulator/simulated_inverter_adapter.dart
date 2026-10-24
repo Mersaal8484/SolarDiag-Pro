@@ -50,7 +50,7 @@ class SimulatedInverterAdapter
   Future<Map<String, num>> readConfiguration() async => Map.of(_parameters);
 
   @override
-  Future<void> writeParameter(
+  Future<void> applyRawParameter(
     String id,
     int rawValue,
     String idempotencyKey,

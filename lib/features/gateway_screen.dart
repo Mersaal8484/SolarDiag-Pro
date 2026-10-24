@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import '../design/precision_ui.dart';
-import '../l10n/generated/app_localizations.dart';
+
 import '../app/theme.dart';
+import '../l10n/generated/app_localizations.dart';
+import '../design/solar_icon.dart';
+import '../design/solar_icons.g.dart';
+import '../design/accessibility.dart';
 import '../identification/identification_state_machine.dart';
 import '../session/device_session.dart';
 import '../gateway/gateway_contract.dart';
@@ -19,11 +22,12 @@ class GatewayScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        PrecisionPageHeading(
-          title: s.diagnosticGateway,
-          subtitle: s.gatewayDescription,
-          icon: Icons.settings_input_antenna_outlined,
+        Text(
+          s.diagnosticGateway,
+          style: Theme.of(context).textTheme.displaySmall,
         ),
+        const SizedBox(height: 8),
+        Text(s.gatewayDescription),
         const SizedBox(height: 24),
         Card(
           child: Padding(
@@ -33,7 +37,7 @@ class GatewayScreen extends StatelessWidget {
               runSpacing: 18,
               children: [
                 _Status(
-                  icon: Icons.visibility_outlined,
+                  icon: SolarIcons.readOnly,
                   label: s.operatingMode,
                   value: switch (gateway.mode) {
                     GatewayOperatingMode.listenOnly => s.listenOnly,
@@ -42,7 +46,7 @@ class GatewayScreen extends StatelessWidget {
                   },
                 ),
                 _Status(
-                  icon: Icons.thermostat_outlined,
+                  icon: SolarIcons.gateway,
                   label: s.gateway,
                   value: switch (session.linkState) {
                     DeviceSessionLinkState.connecting => s.connecting,
@@ -51,7 +55,7 @@ class GatewayScreen extends StatelessWidget {
                   },
                 ),
                 _Status(
-                  icon: Icons.security,
+                  icon: SolarIcons.locked,
                   label: s.transmissionGuard,
                   value: gateway.lastDecision == null
                       ? s.noTransmissionAttempted
@@ -60,28 +64,28 @@ class GatewayScreen extends StatelessWidget {
                       : s.guardBlocked,
                 ),
                 _Status(
-                  icon: Icons.check_circle_outline,
+                  icon: SolarIcons.confirmedCheck,
                   label: s.allowedFrames,
                   value: '${gateway.allowedFrames}',
                 ),
                 _Status(
-                  icon: Icons.block_outlined,
+                  icon: SolarIcons.critical,
                   label: s.blockedFrames,
                   value: '${gateway.blockedFrames}',
                 ),
                 _Status(
-                  icon: Icons.delete_outline,
+                  icon: SolarIcons.warning,
                   label: s.droppedFrames,
                   value: '${gateway.droppedFrames}',
                 ),
                 _Status(
-                  icon: Icons.speed_outlined,
+                  icon: SolarIcons.currentFlow,
                   label: s.observedBusLoad,
                   value:
-                      '${(gateway.observedBusLoad * 100).toStringAsFixed(1)}%',
+                      '${localizedNumber(context, gateway.observedBusLoad * 100, fractionDigits: 1)}%',
                 ),
                 _Status(
-                  icon: Icons.handshake_outlined,
+                  icon: SolarIcons.linkDiagnostics,
                   label: s.negotiationState,
                   value: switch (gateway.negotiationState) {
                     GatewayNegotiationState.notNegotiated => s.notNegotiated,
@@ -119,7 +123,7 @@ class GatewayScreen extends StatelessWidget {
         ])
           Card(
             child: ListTile(
-              leading: const Icon(Icons.check_box_outline_blank),
+              leading: const SolarIcon(SolarIcons.evidence),
               title: Text(item),
             ),
           ),
@@ -149,46 +153,39 @@ class GatewayScreen extends StatelessWidget {
 
 class _Status extends StatelessWidget {
   const _Status({required this.icon, required this.label, required this.value});
-  final IconData icon;
+  final SolarIconData icon;
   final String label;
   final String value;
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: 215,
-    child: Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(9),
-            decoration: BoxDecoration(
-              color: SolarColors.green.withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: SolarColors.green, size: 19),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: Theme.of(context).textTheme.labelSmall),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  softWrap: true,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+    width: 190,
+    child: Row(
+      children: [
+        SolarIcon(
+          icon,
+          color: Theme.of(context).extension<SolarTokens>()!.palette.tint,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
                 ),
-              ],
-            ),
+              ),
+              Text(
+                value,
+                softWrap: true,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 }

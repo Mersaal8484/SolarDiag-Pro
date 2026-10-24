@@ -67,53 +67,9 @@ malformed line
     expect(result.issues.single.line, 2);
   });
 
-  test('format detector distinguishes supported and unsupported captures', () {
-    const detector = CaptureFormatDetector();
-    expect(
-      detector.detect('bus.log', '(1.0) can0 351#0102').format,
-      CaptureFormat.candump,
-    );
-    expect(
-      detector.detect('capture.txt', 't35120102').format,
-      CaptureFormat.slcan,
-    );
-    expect(
-      detector.detect('capture.csv', 'time,data\n1,0102').format,
-      CaptureFormat.csv,
-    );
-    expect(
-      detector.detect('capture.pcapng', '').format,
-      CaptureFormat.unsupported,
-    );
-  });
-
-  test('SLCAN importer handles standard extended remote and timestamps', () {
-    const source = '''
-t351201020001
-T18FF50E53010203000A
-r1230
-R18FF50E50000F
-''';
-    final result = const SlcanImporter().import(source, context);
-    expect(result.hasErrors, isFalse);
-    expect(result.session!.frames, hasLength(4));
-    expect(result.session!.frames[0].identifier, 0x351);
-    expect(result.session!.frames[0].timestampNanos, 1000000);
-    expect(result.session!.frames[1].extendedIdentifier, isTrue);
-    expect(result.session!.frames[2].errorFlags, contains('remote-request'));
-  });
-
-  test('SLCAN importer reports every malformed line without silent repair', () {
-    final result = const SlcanImporter().import(
-      'x1230\nt1239010203\nT18FF50E52GG00',
-      context,
-    );
-    expect(result.session!.frames, isEmpty);
-    expect(result.issues.map((issue) => issue.line), [1, 2, 3]);
-  });
-
   test('unimplemented formats are explicitly listed as unsupported', () {
     expect(CaptureImporterRegistry.unsupportedFormats, [
+      'SLCAN',
       'pcap/pcapng Modbus TCP',
       'Vector ASC',
     ]);

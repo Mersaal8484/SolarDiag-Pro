@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import '../design/precision_ui.dart';
 
 import '../app/theme.dart';
+import '../design/solar_icon.dart';
+import '../design/solar_icons.g.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../parameters/parameter_models.dart';
 import '../parameters/write_pipeline.dart';
@@ -30,36 +31,32 @@ class _ParametersScreenState extends State<ParametersScreen> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     final session = DeviceSessionScope.of(context);
     final entries = session.parameters.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        PrecisionPageHeading(
-          title: s.parameters,
-          subtitle: s.simulatorValuesNotice,
-          icon: Icons.tune_outlined,
-        ),
+        Text(s.parameters, style: Theme.of(context).textTheme.displaySmall),
+        const SizedBox(height: 8),
+        Text(s.simulatorValuesNotice),
         const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF193758), Color(0xFF0B1B34)],
-            ),
+            color: palette.labelPrimary,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFF344E70)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.science_outlined, color: SolarColors.lime),
+              SolarIcon(SolarIcons.simulated, color: palette.simulated),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   s.simulatedWritePipeline,
-                  style: const TextStyle(
-                    color: SolarColors.onDark,
+                  style: TextStyle(
+                    color: palette.background,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -100,7 +97,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                         context,
                       ).showSnackBar(SnackBar(content: Text(s.backupCreated)));
                     },
-              icon: const Icon(Icons.backup_outlined),
+              icon: const SolarIcon(SolarIcons.backup),
               label: Text(s.createBackup),
             ),
             OutlinedButton.icon(
@@ -108,7 +105,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
               onPressed: session.backups.isEmpty
                   ? null
                   : () => _restoreBackup(session),
-              icon: const Icon(Icons.restore),
+              icon: const SolarIcon(SolarIcons.restore),
               label: Text(s.restoreLatestBackup),
             ),
             OutlinedButton.icon(
@@ -116,12 +113,12 @@ class _ParametersScreenState extends State<ParametersScreen> {
               onPressed: session.backups.isEmpty
                   ? null
                   : () => _compareBackup(session),
-              icon: const Icon(Icons.compare_arrows),
+              icon: const SolarIcon(SolarIcons.compare),
               label: Text(s.compareLatestBackup),
             ),
             FilledButton.icon(
               onPressed: null,
-              icon: const Icon(Icons.edit_off_outlined),
+              icon: const SolarIcon(SolarIcons.locked),
               label: Text(s.physicalWriteLocked),
             ),
           ],
@@ -243,10 +240,10 @@ class _ParametersScreenState extends State<ParametersScreen> {
               final difference = differences[index];
               return ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: Icon(
+                leading: SolarIcon(
                   difference.changed
-                      ? Icons.change_circle_outlined
-                      : Icons.check_circle_outline,
+                      ? SolarIcons.diff
+                      : SolarIcons.confirmedCheck,
                 ),
                 title: Text(_label(s, difference.parameterId)),
                 subtitle: Text(
@@ -431,19 +428,6 @@ class _ParameterTile extends StatelessWidget {
   Widget build(BuildContext context) => Card(
     child: ListTile(
       contentPadding: const EdgeInsets.all(20),
-      leading: Container(
-        padding: const EdgeInsets.all(9),
-        decoration: BoxDecoration(
-          color: onEdit == null
-              ? SolarColors.green.withValues(alpha: .10)
-              : SolarColors.amber.withValues(alpha: .14),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(
-          onEdit == null ? Icons.lock_outline : Icons.tune,
-          color: onEdit == null ? SolarColors.green : SolarColors.amber,
-        ),
-      ),
       title: Text(title),
       subtitle: Directionality(
         textDirection: TextDirection.ltr,
@@ -469,7 +453,7 @@ class _ParameterTile extends StatelessWidget {
               key: const Key('edit-charge-limit'),
               tooltip: AppLocalizations.of(context).editParameter,
               onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined),
+              icon: const SolarIcon(SolarIcons.configure),
             ),
           ],
         ],

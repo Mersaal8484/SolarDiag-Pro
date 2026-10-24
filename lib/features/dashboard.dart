@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../design/precision_ui.dart';
 import '../app/theme.dart';
 import '../design/accessibility.dart';
+import '../design/solar_icon.dart';
+import '../design/solar_icons.g.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../core/battery_models.dart';
 import '../session/device_session.dart';
@@ -15,6 +16,7 @@ class Dashboard extends StatelessWidget {
     required this.onToggleContrast,
     required this.onOpenDesignLab,
     required this.onOpenDiagnostics,
+    required this.onOpenSettings,
     this.onSelectDestination,
     this.embedded = false,
   });
@@ -23,6 +25,7 @@ class Dashboard extends StatelessWidget {
   final VoidCallback onToggleContrast;
   final VoidCallback onOpenDesignLab;
   final VoidCallback onOpenDiagnostics;
+  final VoidCallback onOpenSettings;
   final ValueChanged<int>? onSelectDestination;
   final bool embedded;
   @override
@@ -52,6 +55,7 @@ class Dashboard extends StatelessWidget {
                           onToggleLocale: onToggleLocale,
                           onToggleTheme: onToggleTheme,
                           onToggleContrast: onToggleContrast,
+                          onOpenSettings: onOpenSettings,
                         ),
                         const SizedBox(height: 32),
                         DropdownButtonFormField<SimulationScenario>(
@@ -86,7 +90,7 @@ class Dashboard extends StatelessWidget {
                           alignment: AlignmentDirectional.centerStart,
                           child: FilledButton.icon(
                             onPressed: onOpenDiagnostics,
-                            icon: const Icon(Icons.monitor_heart_outlined),
+                            icon: const SolarIcon(SolarIcons.soh),
                             label: Text(s.openAdvancedDiagnostics),
                           ),
                         ),
@@ -108,15 +112,15 @@ class Dashboard extends StatelessWidget {
               selectedIndex: 0,
               destinations: [
                 NavigationDestination(
-                  icon: const Icon(Icons.grid_view),
+                  icon: const SolarIcon(SolarIcons.home),
                   label: s.overview,
                 ),
                 NavigationDestination(
-                  icon: const Icon(Icons.battery_6_bar),
+                  icon: const SolarIcon(SolarIcons.battery),
                   label: s.battery,
                 ),
                 NavigationDestination(
-                  icon: const Icon(Icons.cable),
+                  icon: const SolarIcon(SolarIcons.gateway),
                   label: s.gateway,
                 ),
               ],
@@ -126,7 +130,7 @@ class Dashboard extends StatelessWidget {
           ? FloatingActionButton.small(
               onPressed: onOpenDesignLab,
               tooltip: s.designLab,
-              child: const Icon(Icons.science_outlined),
+              child: const SolarIcon(SolarIcons.research),
             )
           : null,
     );
@@ -150,37 +154,37 @@ class _DestinationGrid extends StatelessWidget {
       (
         s.inverterDiagnostics,
         s.simulatedTelemetryActive,
-        Icons.solar_power_outlined,
+        SolarIcons.inverter,
         () => onSelectDestination?.call(1),
       ),
       (
         s.batteryBmsDiagnostics,
         online ? s.liveTelemetryActive : s.telemetryUnavailable,
-        Icons.battery_6_bar,
+        SolarIcons.battery,
         () => onSelectDestination?.call(2),
       ),
       (
         s.inverterBatteryLink,
         online ? s.linkEvidenceAvailable : s.deliveryUnavailable,
-        Icons.link,
+        SolarIcons.linkDiagnostics,
         () => onSelectDestination?.call(4),
       ),
       (
         s.deviceLibrary,
         s.verificationStatusVisible,
-        Icons.library_books_outlined,
+        SolarIcons.library,
         () => onSelectDestination?.call(3),
       ),
       (
         s.diagnosticHistory,
         s.savedSessionCount(session.history.length),
-        Icons.history,
+        SolarIcons.history,
         () => onSelectDestination?.call(7),
       ),
       (
         s.diagnosticGateway,
         online ? s.listenOnly : s.linkUnavailable,
-        Icons.cable,
+        SolarIcons.gateway,
         () => onSelectDestination?.call(5),
       ),
     ];
@@ -188,7 +192,7 @@ class _DestinationGrid extends StatelessWidget {
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 900
             ? 3
-            : constraints.maxWidth >= 590
+            : constraints.maxWidth >= 560
             ? 2
             : 1;
         final width = (constraints.maxWidth - (columns - 1) * 12) / columns;
@@ -208,18 +212,7 @@ class _DestinationGrid extends StatelessWidget {
                       padding: const EdgeInsets.all(20),
                       child: Row(
                         children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: SolarColors.green.withValues(alpha: .12),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: SolarColors.green.withValues(alpha: .3),
-                              ),
-                            ),
-                            child: Icon(item.$3, color: SolarColors.green),
-                          ),
+                          SolarIcon(item.$3),
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
@@ -236,7 +229,7 @@ class _DestinationGrid extends StatelessWidget {
                               ],
                             ),
                           ),
-                          const Icon(Icons.chevron_right),
+                          const SolarIcon(SolarIcons.currentFlow),
                         ],
                       ),
                     ),
@@ -315,47 +308,56 @@ class _Rail extends StatelessWidget {
   const _Rail({required this.onOpenDesignLab});
   final VoidCallback onOpenDesignLab;
   @override
-  Widget build(BuildContext context) => Container(
-    width: 92,
-    color: SolarColors.deep,
-    child: Column(
-      children: [
-        const SizedBox(height: 28),
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: SolarColors.lime,
-            borderRadius: BorderRadius.circular(14),
+  Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
+    return Container(
+      width: 92,
+      color: palette.labelPrimary,
+      child: Column(
+        children: [
+          const SizedBox(height: 28),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: palette.simulated,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: SolarIcon(SolarIcons.solar, color: palette.background),
           ),
-          child: const Icon(Icons.bolt, color: SolarColors.deep),
-        ),
-        const Spacer(),
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 15),
-          child: Icon(Icons.grid_view, color: SolarColors.lime),
-        ),
-        for (final icon in [Icons.battery_6_bar, Icons.cable])
+          const Spacer(),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 15),
-            child: Icon(icon, color: SolarColors.onDarkFaint),
+            child: SolarIcon(SolarIcons.home, color: palette.simulated),
           ),
-        IconButton(
-          onPressed: onOpenDesignLab,
-          tooltip: AppLocalizations.of(context).designLab,
-          icon: const Icon(
-            Icons.science_outlined,
-            color: SolarColors.onDarkFaint,
+          for (final icon in [SolarIcons.battery, SolarIcons.gateway])
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              child: SolarIcon(
+                icon,
+                color: palette.background.withValues(alpha: .54),
+              ),
+            ),
+          IconButton(
+            onPressed: onOpenDesignLab,
+            tooltip: AppLocalizations.of(context).designLab,
+            icon: SolarIcon(
+              SolarIcons.research,
+              color: palette.background.withValues(alpha: .54),
+            ),
           ),
-        ),
-        const Spacer(),
-        const Padding(
-          padding: EdgeInsets.only(bottom: 26),
-          child: Icon(Icons.settings_outlined, color: SolarColors.onDarkFaint),
-        ),
-      ],
-    ),
-  );
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 26),
+            child: SolarIcon(
+              SolarIcons.configure,
+              color: palette.background.withValues(alpha: .54),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Header extends StatelessWidget {
@@ -363,13 +365,16 @@ class _Header extends StatelessWidget {
     required this.onToggleLocale,
     required this.onToggleTheme,
     required this.onToggleContrast,
+    required this.onOpenSettings,
   });
   final VoidCallback onToggleLocale;
   final VoidCallback onToggleTheme;
   final VoidCallback onToggleContrast;
+  final VoidCallback onOpenSettings;
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -381,36 +386,40 @@ class _Header extends StatelessWidget {
             Text(
               AppLocalizations.of(context).appTitle.toUpperCase(),
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: SolarColors.green,
+                color: palette.tint,
                 letterSpacing: 1.4,
               ),
             ),
             const SizedBox(width: 8),
             IconButton(
+              key: const Key('toggle-locale'),
               onPressed: onToggleLocale,
               tooltip: Localizations.localeOf(context).languageCode == 'ar'
                   ? s.english
                   : s.arabic,
-              icon: const Icon(Icons.language),
+              icon: const SolarIcon(SolarIcons.role),
             ),
             IconButton(
+              key: const Key('toggle-theme'),
               onPressed: onToggleTheme,
               tooltip: s.toggleTheme,
-              icon: const Icon(Icons.contrast),
+              icon: const SolarIcon(SolarIcons.compare),
             ),
             IconButton(
               onPressed: onToggleContrast,
               tooltip: s.highContrast,
-              icon: const Icon(Icons.visibility_outlined),
+              icon: const SolarIcon(SolarIcons.evidence),
             ),
-            _Pill(icon: Icons.shield_outlined, text: s.readOnly),
+            IconButton(
+              onPressed: onOpenSettings,
+              tooltip: s.settings,
+              icon: const SolarIcon(SolarIcons.configure),
+            ),
+            _Pill(icon: SolarIcons.readOnly, text: s.readOnly),
           ],
         ),
-        const SizedBox(height: 14),
-        PrecisionPageHeading(
-          title: s.tagline,
-          icon: Icons.dashboard_customize_outlined,
-        ),
+        const SizedBox(height: 7),
+        Text(s.tagline, style: Theme.of(context).textTheme.displaySmall),
       ],
     );
   }
@@ -423,15 +432,11 @@ class _Hero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF203F69), Color(0xFF102946), Color(0xFF0A182C)],
-        ),
-        border: Border.all(color: const Color(0xFF355577)),
+        color: palette.labelPrimary,
         borderRadius: BorderRadius.circular(30),
       ),
       child: Wrap(
@@ -444,20 +449,25 @@ class _Hero extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _Pill(icon: Icons.science_outlined, text: s.simulated),
+                _Pill(icon: SolarIcons.simulated, text: s.simulated),
                 const SizedBox(height: 24),
                 Text(
                   s.bank,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: SolarColors.onDark,
+                    color: palette.background,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(switch (linkState) {
-                  DeviceSessionLinkState.connecting => s.connecting,
-                  DeviceSessionLinkState.online => s.online,
-                  DeviceSessionLinkState.unavailable => s.linkUnavailable,
-                }, style: const TextStyle(color: SolarColors.onDarkMuted)),
+                Text(
+                  switch (linkState) {
+                    DeviceSessionLinkState.connecting => s.connecting,
+                    DeviceSessionLinkState.online => s.online,
+                    DeviceSessionLinkState.unavailable => s.linkUnavailable,
+                  },
+                  style: TextStyle(
+                    color: palette.background.withValues(alpha: .62),
+                  ),
+                ),
               ],
             ),
           ),
@@ -477,37 +487,44 @@ class _BigMetric extends StatelessWidget {
   final Measurement value;
   final String label;
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 180,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: SolarColors.onDarkFaint,
-            fontSize: 11,
-            letterSpacing: 1.1,
-          ),
-        ),
-        const SizedBox(height: 7),
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: Text(
-            value.isReported
-                ? '${value.value!.toStringAsFixed(value.unit == '%' ? 0 : 2)} ${value.unit}'
-                : AppLocalizations.of(context).notReportedByDevice,
-            style: const TextStyle(
-              color: SolarColors.onDark,
-              fontSize: 31,
-              fontWeight: FontWeight.w700,
-              fontFeatures: [FontFeature.tabularFigures()],
+  Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
+    final valueLabel = value.isReported
+        ? '${localizedNumber(context, value.value!, fractionDigits: value.unit == '%' ? 0 : 2)} ${value.unit}'
+        : AppLocalizations.of(context).notReportedByDevice;
+    return Semantics(
+      label: '$label, $valueLabel',
+      child: SizedBox(
+        width: 180,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: palette.background.withValues(alpha: .54),
+                fontSize: 11,
+                letterSpacing: 1.1,
+              ),
             ),
-          ),
+            const SizedBox(height: 7),
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                valueLabel,
+                style: TextStyle(
+                  color: palette.background,
+                  fontSize: 31,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class _Metrics extends StatelessWidget {
@@ -523,19 +540,19 @@ class _Metrics extends StatelessWidget {
         _MetricCard(
           title: s.current,
           value: snapshot.current,
-          icon: Icons.swap_vert,
+          icon: SolarIcons.currentFlow,
         ),
         _MetricCard(
           title: s.temperature,
           value: snapshot.temperature,
-          icon: Icons.thermostat_outlined,
+          icon: SolarIcons.temperature,
         ),
         _MetricCard(
           title: s.cellDelta,
           value: snapshot.cellDelta == null
               ? const Measurement.absent(DataAbsenceReason.notReported)
               : Measurement.value(snapshot.cellDelta! * 1000, 'mV'),
-          icon: Icons.balance,
+          icon: SolarIcons.balancing,
         ),
       ],
     );
@@ -550,53 +567,67 @@ class _MetricCard extends StatelessWidget {
   });
   final String title;
   final Measurement value;
-  final IconData icon;
+  final SolarIconData icon;
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 230,
-    height: 148,
-    child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+  Widget build(BuildContext context) {
+    final valueLabel = value.isReported
+        ? '${localizedNumber(context, value.value!, fractionDigits: 1)} ${value.unit}'
+        : AppLocalizations.of(context).notReportedByDevice;
+    return Semantics(
+      label: '$title, $valueLabel',
+      child: SizedBox(
+        width: 230,
+        height: 148,
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, size: 20, color: SolarColors.green),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.end,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                Row(
+                  children: [
+                    SolarIcon(
+                      icon,
+                      size: 20,
+                      color: Theme.of(
+                        context,
+                      ).extension<SolarTokens>()!.palette.tint,
                     ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        title,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(
+                    valueLabel,
+                    style: value.isReported
+                        ? Theme.of(context).textTheme.headlineSmall
+                        : TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                            fontStyle: FontStyle.italic,
+                          ),
                   ),
                 ),
               ],
             ),
-            const Spacer(),
-            Directionality(
-              textDirection: TextDirection.ltr,
-              child: Text(
-                value.isReported
-                    ? '${value.value!.toStringAsFixed(1)} ${value.unit}'
-                    : AppLocalizations.of(context).notReportedByDevice,
-                style: value.isReported
-                    ? Theme.of(context).textTheme.headlineSmall
-                    : TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontStyle: FontStyle.italic,
-                      ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _CellPanel extends StatelessWidget {
@@ -611,9 +642,9 @@ class _CellPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            PrecisionSectionHeading(
-              label: s.cellBalance,
-              icon: Icons.grid_on_outlined,
+            Text(
+              s.cellBalance,
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 5),
             Text(
@@ -640,7 +671,7 @@ class _CellPanel extends StatelessWidget {
                     child: Column(
                       children: [
                         TechnicalText(
-                          'C${i + 1}',
+                          _cellLabel(i),
                           style: TextStyle(
                             fontSize: 11,
                             color: Theme.of(
@@ -650,7 +681,11 @@ class _CellPanel extends StatelessWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          snapshot.cellVoltages[i].toStringAsFixed(3),
+                          localizedNumber(
+                            context,
+                            snapshot.cellVoltages[i],
+                            fractionDigits: 3,
+                          ),
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             fontFeatures: [FontFeature.tabularFigures()],
@@ -668,32 +703,37 @@ class _CellPanel extends StatelessWidget {
   }
 }
 
+String _cellLabel(int index) => 'C${index + 1}';
+
 class _Pill extends StatelessWidget {
   const _Pill({required this.icon, required this.text});
-  final IconData icon;
+  final SolarIconData icon;
   final String text;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(
-      color: SolarColors.lime,
-      borderRadius: BorderRadius.circular(99),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 15, color: SolarColors.deep),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: SolarColors.deep,
-            letterSpacing: .6,
+  Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: palette.simulated,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SolarIcon(icon, size: 15, color: palette.labelPrimary),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: palette.labelPrimary,
+              letterSpacing: .6,
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }

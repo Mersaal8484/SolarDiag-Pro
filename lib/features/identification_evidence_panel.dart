@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../design/precision_ui.dart';
 
 import '../identification/identification_state_machine.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -17,9 +16,9 @@ class IdentificationEvidencePanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            PrecisionSectionHeading(
-              label: l10n.identificationEvidence,
-              icon: Icons.verified_user_outlined,
+            Text(
+              l10n.identificationEvidence,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             if (outcome.manuallySelected) Text(l10n.manualSelectionWarning),

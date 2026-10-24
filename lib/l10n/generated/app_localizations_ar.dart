@@ -73,6 +73,90 @@ class AppLocalizationsAr extends AppLocalizations {
   String get highContrast => 'تباين عالٍ';
 
   @override
+  String get settings => 'الإعدادات';
+
+  @override
+  String get language => 'اللغة';
+
+  @override
+  String get themeSetting => 'المظهر';
+
+  @override
+  String get lightTheme => 'فاتح';
+
+  @override
+  String get darkTheme => 'داكن';
+
+  @override
+  String get systemTheme => 'النظام';
+
+  @override
+  String get digitPreference => 'نمط الأرقام';
+
+  @override
+  String get westernDigits => 'غربية (0–9)';
+
+  @override
+  String get arabicIndicDigits => 'عربية هندية (٠–٩)';
+
+  @override
+  String get workshopMode => 'وضع الورشة';
+
+  @override
+  String get workshopModeDescription =>
+      'استخدام عناصر تحكم بارتفاع 56 نقطة على الأقل وإبقاء الشاشة نشطة أثناء الجلسة.';
+
+  @override
+  String get outdoorMode => 'تباين خارجي مرتفع';
+
+  @override
+  String get outdoorModeDescription =>
+      'زيادة التباين وقوة الفواصل للعمل في الإضاءة الساطعة.';
+
+  @override
+  String get timeAxisDirection => 'محور الزمن من اليسار إلى اليمين';
+
+  @override
+  String get timeAxisDirectionDescription =>
+      'إبقاء المخططات الزمنية التقنية متقدمة من اليسار إلى اليمين.';
+
+  @override
+  String get reduceTransparency => 'تقليل الشفافية';
+
+  @override
+  String get reduceTransparencyDescription => 'استخدام أسطح تنقل وتراكب معتمة.';
+
+  @override
+  String get voltageUnit => 'فولت';
+
+  @override
+  String get pipelineValidate => 'التحقق من المدخلات';
+
+  @override
+  String get pipelineIdentify => 'التحقق من الهوية';
+
+  @override
+  String get pipelineBackup => 'إنشاء نسخة احتياطية';
+
+  @override
+  String get pipelineAuthorize => 'التفويض';
+
+  @override
+  String get pipelineConfirm => 'تأكيد الفروقات';
+
+  @override
+  String get pipelineWrite => 'الكتابة';
+
+  @override
+  String get pipelineReadback => 'إعادة القراءة';
+
+  @override
+  String get pipelineVerify => 'التحقق';
+
+  @override
+  String get pipelineAudit => 'إلحاق سجل التدقيق';
+
+  @override
   String get readOnly => 'للقراءة فقط';
 
   @override
@@ -82,7 +166,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get bank => 'حزمة بطارية 48 فولت';
 
   @override
-  String get healthy => 'LiFePO₄، 16 خلية · متصل';
+  String get healthy => 'LiFePO₄، 16 خلية · سيناريو اسمي';
 
   @override
   String get current => 'التيار';
@@ -953,4 +1037,70 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get export => 'التصدير';
+
+  @override
+  String get operatingMode => 'وضع التشغيل';
+
+  @override
+  String get activeRead => 'قراءة نشطة';
+
+  @override
+  String get writeMode => 'كتابة';
+
+  @override
+  String get noTransmissionAttempted => 'لم تحدث محاولة إرسال';
+
+  @override
+  String get guardAllowed => 'مسموح';
+
+  @override
+  String get guardBlocked => 'محظور';
+
+  @override
+  String get allowedFrames => 'الإطارات المسموحة';
+
+  @override
+  String get blockedFrames => 'الإطارات المحظورة';
+
+  @override
+  String get droppedFrames => 'الإطارات المُسقطة';
+
+  @override
+  String get observedBusLoad => 'حمل الناقل المرصود';
+
+  @override
+  String get negotiationState => 'حالة التفاوض';
+
+  @override
+  String get notNegotiated => 'لم يتم التفاوض';
+
+  @override
+  String get passiveNegotiated => 'قُبلت جلسة الاستماع';
+
+  @override
+  String get activeReadNegotiated => 'قُبلت جلسة القراءة النشطة';
+
+  @override
+  String get writeNegotiated => 'قُبلت جلسة الكتابة';
+
+  @override
+  String get lastGuardDecision => 'آخر قرار للحارس';
+
+  @override
+  String get compatibilityCompatible => 'متوافق';
+
+  @override
+  String get compatibilityCompatibleWithLimits => 'متوافق ضمن حدود';
+
+  @override
+  String get compatibilityIncompatible => 'ملف غير متوافق';
+
+  @override
+  String get compatibilityStateCompatible => 'متوافق';
+
+  @override
+  String get compatibilityStateAttention => 'يتطلب الانتباه';
+
+  @override
+  String get compatibilityStateIncompatible => 'غير متوافق';
 }

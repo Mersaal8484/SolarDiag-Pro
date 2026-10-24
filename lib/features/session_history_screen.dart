@@ -1,9 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import '../design/precision_ui.dart';
 
 import '../l10n/generated/app_localizations.dart';
+import '../core/battery_models.dart';
+import '../diagnostics/battery_diagnostics.dart';
+import '../design/solar_icon.dart';
+import '../design/solar_icons.g.dart';
+import '../design/accessibility.dart';
 import '../persistence/local_database.dart';
 import '../reports/engineering_report.dart';
 import '../session/device_session.dart';
@@ -19,11 +23,12 @@ class SessionHistoryScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 56),
         children: [
-          PrecisionPageHeading(
-            title: s.diagnosticHistory,
-            subtitle: s.historyDescription,
-            icon: Icons.history_toggle_off_outlined,
+          Text(
+            s.diagnosticHistory,
+            style: Theme.of(context).textTheme.displaySmall,
           ),
+          const SizedBox(height: 8),
+          Text(s.historyDescription),
           const SizedBox(height: 24),
           if (records.isEmpty)
             Card(
@@ -58,7 +63,7 @@ class _SessionCard extends StatelessWidget {
           ListTile(
             key: ValueKey('history-${record.id}'),
             contentPadding: const EdgeInsets.all(18),
-            leading: const Icon(Icons.history),
+            leading: const SolarIcon(SolarIcons.history),
             title: Text(s.scenarioValue(record.scenario)),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -73,7 +78,7 @@ class _SessionCard extends StatelessWidget {
                 ],
               ),
             ),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: const SolarIcon(SolarIcons.currentFlow),
             onTap: () => _showDetails(context),
           ),
           Padding(
@@ -83,7 +88,7 @@ class _SessionCard extends StatelessWidget {
               child: OutlinedButton.icon(
                 key: ValueKey('export-${record.id}'),
                 onPressed: () => _previewReport(context),
-                icon: const Icon(Icons.preview_outlined),
+                icon: const SolarIcon(SolarIcons.report),
                 label: Text(s.previewReport),
               ),
             ),
@@ -93,16 +98,147 @@ class _SessionCard extends StatelessWidget {
     );
   }
 
-  EngineeringReportData _reportData(DeviceSession session) =>
-      EngineeringReportData(
-        sessions: [record],
-        parameters: session.parameters,
-        alarms: session.alarmCodes,
-        findings: [
-          for (final finding in session.compatibilityAssessment.findings)
-            {'severity': finding.state.name, 'message': finding.message},
-        ],
+  EngineeringReportData _reportData(
+    BuildContext context,
+    DeviceSession session,
+  ) {
+    final sessions = session.history;
+    return EngineeringReportData(
+      sessions: sessions,
+      parameters: session.parameters,
+      eventsBySession: {
+        for (final item in sessions) item.id: session.eventsFor(item.id),
+      },
+      samplesBySession: {
+        for (final item in sessions) item.id: session.samplesFor(item.id),
+      },
+      auditHeads: {
+        for (final item in sessions) item.id: session.auditHeadFor(item.id),
+      },
+      findingsBySession: {
+        for (final item in sessions) item.id: _findingsFor(item, session),
+      },
+      digitPreference:
+          DesignPreferenceScope.maybeOf(context)?.digits ??
+          DigitPreference.western,
+    );
+  }
+
+  static List<Map<String, Object?>> _findingsFor(
+    DiagnosticSessionRecord record,
+    DeviceSession session,
+  ) {
+    final snapshot = _decodeSnapshot(record.snapshotJson);
+    final alarms = <String>{};
+    for (final event in session.eventsFor(record.id)) {
+      if (event.type != 'alarms_changed') continue;
+      final payload = jsonDecode(event.payloadJson);
+      if (payload is Map && payload['codes'] is List) {
+        alarms.addAll((payload['codes'] as List).whereType<String>());
+      }
+    }
+    final assessment = const BatteryDiagnostics().analyze(
+      snapshot,
+      rawAlarmCodes: alarms,
+    );
+    return [
+      for (final finding in assessment.findings)
+        {
+          'code': finding.code,
+          'severity': finding.severity.name,
+          'titleKey': finding.titleKey,
+          'detailKey': finding.detailKey,
+          'confidence': finding.confidence.name,
+          'evidence': finding.evidence,
+        },
+    ];
+  }
+
+  static TelemetrySnapshot _decodeSnapshot(String source) {
+    final root = jsonDecode(source) as Map<String, Object?>;
+    Measurement measurement(String key) {
+      final value = root[key] as Map<String, Object?>;
+      final timestamp = value['timestamp'] == null
+          ? null
+          : DateTime.parse(value['timestamp']! as String);
+      final reading = value['value'];
+      if (reading is num) {
+        return Measurement.value(
+          reading.toDouble(),
+          value['unit'] as String?,
+          timestamp: timestamp,
+          quality: MeasurementQuality.values.byName(value['quality'] as String),
+        );
+      }
+      return Measurement.absent(
+        DataAbsenceReason.values.byName(
+          (value['absenceReason'] as String?) ?? 'notReported',
+        ),
+        unit: value['unit'] as String?,
+        timestamp: timestamp,
       );
+    }
+
+    final temperatures = root['temperatures'] as List? ?? const [];
+    return TelemetrySnapshot(
+      voltage: measurement('voltage'),
+      current: measurement('current'),
+      power: measurement('power'),
+      soc: measurement('soc'),
+      soh: measurement('soh'),
+      remainingCapacity: measurement('remainingCapacity'),
+      fullChargeCapacity: measurement('fullChargeCapacity'),
+      cycleCount: measurement('cycleCount'),
+      cellMeasurements: [
+        for (final cell in root['cells'] as List)
+          _decodeMeasurement(cell as Map<String, Object?>),
+      ],
+      temperatureSensors: [
+        for (final item in temperatures.cast<Map<String, Object?>>())
+          TemperatureReading(
+            label: item['label'] as String,
+            kind: TemperatureSensorKind.values.byName(item['kind'] as String),
+            measurement: _decodeMeasurement(
+              item['measurement'] as Map<String, Object?>,
+            ),
+          ),
+      ],
+      chargeMosfet: measurement('chargeMosfet'),
+      dischargeMosfet: measurement('dischargeMosfet'),
+      contactor: measurement('contactor'),
+      balancingMask: measurement('balancingMask'),
+      chargeCurrentLimit: measurement('chargeCurrentLimit'),
+      dischargeCurrentLimit: measurement('dischargeCurrentLimit'),
+      chargeVoltageLimit: measurement('chargeVoltageLimit'),
+      rawAlarmBits: measurement('rawAlarmBits'),
+      rawProtectionBits: measurement('rawProtectionBits'),
+      linkStatus: measurement('linkStatus'),
+      timestamp: DateTime.parse(root['timestamp']! as String),
+      staleAfter: Duration(milliseconds: root['staleAfterMs']! as int),
+    );
+  }
+
+  static Measurement _decodeMeasurement(Map<String, Object?> value) {
+    final timestamp = value['timestamp'] == null
+        ? null
+        : DateTime.parse(value['timestamp']! as String);
+    final reading = value['value'];
+    if (reading is num) {
+      return Measurement.value(
+        reading.toDouble(),
+        value['unit'] as String?,
+        timestamp: timestamp,
+        quality: MeasurementQuality.values.byName(value['quality'] as String),
+      );
+    }
+    return Measurement.absent(
+      DataAbsenceReason.values.byName(
+        (value['absenceReason'] as String?) ?? 'notReported',
+      ),
+      unit: value['unit'] as String?,
+      timestamp: timestamp,
+    );
+  }
 
   Future<void> _previewReport(BuildContext context) async {
     final s = AppLocalizations.of(context);
@@ -168,7 +304,7 @@ class _SessionCard extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final result = await const EngineeringReportService().export(
-        _reportData(session),
+        _reportData(context, session),
         language: language,
       );
       if (!context.mounted) return;
@@ -217,7 +353,7 @@ class _SessionCard extends StatelessWidget {
                   for (final event in events)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.circle, size: 12),
+                      leading: const SolarIcon(SolarIcons.record, size: 12),
                       title: Text(_eventLabel(s, event.type)),
                       subtitle: Text(
                         '${event.occurredAt.toLocal()} · ${event.payloadJson}',
