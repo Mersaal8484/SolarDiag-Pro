@@ -260,9 +260,8 @@ void main() {
           final content = file.readAsStringSync();
 
           final isAllowed =
-              normalized.contains('lib/auth/') ||
-              normalized.contains('lib/features/') ||
-              normalized.contains('lib/parameters/parameter_models.dart');
+              normalized.endsWith('lib/auth/confirmation_factory.dart') ||
+              normalized.endsWith('lib/parameters/parameter_models.dart');
           if (!isAllowed) {
             expect(
               content.contains('ConfirmationToken('),

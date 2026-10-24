@@ -72,7 +72,7 @@ class SimulatedBmsAdapter implements BmsAdapter, SimulatedParameterBackend {
 
   @override
   ParameterTransport parameterTransport() =>
-      createSimulatedParameterTransport(this, SimulatorToken.instance);
+      createSimulatedParameterTransport(this);
   @override
   Future<CapabilitySet> capabilities() async => CapabilitySet({
     for (final capability in DeviceCapability.values)

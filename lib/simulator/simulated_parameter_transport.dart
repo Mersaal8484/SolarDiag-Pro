@@ -12,12 +12,10 @@ abstract interface class SimulatedParameterBackend {
 
 final class SimulatorToken {
   const SimulatorToken._();
-  static const instance = SimulatorToken._();
 }
 
 ParameterTransport createSimulatedParameterTransport(
   SimulatedParameterBackend backend,
-  SimulatorToken token,
 ) => ParameterTransport._simulator(
   read: backend.readParameter,
   readAll: backend.readConfiguration,

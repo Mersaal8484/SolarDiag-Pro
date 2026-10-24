@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:meta/meta.dart';
 
 class AuditEntry {
   const AuditEntry({
@@ -72,6 +74,7 @@ abstract interface class SecretStore {
   List<int> getOrCreateSecretSync(String keyId);
 }
 
+@visibleForTesting
 class InMemorySecretStore implements SecretStore {
   InMemorySecretStore([Map<String, List<int>>? initial])
     : _secrets = initial ?? {};
@@ -90,10 +93,11 @@ class InMemorySecretStore implements SecretStore {
       getOrCreateSecretSync(keyId);
 
   @override
-  List<int> getOrCreateSecretSync(String keyId) => _secrets.putIfAbsent(
-    keyId,
-    () => List<int>.generate(32, (i) => (i * 31 + 17) % 256),
-  );
+  List<int> getOrCreateSecretSync(String keyId) =>
+      _secrets.putIfAbsent(keyId, () {
+        final rng = Random.secure();
+        return List<int>.generate(32, (_) => rng.nextInt(256));
+      });
 }
 
 abstract interface class AuditChainStore {

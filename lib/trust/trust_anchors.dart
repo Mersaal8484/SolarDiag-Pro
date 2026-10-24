@@ -1,29 +1,48 @@
 import 'profile_integrity.dart';
 
+enum TrustAnchorPurpose { development, production }
+
 class TrustAnchorKey {
   const TrustAnchorKey({
     required this.keyId,
     required this.publicKeyBytes,
     required this.notBefore,
     required this.notAfter,
+    this.purpose = TrustAnchorPurpose.production,
   });
 
   final String keyId;
   final List<int> publicKeyBytes;
   final DateTime notBefore;
   final DateTime notAfter;
+  final TrustAnchorPurpose purpose;
 
-  bool isValidAt(DateTime now) =>
-      !now.isBefore(notBefore) && !now.isAfter(notAfter);
+  bool isValidAt(DateTime now, {bool allowDevelopmentAnchors = false}) {
+    if (purpose == TrustAnchorPurpose.development && !allowDevelopmentAnchors) {
+      return false;
+    }
+    return !now.isBefore(notBefore) && !now.isAfter(notAfter);
+  }
 
   Ed25519TrustVerifier createVerifier() => Ed25519TrustVerifier(publicKeyBytes);
 }
 
 class TrustAnchorRegistry {
-  TrustAnchorRegistry([List<TrustAnchorKey>? keys])
-    : keys = List.unmodifiable(keys ?? defaultAnchors);
+  TrustAnchorRegistry([
+    List<TrustAnchorKey>? keys,
+    bool? allowDevelopmentAnchors,
+  ]) : keys = List.unmodifiable(keys ?? defaultAnchors),
+       allowDevelopmentAnchors =
+           allowDevelopmentAnchors ??
+           const bool.fromEnvironment('ALLOW_DEV_TRUST', defaultValue: false);
+
+  factory TrustAnchorRegistry.withOptions({
+    List<TrustAnchorKey>? keys,
+    bool allowDevelopmentAnchors = false,
+  }) => TrustAnchorRegistry(keys, allowDevelopmentAnchors);
 
   final List<TrustAnchorKey> keys;
+  final bool allowDevelopmentAnchors;
 
   /// Default production trust anchors embedded at compile-time.
   /// No private key is ever stored or shipped in this repository.
@@ -111,7 +130,14 @@ class TrustAnchorRegistry {
   TrustAnchorKey? findKey(String keyId, {DateTime? now}) {
     final check = now ?? DateTime.now().toUtc();
     return keys
-        .where((key) => key.keyId == keyId && key.isValidAt(check))
+        .where(
+          (key) =>
+              key.keyId == keyId &&
+              key.isValidAt(
+                check,
+                allowDevelopmentAnchors: allowDevelopmentAnchors,
+              ),
+        )
         .firstOrNull;
   }
 

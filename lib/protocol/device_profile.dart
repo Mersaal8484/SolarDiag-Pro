@@ -113,7 +113,9 @@ class ProfileApproval {
       );
 
   bool isApprovedFor(DeviceCapability capability) {
-    if (lifecycleStage != 'published' || approvedByRole != 'approvalEngineer') {
+    if (lifecycleStage != 'published' ||
+        approvedByRole != 'approvalEngineer' ||
+        hardwareValidationRecordId.isEmpty) {
       return false;
     }
     return verifiedCapabilities.contains(capability.name);
@@ -188,8 +190,7 @@ class DeviceProfile {
       DeviceCapability.calibrate,
     ];
     final hasCap = writeCapabilities.any(
-      (cap) =>
-          capabilities.statusOf(cap) == VerificationStatus.verifiedHardware,
+      (cap) => capabilities.statusOf(cap) != VerificationStatus.unsupported,
     );
     final hasParamWrite = parameters.any(
       (p) => p.access != ParameterAccess.readOnly,

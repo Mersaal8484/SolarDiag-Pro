@@ -92,11 +92,15 @@ class RevocationList {
 abstract interface class LibraryPackStore {
   Future<void> save(LibraryPack pack);
   Future<LibraryPack?> load();
+  Future<int> loadHighestRevocationSequence() => Future.value(0);
+  Future<void> saveHighestRevocationSequence(int sequence) => Future.value();
 }
 
 class FileLibraryPackStore implements LibraryPackStore {
   const FileLibraryPackStore(this.path);
   final String path;
+  String get _seqPath => '$path.revseq';
+
   @override
   Future<LibraryPack?> load() async {
     final file = File(path);
@@ -115,6 +119,26 @@ class FileLibraryPackStore implements LibraryPackStore {
     final temporary = File('$path.tmp');
     await temporary.writeAsString(jsonEncode(pack.toJson()), flush: true);
     await temporary.rename(path);
+  }
+
+  @override
+  Future<int> loadHighestRevocationSequence() async {
+    final file = File(_seqPath);
+    if (!await file.exists()) return 0;
+    try {
+      return int.parse((await file.readAsString()).trim());
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  @override
+  Future<void> saveHighestRevocationSequence(int sequence) async {
+    final target = File(_seqPath);
+    await target.parent.create(recursive: true);
+    final temporary = File('$_seqPath.tmp');
+    await temporary.writeAsString('$sequence', flush: true);
+    await temporary.rename(_seqPath);
   }
 }
 
@@ -139,9 +163,12 @@ class InstalledLibrary {
 
   bool get isRevocationStale =>
       _clock().toUtc().difference(revocations.issuedAt) > maxRevocationAge;
+  bool get isRevocationExpired =>
+      _clock().toUtc().isAfter(revocations.validUntil);
 
   String? get writeDisabledReason {
     if (packRevoked) return 'Library pack is revoked.';
+    if (isRevocationExpired) return 'Revocation list expired';
     if (isRevocationStale) return 'revocation data stale';
     return null;
   }
@@ -150,13 +177,16 @@ class InstalledLibrary {
     String profileId, [
     DeviceCapability capability = DeviceCapability.writeParameter,
   ]) {
-    if (packRevoked || isRevocationStale) return false;
+    if (packRevoked || isRevocationStale || isRevocationExpired) return false;
     if (revokedProfileIds.contains(profileId)) return false;
     return registry.profileCanWrite(profileId, capability);
   }
 
   bool get showRevokedBanner =>
-      packRevoked || revokedProfileIds.isNotEmpty || isRevocationStale;
+      packRevoked ||
+      revokedProfileIds.isNotEmpty ||
+      isRevocationStale ||
+      isRevocationExpired;
 }
 
 class LibrarySync {
@@ -166,7 +196,13 @@ class LibrarySync {
     required this.store,
     this.maxRevocationAge = const Duration(days: 14),
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now;
+  }) : _clock = clock ?? DateTime.now {
+    store.loadHighestRevocationSequence().then((seq) {
+      if (seq > _highestRevocationSequence) {
+        _highestRevocationSequence = seq;
+      }
+    });
+  }
 
   final Ed25519TrustVerifier verifier;
   final int appVersion;
@@ -182,12 +218,13 @@ class LibrarySync {
 
   void recordRevocationSequence(int sequence) {
     if (_highestRevocationSequence > 0 &&
-        sequence <= _highestRevocationSequence) {
+        sequence < _highestRevocationSequence) {
       throw StateError(
-        'Revocation list sequence rollback: $sequence <= $_highestRevocationSequence',
+        'Revocation list sequence rollback: $sequence < $_highestRevocationSequence',
       );
     }
     _highestRevocationSequence = sequence;
+    store.saveHighestRevocationSequence(sequence);
   }
 
   Future<bool> apply(
@@ -203,7 +240,7 @@ class LibrarySync {
       return false;
     }
     if (_highestRevocationSequence > 0 &&
-        revocations.sequence <= _highestRevocationSequence) {
+        revocations.sequence < _highestRevocationSequence) {
       return false;
     }
     final hashKeys = pack.profileHashes.keys.toSet();
@@ -230,6 +267,7 @@ class LibrarySync {
     );
     await store.save(pack);
     _highestRevocationSequence = revocations.sequence;
+    await store.saveHighestRevocationSequence(_highestRevocationSequence);
     _installed = InstalledLibrary(
       pack: pack,
       registry: registry,

@@ -3,6 +3,7 @@ enum DataAbsenceReason { notSupported, notReported, readFailed, stale }
 enum MeasurementQuality { good, uncertain, stale, unavailable }
 
 enum VerificationStatus {
+  unsupported,
   verifiedHardware,
   verifiedDocument,
   communitySourced,

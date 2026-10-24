@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../app/theme.dart';
+import '../auth/confirmation_factory.dart';
 import '../design/solar_icon.dart';
 import '../design/solar_icons.g.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -175,10 +176,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     );
     if (confirmed != true || !mounted) return;
     if (!session.auth.isUnlocked) {
-      final unlocked = await session.auth.unlock(
-        tier: AuthorizationTier.technician,
-        credentials: 'technician-authenticated',
-      );
+      final unlocked = await _ensureUnlocked(session);
       if (!unlocked || !mounted) return;
     }
     final authorization = session.auth.current;
@@ -193,8 +191,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
         contextObj,
       );
       tokens.add(
-        ConfirmationToken(
-          diffHash: diffHash,
+        createConfirmationToken(
+          shownPlanHash: diffHash,
           deviceId: contextObj.deviceId,
           sessionId: contextObj.sessionId,
           expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
@@ -220,6 +218,41 @@ class _ParametersScreenState extends State<ParametersScreen> {
               : s.backupRestoreFailed,
         ),
       ),
+    );
+  }
+
+  Future<bool> _ensureUnlocked(DeviceSession session) async {
+    if (session.auth.isUnlocked) return true;
+    final pinController = TextEditingController();
+    final pin = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Technician Authentication'),
+        content: TextField(
+          controller: pinController,
+          obscureText: true,
+          decoration: const InputDecoration(
+            labelText: 'Technician PIN',
+            hintText: 'Enter PIN to authorize write operations',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, pinController.text),
+            child: const Text('Authenticate'),
+          ),
+        ],
+      ),
+    );
+    if (pin == null || pin.isEmpty) return false;
+    return await session.auth.unlock(
+      tier: AuthorizationTier.technician,
+      credentials: pin,
     );
   }
 
@@ -347,10 +380,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     );
     if (confirmed == null || !mounted) return;
     if (!session.auth.isUnlocked) {
-      final unlocked = await session.auth.unlock(
-        tier: AuthorizationTier.technician,
-        credentials: 'technician-authenticated',
-      );
+      final unlocked = await _ensureUnlocked(session);
       if (!unlocked || !mounted) return;
     }
     final authorization = session.auth.current;
@@ -365,8 +395,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
       before,
       contextObj,
     );
-    final token = ConfirmationToken(
-      diffHash: diffHash,
+    final token = createConfirmationToken(
+      shownPlanHash: diffHash,
       deviceId: contextObj.deviceId,
       sessionId: contextObj.sessionId,
       expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),

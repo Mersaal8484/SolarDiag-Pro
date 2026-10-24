@@ -60,7 +60,7 @@ class SimulatedInverterAdapter
 
   @override
   ParameterTransport parameterTransport() =>
-      createSimulatedParameterTransport(this, SimulatorToken.instance);
+      createSimulatedParameterTransport(this);
   @override
   Future<CapabilitySet> capabilities() async => CapabilitySet({
     for (final value in DeviceCapability.values)

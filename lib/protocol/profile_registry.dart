@@ -25,6 +25,11 @@ class ProfileRegistry {
   ]) => _writeCapabilities[id]?.contains(capability) ?? false;
 
   void registerExternalProfile(DeviceProfile profile) {
+    if (profile.hasWriteCapability) {
+      throw StateError(
+        'External profile cannot be registered with write capability without cryptographic signature.',
+      );
+    }
     _profiles[profile.id] = profile;
   }
 

@@ -304,21 +304,37 @@ class DeviceSession extends ChangeNotifier {
   }
 
   DeviceWriteContext createWriteContext() {
-    final connectedModel = _lastIdentification?.model ?? 'LFP-16S-SIM';
-    final connectedFirmware = _lastIdentification?.firmware ?? 'simulator-v2';
+    final ident = _lastIdentification;
+    final String? connectedModel = ident?.model;
+    final String? connectedFirmware = ident?.firmware;
+    final DeviceWriteState state;
+    final bool writeLocked;
+
+    if (ident == null || connectedModel == null || connectedFirmware == null) {
+      state = DeviceWriteState.unknownVerify;
+      writeLocked = true;
+    } else if (connectedModel != 'LFP-16S-SIM' ||
+        connectedFirmware != 'simulator-v2') {
+      state = DeviceWriteState.identityMismatch;
+      writeLocked = true;
+    } else {
+      state = DeviceWriteState.known;
+      writeLocked =
+          !auth.isUnlocked ||
+          _linkState != DeviceSessionLinkState.online ||
+          _lastError != null;
+    }
+
     return DeviceWriteContext(
-      deviceId: 'SOLARDIAG-SIM-BMS',
+      deviceId: connectedModel != null ? 'SOLARDIAG-SIM-BMS' : 'UNIDENTIFIED',
       sessionId: _sessionId,
       profileModel: 'LFP-16S-SIM',
       profileFirmware: 'simulator-v2',
       connectedModel: connectedModel,
       connectedFirmware: connectedFirmware,
       linkHealthy: _linkState == DeviceSessionLinkState.online,
-      writeLocked:
-          !auth.isUnlocked ||
-          _linkState != DeviceSessionLinkState.online ||
-          _lastError != null,
-      state: DeviceWriteState.known,
+      writeLocked: writeLocked,
+      state: state,
     );
   }
 
