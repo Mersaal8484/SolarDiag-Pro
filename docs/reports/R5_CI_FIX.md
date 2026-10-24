@@ -1,10 +1,10 @@
-# CI formatting repair
+# CI repair
 - NOT RUN — owner will verify.
-- Root cause: `dart format --set-exit-if-changed` reported three test files as changed.
-- Exact CI line: `Changed test/audit_chain_test.dart`.
-- Reformatted nested file writes in `test/audit_chain_test.dart` without changing assertions.
-- Wrapped report-building calls in `test/engineering_report_test.dart`.
-- Split long literals and aligned imports in `test/t1_safety_and_trust_test.dart`.
-- Grep review: 10 report builder calls and 53 T1 expectations retained.
-- `git diff --check` reported no whitespace errors; no project checks were run.
-- Unsure: pinned CI formatter was not run here; owner must rerun the workflow format step.
+- The formatter failure was fixed in commit `1562a10`.
+- The latest run then failed at `git diff --exit-code docs/CAPABILITY_MATRIX.md`.
+- Root cause: unsorted recursive profile enumeration changed row order by runner OS.
+- Sort profile paths before generating the matrix; reorder the checked-in output to match.
+- Grep counts: `listSync` 1, `rows.add` 2, matrix path 1.
+- No APIs/assertions changed; no Dart/Flutter commands or tests were run.
+- Owner should run `dart run tool/generate_capability_matrix.dart` and verify CI.
+- Uncertainty: generator output equivalence is inferred from its source and CI diff.
