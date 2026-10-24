@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'package:flutter/services.dart';
 import '../core/battery_models.dart';
+import '../simulator/simulated_profile_document.dart';
 import '../trust/profile_integrity.dart';
 import 'capabilities.dart';
 import 'device_profile.dart';
@@ -122,11 +122,7 @@ class ProfileRegistry {
 
   static Future<ProfileRegistry> loadBundledSimulator() async =>
       _fromJsonDocuments(
-        [
-          await rootBundle.loadString(
-            'device_profiles/batteries/_simulated/solardiag_sim.json',
-          ),
-        ],
+        [simulatedProfileDocument],
         technicianMode: true,
         isBundled: true,
       );

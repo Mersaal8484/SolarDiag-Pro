@@ -1,0 +1,66 @@
+const String simulatedProfileDocument = r'''
+{
+  "schema_version": 2,
+  "id": "solardiag.simulated.lfp16.v2",
+  "category": "battery",
+  "manufacturer": "SolarDiag",
+  "family": "Deterministic Simulator",
+  "models": ["LFP-16S-SIM"],
+  "firmware_ranges": ["sim-1.x"],
+  "simulated": true,
+  "provenance": {
+    "source": "internal-simulator",
+    "document_id": "SIM-SPEC-001",
+    "retrieved_on": "2026-10-17",
+    "verified_by": "automated-tests"
+  },
+  "transport": {
+    "interface": "simulator",
+    "listen_only_default": true,
+    "data_formats": ["internal"]
+  },
+  "capabilities": {
+    "identify": "simulated",
+    "read_live": "simulated",
+    "read_config": "simulated",
+    "write_parameter": "simulated",
+    "calibrate": "researchTarget"
+  },
+  "allowed_read_frames": [769, 770, 771],
+  "allowed_modbus_read_ranges": [],
+  "telemetry_map": [
+    {
+      "id": "pack_voltage",
+      "label": {"en": "Pack voltage", "ar": "جهد الحزمة"},
+      "source": {"frame_id": 769},
+      "unit": "V",
+      "scale": 0.1
+    }
+  ],
+  "alarm_dictionary": {
+    "cell_overvoltage": {
+      "en": "Cell overvoltage",
+      "ar": "ارتفاع جهد الخلية"
+    }
+  },
+  "parameters": [
+    {
+      "id": "charge_limit",
+      "label": {"en": "Charge limit", "ar": "حد الشحن"},
+      "access": "simulated-write",
+      "unit": "A",
+      "minimum": 0,
+      "maximum": 100
+    }
+  ],
+  "topology": {"series_cells": 16},
+  "inverter_link": {},
+  "test_vectors": [{"name": "nominal", "input": "scenario:normal"}],
+  "connection_checklist": [
+    {
+      "en": "Select a simulator scenario.",
+      "ar": "اختر سيناريو المحاكي."
+    }
+  ]
+}
+''';

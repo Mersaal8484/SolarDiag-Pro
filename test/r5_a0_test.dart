@@ -72,12 +72,11 @@ void main() {
       profiles: const {},
       signature: 'accepted-by-test-verifier',
     );
-    final revocations = RevocationList(
+    final initialRevocations = RevocationList(
       sequence: 1,
       issuedAt: DateTime.utc(2027),
       validUntil: DateTime.utc(2030),
-      revokedPackIds: const {'offline-pack'},
-      revokedProfileIds: {firstSession.activeProfileId},
+      revokedProfileIds: const {},
       signature: 'accepted-by-test-verifier',
     );
     final firstSync = LibrarySync(
@@ -86,9 +85,22 @@ void main() {
       store: store,
     );
     expect(
-      await firstSync.apply(pack, now: now, revocations: revocations),
+      await firstSync.apply(
+        pack,
+        now: now,
+        revocations: initialRevocations,
+      ),
       isTrue,
     );
+    final revocations = RevocationList(
+      sequence: 2,
+      issuedAt: DateTime.utc(2027),
+      validUntil: DateTime.utc(2030),
+      revokedPackIds: const {'offline-pack'},
+      revokedProfileIds: {firstSession.activeProfileId},
+      signature: 'accepted-by-test-verifier',
+    );
+    expect(await firstSync.refreshRevocations(revocations), isTrue);
 
     final restartedSync = LibrarySync(
       verifier: _AcceptingVerifier(),
@@ -105,7 +117,9 @@ void main() {
     final restartedSession = DeviceSession(autoStart: false);
     addTearDown(restartedSession.dispose);
     restartedSession.setLibraryWriteBlocked(
-      restartedSync.installed!.blocksWritesFor(restartedSession.activeProfileId),
+      restartedSync.installed!.blocksWritesFor(
+        restartedSession.activeProfileId,
+      ),
     );
     expect(restartedSession.libraryWritesBlocked, isTrue);
     expect(
