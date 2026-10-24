@@ -32,6 +32,20 @@ void main() {
           reason: 'Y1: default authenticator must fail closed',
         );
         expect(controller.isUnlocked, isFalse);
+
+        final defaultConfigurationController = AuthorizationController(
+          authenticator: const DemoConfiguration(
+            demoPin: '1234',
+          ).createAuthenticator(),
+        );
+        expect(
+          await defaultConfigurationController.unlock(
+            tier: AuthorizationTier.technician,
+            credentials: '1234',
+          ),
+          isFalse,
+        );
+        expect(defaultConfigurationController.isUnlocked, isFalse);
       },
     );
 
@@ -286,11 +300,11 @@ void main() {
         );
         final now = DateTime.utc(2026, 6, 1);
 
-        const pack1 = LibraryPack(
+        final pack1 = LibraryPack(
           id: 'pack-1',
           version: 1,
           minAppVersion: 1,
-          expiresAtString: '2027-01-01T00:00:00.000Z',
+          expiresAt: DateTime.utc(2027),
           profileHashes: {},
           profiles: {},
           signature: 'valid-sig',
@@ -311,11 +325,11 @@ void main() {
         expect(ok1, isTrue);
 
         // Same sequence second pack should install successfully
-        const pack2 = LibraryPack(
+        final pack2 = LibraryPack(
           id: 'pack-2',
           version: 2,
           minAppVersion: 1,
-          expiresAtString: '2027-01-01T00:00:00.000Z',
+          expiresAt: DateTime.utc(2027),
           profileHashes: {},
           profiles: {},
           signature: 'valid-sig',
@@ -343,11 +357,11 @@ void main() {
           ), // Expired relative to now (2026)
           signature: 'valid-sig',
         );
-        const pack3 = LibraryPack(
+        final pack3 = LibraryPack(
           id: 'pack-3',
           version: 3,
           minAppVersion: 1,
-          expiresAtString: '2027-01-01T00:00:00.000Z',
+          expiresAt: DateTime.utc(2027),
           profileHashes: {},
           profiles: {},
           signature: 'valid-sig',
@@ -433,6 +447,21 @@ class _TestPackStore implements LibraryPackStore {
   Future<void> saveHighestRevocationSequence(int sequence) async {
     highestSequence = sequence;
   }
+}
+
+class MockTrustVerifier extends Ed25519TrustVerifier {
+  MockTrustVerifier({required this.acceptAll}) : super(List.filled(32, 0));
+
+  final bool acceptAll;
+
+  @override
+  Future<bool> verifyPayload(
+    Map<String, Object?> payload,
+    String signature,
+  ) async => acceptAll;
+
+  @override
+  Future<bool> verifyProfile(SignedProfileDocument profile) async => acceptAll;
 }
 
 class _MemoryAuditStore implements AuditChainStore {

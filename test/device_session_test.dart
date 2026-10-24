@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solardiag_pro/auth/authorization_controller.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
 import 'package:solardiag_pro/parameters/parameter_models.dart';
@@ -91,6 +92,10 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
+        authenticator: const DemoConfiguration(
+          isDemoMode: true,
+          demoPin: 'pin',
+        ).createAuthenticator(),
       );
       addTearDown(session.dispose);
       await session.refresh();
@@ -136,6 +141,10 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      authenticator: const DemoConfiguration(
+        isDemoMode: true,
+        demoPin: 'pin',
+      ).createAuthenticator(),
     );
     addTearDown(session.dispose);
     await session.refresh();
@@ -226,6 +235,10 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      authenticator: const DemoConfiguration(
+        isDemoMode: true,
+        demoPin: 'pin',
+      ).createAuthenticator(),
     );
     addTearDown(session.dispose);
     await session.refresh();
@@ -294,6 +307,10 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.parameterProfile,
         autoStart: false,
+        authenticator: const DemoConfiguration(
+          isDemoMode: true,
+          demoPin: 'pin',
+        ).createAuthenticator(),
       );
       addTearDown(session.dispose);
       await session.refresh();

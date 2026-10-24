@@ -246,6 +246,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editParameter => 'تعديل معامل محاكى';
 
   @override
+  String get technicianAuthentication => 'مصادقة الفني';
+
+  @override
+  String get technicianPin => 'رمز PIN للفني';
+
+  @override
+  String get pinAuthorizationHint => 'أدخل رمز PIN لتفويض عمليات الكتابة';
+
+  @override
+  String get authenticateAction => 'مصادقة';
+
+  @override
   String get reviewChanges => 'مراجعة التغييرات';
 
   @override

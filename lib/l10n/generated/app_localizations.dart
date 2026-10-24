@@ -536,6 +536,30 @@ abstract class AppLocalizations {
   /// **'Edit simulated parameter'**
   String get editParameter;
 
+  /// No description provided for @technicianAuthentication.
+  ///
+  /// In en, this message translates to:
+  /// **'Technician Authentication'**
+  String get technicianAuthentication;
+
+  /// No description provided for @technicianPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Technician PIN'**
+  String get technicianPin;
+
+  /// No description provided for @pinAuthorizationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter PIN to authorize write operations'**
+  String get pinAuthorizationHint;
+
+  /// No description provided for @authenticateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticate'**
+  String get authenticateAction;
+
   /// No description provided for @reviewChanges.
   ///
   /// In en, this message translates to:

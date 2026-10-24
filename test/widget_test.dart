@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solardiag_pro/app/solardiag_app.dart';
 import 'package:solardiag_pro/audit/audit_chain.dart';
+import 'package:solardiag_pro/auth/authorization_controller.dart';
 import 'package:solardiag_pro/gateway/gateway_contract.dart';
 import 'package:solardiag_pro/parameters/parameter_models.dart';
 import 'package:solardiag_pro/parameters/write_pipeline.dart';
@@ -295,6 +296,10 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      authenticator: const DemoConfiguration(
+        isDemoMode: true,
+        demoPin: 'pin',
+      ).createAuthenticator(),
     );
     addTearDown(session.dispose);
     await session.refresh();
@@ -314,6 +319,10 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const Key('confirm-parameter-write')));
     await tester.pumpAndSettle();
+    expect(find.text('Technician Authentication'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'pin');
+    await tester.tap(find.text('Authenticate'));
+    await tester.pumpAndSettle();
 
     expect(
       find.textContaining('Applied and verified by readback:'),
@@ -328,6 +337,10 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      authenticator: const DemoConfiguration(
+        isDemoMode: true,
+        demoPin: 'pin',
+      ).createAuthenticator(),
     );
     addTearDown(session.dispose);
     await session.refresh();
@@ -359,6 +372,7 @@ void main() {
       ),
       safetyAcknowledged: true,
     );
+    session.auth.lock();
     await tester.pumpWidget(SolarDiagApp(session: session));
     await tester.tap(find.text('Parameters'));
     await tester.pumpAndSettle();
@@ -391,6 +405,10 @@ void main() {
     await tester.tap(find.byType(CheckboxListTile));
     await tester.pump();
     await tester.tap(find.byKey(const Key('confirm-backup-restore')));
+    await tester.pumpAndSettle();
+    expect(find.text('Technician Authentication'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'pin');
+    await tester.tap(find.text('Authenticate'));
     await tester.pumpAndSettle();
 
     expect(session.parameters['charge_limit'], closeTo(55.2, 1e-9));

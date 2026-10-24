@@ -227,28 +227,29 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final pin = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Technician Authentication'),
+        title: Text(s.technicianAuthentication),
         content: TextField(
           controller: pinController,
           obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'Technician PIN',
-            hintText: 'Enter PIN to authorize write operations',
+          decoration: InputDecoration(
+            labelText: s.technicianPin,
+            hintText: s.pinAuthorizationHint,
           ),
           autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(s.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, pinController.text),
-            child: const Text('Authenticate'),
+            child: Text(s.authenticateAction),
           ),
         ],
       ),
     );
+    pinController.dispose();
     if (pin == null || pin.isEmpty) return false;
     return await session.auth.unlock(
       tier: AuthorizationTier.technician,

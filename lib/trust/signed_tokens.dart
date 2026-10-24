@@ -92,8 +92,8 @@ class RevocationList {
 abstract interface class LibraryPackStore {
   Future<void> save(LibraryPack pack);
   Future<LibraryPack?> load();
-  Future<int> loadHighestRevocationSequence() => Future.value(0);
-  Future<void> saveHighestRevocationSequence(int sequence) => Future.value();
+  Future<int> loadHighestRevocationSequence();
+  Future<void> saveHighestRevocationSequence(int sequence);
 }
 
 class FileLibraryPackStore implements LibraryPackStore {
@@ -196,13 +196,8 @@ class LibrarySync {
     required this.store,
     this.maxRevocationAge = const Duration(days: 14),
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now {
-    store.loadHighestRevocationSequence().then((seq) {
-      if (seq > _highestRevocationSequence) {
-        _highestRevocationSequence = seq;
-      }
-    });
-  }
+  }) : _clock = clock ?? DateTime.now,
+       _revocationState = store.loadHighestRevocationSequence();
 
   final Ed25519TrustVerifier verifier;
   final int appVersion;
@@ -211,10 +206,21 @@ class LibrarySync {
   final DateTime Function() _clock;
   InstalledLibrary? _installed;
   int _highestRevocationSequence = 0;
+  final Future<int> _revocationState;
 
   InstalledLibrary? get installed => _installed;
   LibraryPack? get lastKnownGood => _installed?.pack;
   int get highestRevocationSequence => _highestRevocationSequence;
+
+  /// Loads the persisted anti-rollback floor before any asynchronous library
+  /// operation.  The previous fire-and-forget initialization allowed a pack
+  /// to be evaluated before that floor had arrived from storage.
+  Future<void> _ensureRevocationState() async {
+    final persisted = await _revocationState;
+    if (persisted > _highestRevocationSequence) {
+      _highestRevocationSequence = persisted;
+    }
+  }
 
   void recordRevocationSequence(int sequence) {
     if (_highestRevocationSequence > 0 &&
@@ -232,6 +238,7 @@ class LibrarySync {
     required DateTime now,
     required RevocationList revocations,
   }) async {
+    await _ensureRevocationState();
     if (!await verifier.verifyPayload(
           revocations.payload,
           revocations.signature,
@@ -284,6 +291,7 @@ class LibrarySync {
     required DateTime now,
     required RevocationList revocations,
   }) async {
+    await _ensureRevocationState();
     final pack = await store.load();
     if (pack == null) return false;
     _installed = null;
@@ -291,17 +299,31 @@ class LibrarySync {
   }
 
   Future<bool> refreshRevocations(RevocationList revocations) async {
+    await _ensureRevocationState();
     if (!await verifier.verifyPayload(
       revocations.payload,
       revocations.signature,
     )) {
       return false;
     }
-    if (revocations.sequence <= _highestRevocationSequence) {
+    if (revocations.sequence < _highestRevocationSequence) {
       return false;
     }
-    _highestRevocationSequence = revocations.sequence;
     final current = _installed;
+    if (revocations.sequence == _highestRevocationSequence) {
+      // Replaying the exact list is harmless and must not turn a transient
+      // refresh retry into a failure.  A different payload at the same
+      // sequence is rejected to avoid equivocation.
+      if (current == null ||
+          jsonEncode(current.revocations.payload) !=
+              jsonEncode(revocations.payload) ||
+          current.revocations.signature != revocations.signature) {
+        return false;
+      }
+      return true;
+    }
+    _highestRevocationSequence = revocations.sequence;
+    await store.saveHighestRevocationSequence(_highestRevocationSequence);
     if (current == null) return true;
     _installed = InstalledLibrary(
       pack: current.pack,

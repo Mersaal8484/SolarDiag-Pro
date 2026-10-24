@@ -244,6 +244,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editParameter => 'Edit simulated parameter';
 
   @override
+  String get technicianAuthentication => 'Technician Authentication';
+
+  @override
+  String get technicianPin => 'Technician PIN';
+
+  @override
+  String get pinAuthorizationHint =>
+      'Enter PIN to authorize write operations';
+
+  @override
+  String get authenticateAction => 'Authenticate';
+
+  @override
   String get reviewChanges => 'Review changes';
 
   @override
