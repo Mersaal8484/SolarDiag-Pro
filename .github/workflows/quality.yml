@@ -18,12 +18,31 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test tool
       - run: dart run tool/generate_tokens.dart
       - run: dart run tool/generate_icons.dart
+      - run: dart format lib/design/tokens.g.dart lib/design/solar_icons.g.dart
       - run: git diff --exit-code lib/design/tokens.g.dart lib/design/solar_icons.g.dart assets/icons
       - run: flutter gen-l10n
       - run: dart run tool/profile_check.dart
       - run: dart run tool/reference_check.dart --check
       - run: dart run tool/generate_capability_matrix.dart
       - run: git diff --exit-code docs/CAPABILITY_MATRIX.md
-      - run: flutter analyze
-      - run: flutter test --coverage
+      - run: flutter analyze --fatal-infos
+      - run: flutter test --coverage --exclude-tags golden
       - run: flutter build apk --debug
+
+  golden:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.1
+          cache: true
+      - run: flutter pub get
+      - run: flutter gen-l10n
+      - run: flutter test --tags golden
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: golden-failures
+          path: '**/failures/**'
