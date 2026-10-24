@@ -521,10 +521,7 @@ void main() {
       );
 
       expect(installed.isRevocationStale, isTrue);
-      expect(
-        installed.writeDisabledReason,
-        LibraryWriteDisabledReason.stale,
-      );
+      expect(installed.writeDisabledReason, LibraryWriteDisabledReason.stale);
       expect(installed.profileCanWrite('test.bms'), isFalse);
     });
   });

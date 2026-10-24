@@ -251,10 +251,7 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
   String _formatCount(BuildContext context, int count) =>
       localizedNumber(context, count, fractionDigits: 0);
 
-  Widget _section(
-    BuildContext context,
-    StudioSection value,
-  ) => switch (value) {
+  Widget _section(BuildContext context, StudioSection value) => switch (value) {
     StudioSection.sessions => _StudioPage(
       key: const ValueKey('sessions'),
       eyebrow: 'RESEARCH SESSION',
@@ -852,9 +849,7 @@ class _DifferentialView extends StatelessWidget {
                   localizedNumber(context, (candidate.score * 100).round()),
                 ),
               ),
-              title: TechnicalText(
-                _differentialLocation(context, candidate),
-              ),
+              title: TechnicalText(_differentialLocation(context, candidate)),
               subtitle: Text(_differentialSummary(context, candidate)),
               trailing: candidate.repeatedAba
                   ? const Chip(label: Text(_StudioCopy.aba))
@@ -994,9 +989,7 @@ class _AnalysisRow extends StatelessWidget {
         ? '—'
         : localizedNumber(context, stats.averagePeriodMicros!);
     final changedOffsets = stats.changedByteOffsets
-        .map(
-          (offset) => localizedNumber(context, offset, fractionDigits: 0),
-        )
+        .map((offset) => localizedNumber(context, offset, fractionDigits: 0))
         .join(', ');
     return Card(
       child: ListTile(
@@ -1339,10 +1332,7 @@ String _differentialLocation(
   return '0x$identifier · byte $byteOffset$bit';
 }
 
-String _mappingCountLabel(
-  BuildContext context,
-  StudioProfileDraft draft,
-) {
+String _mappingCountLabel(BuildContext context, StudioProfileDraft draft) {
   final mappingCount = localizedNumber(
     context,
     draft.mappings.length,

@@ -304,11 +304,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('55.2 V'), findsOneWidget);
-    expect(find.text('No backups saved'), findsOneWidget);
     final parametersScroll = find.descendant(
       of: find.byType(ListView).first,
       matching: find.byType(Scrollable),
     );
+    await tester.scrollUntilVisible(
+      find.text('No backups saved'),
+      200,
+      scrollable: parametersScroll,
+    );
+    expect(find.text('No backups saved'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Create backup'),
       200,

@@ -128,8 +128,7 @@ void main() {
       const Locale('en'),
       const Scaffold(
         body: DeviceLibraryScreen(
-          writeDisabledReason:
-              LibraryWriteDisabledReason.noValidTrustAnchor,
+          writeDisabledReason: LibraryWriteDisabledReason.noValidTrustAnchor,
         ),
       ),
     );
@@ -172,23 +171,20 @@ void main() {
       );
     }
 
-    testWidgets(
-      'R6 cell tiles remain within bounds at 200% text in '
-      '${locale.languageCode}',
-      (tester) async {
-        await _pumpAtDoubleTextScale(
-          tester,
-          locale,
-          const Scaffold(
-            body: SizedBox(
-              width: 300,
-              child: CellGrid(values: [3.1, 3.2, 3.3, 3.4]),
-            ),
+    testWidgets('R6 cell tiles remain within bounds at 200% text in '
+        '${locale.languageCode}', (tester) async {
+      await _pumpAtDoubleTextScale(
+        tester,
+        locale,
+        const Scaffold(
+          body: SizedBox(
+            width: 300,
+            child: CellGrid(values: [3.1, 3.2, 3.3, 3.4]),
           ),
-        );
-        expect(tester.takeException(), isNull);
-      },
-    );
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets(
       'R6 connection capsule wraps at 200% text in ${locale.languageCode}',
@@ -259,9 +255,7 @@ void main() {
             child: DeviceSessionScope(
               session: session,
               child: const Scaffold(
-                body: BatteryWorkspace(
-                  initialSection: BatterySection.overview,
-                ),
+                body: BatteryWorkspace(initialSection: BatterySection.overview),
               ),
             ),
           ),
@@ -544,66 +538,71 @@ void main() {
       );
     }
   }
+}
 
-  String _expectedWriteBlockReason(
-    LibraryWriteDisabledReason reason,
-    Locale locale,
-  ) {
-    final isArabic = locale.languageCode == 'ar';
-    return switch (reason) {
-      LibraryWriteDisabledReason.noValidTrustAnchor => isArabic
+String _expectedWriteBlockReason(
+  LibraryWriteDisabledReason reason,
+  Locale locale,
+) {
+  final isArabic = locale.languageCode == 'ar';
+  return switch (reason) {
+    LibraryWriteDisabledReason.noValidTrustAnchor =>
+      isArabic
           ? 'لم يتم إعداد مرساة ثقة إنتاجية صالحة. '
                 'تظل تحديثات المكتبة الموقعة والكتابة الفعلية محظورة.'
           : 'No valid production trust anchor is configured. '
                 'Signed library updates and physical writes remain blocked.',
-      LibraryWriteDisabledReason.libraryMissing => isArabic
+    LibraryWriteDisabledReason.libraryMissing =>
+      isArabic
           ? 'لم تُثبّت مكتبة أجهزة موثّقة. '
                 'تظل الكتابة على الأجهزة الفعلية محظورة.'
           : 'No verified device library is installed. '
                 'Physical library writes remain blocked.',
-      LibraryWriteDisabledReason.revoked => isArabic
+    LibraryWriteDisabledReason.revoked =>
+      isArabic
           ? 'حُظرت حزمة المكتبة النشطة أو ملف الجهاز. '
                 'تظل الكتابة على الأجهزة الفعلية محظورة.'
           : 'The active library pack or profile is revoked. '
                 'Physical library writes remain blocked.',
-      LibraryWriteDisabledReason.stale => isArabic
+    LibraryWriteDisabledReason.stale =>
+      isArabic
           ? 'بيانات الإلغاء قديمة. '
                 'حدّثها قبل تمكين الكتابة على الأجهزة الفعلية.'
           : 'The revocation data is stale. '
                 'Refresh it before physical writes can be enabled.',
-      LibraryWriteDisabledReason.revocationListExpired => isArabic
+    LibraryWriteDisabledReason.revocationListExpired =>
+      isArabic
           ? 'انتهت صلاحية قائمة الإلغاء. '
                 'حدّثها قبل تمكين الكتابة على الأجهزة الفعلية.'
           : 'The revocation list has expired. '
                 'Refresh it before physical writes can be enabled.',
-    };
-  }
+  };
+}
 
-  Future<void> _pumpAtDoubleTextScale(
-    WidgetTester tester,
-    Locale locale,
-    Widget child,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        locale: locale,
-        supportedLocales: AppLocalizations.supportedLocales,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        theme: solarTheme(brightness: Brightness.light),
-        builder: (context, content) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: TextScaler.linear(2.0)),
-          child: content!,
-        ),
-        home: child,
+Future<void> _pumpAtDoubleTextScale(
+  WidgetTester tester,
+  Locale locale,
+  Widget child,
+) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      locale: locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      theme: solarTheme(brightness: Brightness.light),
+      builder: (context, content) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(2.0)),
+        child: content!,
       ),
-    );
-    await tester.pumpAndSettle();
-  }
+      home: child,
+    ),
+  );
+  await tester.pumpAndSettle();
 }

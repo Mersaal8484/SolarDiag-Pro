@@ -10,10 +10,7 @@ import '../trust/library_write_reason.dart';
 import 'library_write_reason_label.dart';
 
 class DeviceLibraryScreen extends StatelessWidget {
-  const DeviceLibraryScreen({
-    super.key,
-    this.writeDisabledReason,
-  });
+  const DeviceLibraryScreen({super.key, this.writeDisabledReason});
   final LibraryWriteDisabledReason? writeDisabledReason;
   static const freconName = 'FRECON PV100 / PV200';
   static const targets = [
