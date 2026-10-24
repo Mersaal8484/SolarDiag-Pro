@@ -279,6 +279,71 @@ void main() {
     expect(link.requests, hasLength(1));
   });
 
+  test('pipeline authorization is bound to function and write values', () async {
+    final link = _RecordingLink(
+      (request) async => [
+        request[0],
+        request[1],
+        request[2],
+        request[3],
+        request[4],
+        request[5],
+      ],
+    );
+    final client = ModbusClient(
+      guard: _writeGuard(),
+      timeout: const Duration(seconds: 1),
+      link: link,
+    );
+    final authorization = await _authorizeWrite(address: 0, values: [42]);
+    final now = DateTime.now().toUtc();
+
+    expect(
+      authorization.consume(
+        functionCode: 0x06,
+        address: 0,
+        values: [42],
+        now: now,
+      ),
+      isFalse,
+    );
+    expect(
+      authorization.consume(
+        functionCode: 0x10,
+        address: 1,
+        values: [42],
+        now: now,
+      ),
+      isFalse,
+    );
+    expect(
+      authorization.consume(
+        functionCode: 0x10,
+        address: 0,
+        values: [43],
+        now: now,
+      ),
+      isFalse,
+    );
+    expect(
+      authorization.consume(
+        functionCode: 0x10,
+        address: 0,
+        values: [42, 43],
+        now: now,
+      ),
+      isFalse,
+    );
+
+    await client.writeRegisters(
+      0,
+      [42],
+      unitId: 1,
+      authorization: authorization,
+    );
+    expect(link.requests, hasLength(1));
+  });
+
   test('link timeout becomes ModbusTimeout', () async {
     final link = _RecordingLink(
       (_) => Completer<List<int>>().future,
