@@ -5,6 +5,7 @@ import '../auth/authorization_controller.dart';
 import '../audit/audit_chain.dart';
 import '../core/battery_models.dart';
 import '../core/inverter_models.dart';
+import '../core/simulation_clock.dart';
 import 'parameter_models.dart';
 import 'parameter_validator.dart';
 import '../protocol/bms_adapter.dart';

@@ -1,8 +1,9 @@
 part of '../parameters/write_pipeline.dart';
 
 class SimulatedInverterAdapter extends SimulatedParameterBackend
-    implements InverterAdapter {
+    implements InverterAdapter, SimulationClock {
   SimulatedInverterAdapter({this.tick = 0});
+  @override
   int tick;
   final Map<String, num> _parameters = {'output_frequency_limit': 50};
   final Map<int, int> _registers = {0: 540, 1: 102, 2: 2300, 3: 5000};
@@ -14,6 +15,9 @@ class SimulatedInverterAdapter extends SimulatedParameterBackend
     firmware: 'simulator',
     deviceId: 'SOLARDIAG-SIM-INVERTER',
   );
+
+  @override
+  void advance() => tick++;
 
   @override
   Future<IdentificationResult> identify() async => const IdentificationResult(

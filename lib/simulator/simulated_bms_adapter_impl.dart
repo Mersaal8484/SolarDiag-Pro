@@ -1,13 +1,17 @@
 part of '../parameters/write_pipeline.dart';
 
 class SimulatedBmsAdapter extends SimulatedParameterBackend
-    implements BmsAdapter {
+    implements BmsAdapter, SimulationClock {
   SimulatedBmsAdapter({
     this.scenario = SimulationScenario.healthy,
     int initialTick = 0,
   }) : _tick = initialTick;
   final SimulationScenario scenario;
   int _tick;
+  @override
+  int get tick => _tick;
+  @override
+  set tick(int value) => _tick = value;
   bool _mismatchPending = false;
   final Map<String, num> _parameters = {
     'charge_limit': 55.2,
@@ -22,6 +26,7 @@ class SimulatedBmsAdapter extends SimulatedParameterBackend
   );
 
   ScenarioFrame get frame => ScenarioFactory.create(scenario, tick: _tick);
+  @override
   void advance() => _tick++;
   @override
   Future<IdentificationResult> identify() async => IdentificationResult(
