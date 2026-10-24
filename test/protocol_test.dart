@@ -18,9 +18,11 @@ void main() {
   );
 
   test('simulator profile validates and registers', () {
-    final registry = ProfileRegistry.fromJsonDocuments([
-      simulatorProfile,
-    ], technicianMode: true);
+    final registry = ProfileRegistry.fromJsonDocuments(
+      [simulatorProfile],
+      technicianMode: true,
+      isBundled: true,
+    );
     final profile = registry.byId('solardiag.simulated.lfp16.v2');
     expect(profile, isNotNull);
     expect(profile!.simulated, isTrue);
@@ -40,10 +42,11 @@ void main() {
   test(
     'duplicate profile identifiers are rejected',
     () => expect(
-      () => ProfileRegistry.fromJsonDocuments([
-        simulatorProfile,
-        simulatorProfile,
-      ], technicianMode: true),
+      () => ProfileRegistry.fromJsonDocuments(
+        [simulatorProfile, simulatorProfile],
+        technicianMode: true,
+        isBundled: true,
+      ),
       throwsFormatException,
     ),
   );

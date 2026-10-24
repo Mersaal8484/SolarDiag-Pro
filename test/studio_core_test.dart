@@ -349,6 +349,17 @@ void main() {
       registry.thirdPartyNotices(),
       contains('LicenseRef-FRECON-Proprietary'),
     );
+    for (final id in const [
+      'syssi-esphome-pipsolar',
+      'syssi-esphome-jk-bms',
+      'syssi-esphome-daly-bms',
+      'mpp-solar-protocols',
+    ]) {
+      final reference = registry.references[id];
+      expect(reference, isNotNull, reason: id);
+      expect(reference!.exactVersion, matches(RegExp(r'^[0-9a-f]{40}$')));
+      expect(reference.maintenanceStatus, isNotEmpty);
+    }
   });
   test('reference registry reports malformed fields as format errors', () {
     expect(

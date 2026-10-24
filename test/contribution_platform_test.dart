@@ -425,12 +425,21 @@ void main() {
     Future<RevocationList> revocations(
       Set<String> ids, {
       Set<String> profiles = const {},
+      int sequence = 1,
     }) async {
+      final issuedAt = DateTime.utc(2026, 1, 1);
+      final validUntil = DateTime.utc(2026, 12, 31);
       final payload = {
+        'sequence': sequence,
+        'issued_at': issuedAt.toIso8601String(),
+        'valid_until': validUntil.toIso8601String(),
         'revoked_packs': ids.toList()..sort(),
         'revoked_profiles': profiles.toList()..sort(),
       };
       return RevocationList(
+        sequence: sequence,
+        issuedAt: issuedAt,
+        validUntil: validUntil,
         revokedPackIds: ids,
         revokedProfileIds: profiles,
         signature: await signer.signPayload(payload),
@@ -514,7 +523,9 @@ void main() {
         isTrue,
       );
       expect(
-        await restarted.refreshRevocations(await revocations({'stable'})),
+        await restarted.refreshRevocations(
+          await revocations({'stable'}, sequence: 2),
+        ),
         isTrue,
       );
       expect(restarted.installed!.showRevokedBanner, isTrue);
@@ -536,6 +547,12 @@ void main() {
                   : 'verifiedDocument',
             );
         json['capabilities'] = capabilities;
+        json['approval'] = {
+          'lifecycle_stage': 'published',
+          'approved_by_role': 'approvalEngineer',
+          'hardware_validation_record_id': 'hardware-run-physical-profile',
+          'verified_capabilities': ['writeParameter'],
+        };
         final profile = await signer.signProfile(jsonEncode(json));
         final payload = {
           'id': 'physical-pack',
@@ -557,6 +574,7 @@ void main() {
           verifier: Ed25519TrustVerifier(signer.publicKeyBytes),
           appVersion: 2,
           store: _MemoryPackStore(),
+          clock: () => DateTime.utc(2026, 1, 2),
         );
         expect(
           await sync.apply(
@@ -568,7 +586,7 @@ void main() {
         );
         expect(sync.installed!.profileCanWrite('physical.profile'), isTrue);
         await sync.refreshRevocations(
-          await revocations({}, profiles: {'physical.profile'}),
+          await revocations({}, profiles: {'physical.profile'}, sequence: 2),
         );
         expect(sync.installed!.profileCanWrite('physical.profile'), isFalse);
         expect(sync.installed!.showRevokedBanner, isTrue);

@@ -48,12 +48,58 @@ void main() {
       );
       final stream = ModbusRtuStreamDecoder();
       expect(stream.add([99, 88, ...bytes.take(3)]), isEmpty);
-      expect(stream.add(bytes.skip(3).toList()).single.data, [2, 0, 42]);
+      final result = stream.add(bytes.skip(3).toList()).single;
+      expect(result, isA<SuccessFrameResult>());
+      expect((result as SuccessFrameResult).frame.data, [2, 0, 42]);
       expect(
         ModbusRtuCodec.interFrameDelay(9600).inMicroseconds,
         greaterThanOrEqualTo(4000),
       );
       expect(ModbusRtuCodec.interFrameDelay(38400).inMicroseconds, 1750);
+    });
+
+    test('RTU stream consumes a split exception exactly once', () {
+      final body = [1, 0x83, 2];
+      final crc = ModbusCrc16.calculate(body);
+      final bytes = [...body, crc & 0xff, crc >> 8];
+      final stream = ModbusRtuStreamDecoder();
+
+      expect(stream.add(bytes.take(3).toList()), isEmpty);
+      final result = stream.add(bytes.skip(3).toList()).single;
+      expect(result, isA<ExceptionFrameResult>());
+      expect((result as ExceptionFrameResult).exception.exceptionCode, 2);
+      expect(stream.add(const []), isEmpty);
+    });
+
+    test('RTU stream recovers after an oversized frame', () {
+      const codec = ModbusRtuCodec();
+      final stream = ModbusRtuStreamDecoder(maximumFrameLength: 7);
+      final oversized = codec.encode(
+        const ModbusRtuFrame(address: 1, functionCode: 3, data: [1, 2, 3, 4]),
+      );
+      final valid = codec.encode(
+        const ModbusRtuFrame(address: 1, functionCode: 3, data: [1]),
+      );
+
+      expect(oversized.length, greaterThan(stream.maximumFrameLength));
+      expect(stream.add(oversized), isEmpty);
+      final result = stream.add(valid).single as SuccessFrameResult;
+      expect(result.frame.data, [1]);
+    });
+
+    test('RTU stream skips an unsupported CRC-valid five-byte window', () {
+      final unsupportedBody = [1, 0x7f, 0];
+      final crc = ModbusCrc16.calculate(unsupportedBody);
+      final spurious = [...unsupportedBody, crc & 0xff, crc >> 8];
+      final valid = const ModbusRtuCodec().encode(
+        const ModbusRtuFrame(address: 1, functionCode: 3, data: [1]),
+      );
+      final stream = ModbusRtuStreamDecoder();
+
+      expect(ModbusCrc16.valid(spurious), isTrue);
+      final results = stream.add([...spurious, ...valid]);
+      expect(results, hasLength(1));
+      expect((results.single as SuccessFrameResult).frame.data, [1]);
     });
 
     test('RTU surfaces protocol exception and timeout', () async {

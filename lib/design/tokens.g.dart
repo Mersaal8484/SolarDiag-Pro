@@ -2,12 +2,12 @@
 import 'package:flutter/material.dart';
 
 abstract final class SolarSpace {
-  static const double xs = 4;
-  static const double sm = 8;
-  static const double md = 12;
-  static const double lg = 16;
-  static const double xl = 20;
-  static const double xxl = 24;
+  static const double xs = 5;
+  static const double sm = 9;
+  static const double md = 13;
+  static const double lg = 18;
+  static const double xl = 22;
+  static const double xxl = 26;
   static const double section = 32;
   static const double page = 48;
   static const double hero = 64;
@@ -15,10 +15,10 @@ abstract final class SolarSpace {
 }
 
 abstract final class SolarRadius {
-  static const double chip = 8;
-  static const double control = 12;
-  static const double card = 16;
-  static const double hero = 22;
+  static const double chip = 13;
+  static const double control = 16;
+  static const double card = 23;
+  static const double hero = 28;
   static const double sheet = 28;
 }
 
@@ -26,8 +26,6 @@ abstract final class SolarMotion {
   static const Duration fast = Duration(milliseconds: 150);
   static const Duration normal = Duration(milliseconds: 250);
   static const Duration slow = Duration(milliseconds: 400);
-  static const Duration springResponse = Duration(milliseconds: 350);
-  static const double springDamping = 0.85;
 }
 
 class SolarPalette {
@@ -59,55 +57,39 @@ class SolarPalette {
       simulated;
 }
 
-class SolarEnergyPalette {
-  const SolarEnergyPalette({
-    required this.solar,
-    required this.battery,
-    required this.grid,
-    required this.load,
-  });
-  final Color solar, battery, grid, load;
-}
-
 abstract final class SolarPalettes {
+  // Precision Engineering: two accessible variants of one industrial design system.
+  // The application launches dark-first; light mode remains available for outdoor use.
   static const SolarPalette light = SolarPalette(
-    background: Color(0xFFF5F5F7),
+    background: Color(0xFFF0F4FA),
     surface: Color(0xFFFFFFFF),
-    surfaceRaised: Color(0xFFFFFFFF),
-    labelPrimary: Color(0xFF1D1D1F),
-    labelSecondary: Color(0xFF6E6E73),
-    separator: Color(0xFFD2D2D7),
-    tint: Color(0xFF0071E3),
-    ok: Color(0xFF248A3D),
-    warning: Color(0xFFB25000),
-    critical: Color(0xFFD70015),
-    info: Color(0xFF0A6EBD),
-    simulated: Color(0xFF7C3AED),
+    surfaceRaised: Color(0xFFE8EFF9),
+    labelPrimary: Color(0xFF101E35),
+    labelSecondary: Color(0xFF536781),
+    separator: Color(0xFFD8E3F0),
+    tint: Color(0xFF0868C9),
+    ok: Color(0xFF067B66),
+    warning: Color(0xFFA8630B),
+    critical: Color(0xFFB72E47),
+    info: Color(0xFF0868C9),
+    simulated: Color(0xFF7856C5),
   );
   static const SolarPalette dark = SolarPalette(
-    background: Color(0xFF000000),
-    surface: Color(0xFF1C1C1E),
-    surfaceRaised: Color(0xFF2C2C2E),
-    labelPrimary: Color(0xFFF5F5F7),
-    labelSecondary: Color(0xFFA1A1A6),
-    separator: Color(0xFF38383A),
-    tint: Color(0xFF2997FF),
-    ok: Color(0xFF30D158),
-    warning: Color(0xFFFF9F0A),
-    critical: Color(0xFFFF453A),
-    info: Color(0xFF64D2FF),
-    simulated: Color(0xFFBF5AF2),
+    background: Color(0xFF080F1F),
+    surface: Color(0xFF111D32),
+    surfaceRaised: Color(0xFF182840),
+    labelPrimary: Color(0xFFF3F7FF),
+    labelSecondary: Color(0xFF99ADC9),
+    separator: Color(0xFF293C57),
+    tint: Color(0xFF00D5FF),
+    ok: Color(0xFF00D9A6),
+    warning: Color(0xFFFFB547),
+    critical: Color(0xFFFF5263),
+    info: Color(0xFF64A6FF),
+    simulated: Color(0xFFB39AFF),
   );
-  static const SolarEnergyPalette energyLight = SolarEnergyPalette(
-    solar: Color(0xFF9A6700),
-    battery: Color(0xFF187A38),
-    grid: Color(0xFF1261A0),
-    load: Color(0xFF7A3EA1),
-  );
-  static const SolarEnergyPalette energyDark = SolarEnergyPalette(
-    solar: Color(0xFFFFC14D),
-    battery: Color(0xFF55D477),
-    grid: Color(0xFF66B5FF),
-    load: Color(0xFFD08AFF),
-  );
+  static const Color energySolar = Color(0xFFFFB547);
+  static const Color energyBattery = Color(0xFF00D9A6);
+  static const Color energyGrid = Color(0xFF3478F6);
+  static const Color energyLoad = Color(0xFFB39AFF);
 }

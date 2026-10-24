@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import '../app/theme.dart';
+import '../design/precision_ui.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../app/theme.dart';
 import '../design/accessibility.dart';
-import '../design/solar_icon.dart';
-import '../design/solar_icons.g.dart';
 import '../diagnostics/battery_diagnostics.dart';
 import '../diagnostics/diagnostic_models.dart';
 import '../session/device_session.dart';
@@ -23,12 +22,11 @@ class AdvancedDiagnosticsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          Text(
-            s.evidenceBeforeConclusions,
-            style: Theme.of(context).textTheme.displaySmall,
+          PrecisionPageHeading(
+            title: s.evidenceBeforeConclusions,
+            subtitle: s.diagnosticEvidenceNote,
+            icon: Icons.fact_check_outlined,
           ),
-          const SizedBox(height: 10),
-          Text(s.diagnosticEvidenceNote),
           const SizedBox(height: 24),
           _SohUnavailable(reason: assessment.reason),
           const SizedBox(height: 16),
@@ -49,16 +47,18 @@ class _SohUnavailable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: palette.labelPrimary,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF153456), Color(0xFF0D2038)],
+        ),
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFF344E70)),
       ),
       child: Row(
         children: [
-          SolarIcon(SolarIcons.readOnly, color: palette.simulated),
+          const Icon(Icons.shield_outlined, color: SolarColors.lime),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -66,8 +66,8 @@ class _SohUnavailable extends StatelessWidget {
               children: [
                 Text(
                   s.sohUnavailable,
-                  style: TextStyle(
-                    color: palette.background,
+                  style: const TextStyle(
+                    color: SolarColors.onDark,
                     fontWeight: FontWeight.w800,
                     fontSize: 17,
                   ),
@@ -75,9 +75,7 @@ class _SohUnavailable extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   s.sohUnavailableReason,
-                  style: TextStyle(
-                    color: palette.background.withValues(alpha: .72),
-                  ),
+                  style: const TextStyle(color: SolarColors.onDarkStrong),
                 ),
               ],
             ),
@@ -149,7 +147,7 @@ class _FindingCard extends StatelessWidget {
                           .map(
                             (entry) => Chip(
                               label: TechnicalText(
-                                '${entry.key}: ${_format(context, entry.value)}',
+                                '${entry.key}: ${_format(entry.value)}',
                               ),
                             ),
                           )
@@ -165,11 +163,8 @@ class _FindingCard extends StatelessWidget {
     );
   }
 
-  static String _format(BuildContext context, Object value) => value is double
-      ? localizedNumber(context, value, fractionDigits: 3)
-      : value is num
-      ? localizedNumber(context, value)
-      : '$value';
+  static String _format(Object value) =>
+      value is double ? value.toStringAsFixed(3) : '$value';
   static String _title(AppLocalizations s, String key) => switch (key) {
     'cells_balanced' => s.cellsBalanced,
     'cell_imbalance' => s.cellImbalanceDetected,

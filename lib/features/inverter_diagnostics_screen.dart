@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 
 import '../core/battery_models.dart';
-import '../design/solar_icon.dart';
-import '../design/solar_icons.g.dart';
-import '../design/accessibility.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../session/device_session.dart';
 
@@ -18,16 +16,15 @@ class InverterDiagnosticsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 56),
         children: [
-          Text(
-            s.inverterDiagnostics,
-            style: Theme.of(context).textTheme.displaySmall,
+          PrecisionPageHeading(
+            title: s.inverterDiagnostics,
+            subtitle: s.inverterDiagnosticsDescription,
+            icon: Icons.solar_power_outlined,
           ),
-          const SizedBox(height: 8),
-          Text(s.inverterDiagnosticsDescription),
           const SizedBox(height: 20),
           Card(
             child: ListTile(
-              leading: const SolarIcon(SolarIcons.research),
+              leading: const Icon(Icons.science_outlined),
               title: Text(s.simulatedInverterProfile),
               subtitle: Text(s.simulatedInverterEvidence),
             ),
@@ -35,7 +32,7 @@ class InverterDiagnosticsScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Card(
             child: ListTile(
-              leading: const SolarIcon(SolarIcons.library),
+              leading: const Icon(Icons.menu_book_outlined),
               title: Text(s.freconResearchProfile),
               subtitle: Text(s.registerMapRequired),
             ),
@@ -79,31 +76,14 @@ class _ReadingCard extends StatelessWidget {
   final Measurement reading;
 
   @override
-  Widget build(BuildContext context) {
-    final valueLabel = reading.value == null
-        ? AppLocalizations.of(context).notReportedByDevice
-        : '${localizedNumber(context, reading.value!, fractionDigits: 1)} ${reading.unit}';
-    return Semantics(
-      label: '$label, $valueLabel',
-      child: SizedBox(
-        width: 220,
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label),
-                const SizedBox(height: 10),
-                Text(
-                  valueLabel,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SizedBox(
+    width: 220,
+    child: PrecisionReading(
+      label: label,
+      value: reading.value == null
+          ? AppLocalizations.of(context).notReportedByDevice
+          : reading.value!.toStringAsFixed(1),
+      unit: reading.value == null ? null : reading.unit,
+    ),
+  );
 }

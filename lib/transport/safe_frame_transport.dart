@@ -220,7 +220,6 @@ class LoopbackGatewayTransport implements FrameTransport {
       (time) => now.difference(time) >= const Duration(seconds: 1),
     );
     if (_sentAt.length >= maxFramesPerSecond || observedBusLoad >= busLoadCap) {
-      audit.append('frame_backoff', {'identifier': frame.identifier});
       _reject(frame, 'Gateway rate or bus-load cap reached.');
     }
     _sentAt.add(now);

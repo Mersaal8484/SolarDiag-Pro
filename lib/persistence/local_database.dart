@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
 
@@ -45,69 +44,14 @@ class DiagnosticEventRecord {
   final String payloadJson;
 }
 
-class TelemetrySampleRecord {
-  const TelemetrySampleRecord({
-    required this.id,
-    required this.sessionId,
-    required this.capturedAt,
-    required this.snapshotJson,
-    required this.qualityFlagsJson,
-    required this.previousHash,
-    required this.sampleHash,
-    required this.isAggregate,
-    this.aggregateJson,
-  });
-
-  final int id;
-  final String sessionId;
-  final DateTime capturedAt;
-  final String snapshotJson;
-  final String qualityFlagsJson;
-  final String previousHash;
-  final String sampleHash;
-  final bool isAggregate;
-  final String? aggregateJson;
-}
-
-class TelemetryRetentionPolicy {
-  const TelemetryRetentionPolicy({
-    this.fullResolutionWindow = const Duration(minutes: 10),
-    this.downsampleBucket = const Duration(minutes: 5),
-    this.maximumAge = const Duration(days: 30),
-  });
-
-  final Duration fullResolutionWindow;
-  final Duration downsampleBucket;
-  final Duration maximumAge;
-}
-
 class LocalDatabase implements LifecycleHistoryStore {
-  LocalDatabase._(
-    this._database, {
-    this.telemetryRetentionPolicy = const TelemetryRetentionPolicy(),
-  }) {
+  LocalDatabase._(this._database) {
     _migrate();
   }
 
   final Database _database;
-  final TelemetryRetentionPolicy telemetryRetentionPolicy;
 
-  factory LocalDatabase.inMemory({
-    TelemetryRetentionPolicy telemetryRetentionPolicy =
-        const TelemetryRetentionPolicy(),
-  }) => LocalDatabase._(
-    sqlite3.openInMemory(),
-    telemetryRetentionPolicy: telemetryRetentionPolicy,
-  );
-
-  factory LocalDatabase.openForTest(
-    String path, {
-    TelemetryRetentionPolicy telemetryRetentionPolicy =
-        const TelemetryRetentionPolicy(),
-  }) => LocalDatabase._(
-    sqlite3.open(path),
-    telemetryRetentionPolicy: telemetryRetentionPolicy,
-  );
+  factory LocalDatabase.inMemory() => LocalDatabase._(sqlite3.openInMemory());
 
   static Future<LocalDatabase> openDefault() async {
     final directory = await getApplicationSupportDirectory();
@@ -122,7 +66,7 @@ class LocalDatabase implements LifecycleHistoryStore {
   void _migrate() {
     _database.execute('PRAGMA foreign_keys = ON');
     final version = _database.userVersion;
-    if (version > 7) {
+    if (version > 5) {
       throw StateError('Database schema is newer than this application.');
     }
     if (version == 0) {
@@ -263,28 +207,6 @@ class LocalDatabase implements LifecycleHistoryStore {
       ''');
       _database.userVersion = 6;
     }
-    if (_database.userVersion < 7) {
-      _database.execute('''
-        CREATE TABLE telemetry_samples (
-          id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-          session_id TEXT NOT NULL,
-          captured_at TEXT NOT NULL,
-          snapshot_json TEXT NOT NULL,
-          quality_flags_json TEXT NOT NULL,
-          aggregate_json TEXT,
-          is_aggregate INTEGER NOT NULL CHECK (is_aggregate IN (0, 1)),
-          previous_hash TEXT NOT NULL,
-          sample_hash TEXT NOT NULL,
-          FOREIGN KEY (session_id) REFERENCES diagnostic_sessions(id)
-            ON DELETE CASCADE
-        ) STRICT;
-      ''');
-      _database.execute('''
-        CREATE INDEX telemetry_samples_session_time
-        ON telemetry_samples(session_id, captured_at ASC, id ASC);
-      ''');
-      _database.userVersion = 7;
-    }
   }
 
   void saveSession(DiagnosticSessionRecord record) {
@@ -326,269 +248,6 @@ class LocalDatabase implements LifecycleHistoryStore {
         dataHash: row['data_hash'] as String,
       ),
   ];
-
-  void saveTelemetrySample({
-    required String sessionId,
-    required DateTime capturedAt,
-    required String snapshotJson,
-    Map<String, Object?> qualityFlags = const {},
-  }) {
-    final sessionExists = _database.select(
-      'SELECT 1 FROM diagnostic_sessions WHERE id = ?',
-      [sessionId],
-    );
-    if (sessionExists.isEmpty) {
-      throw StateError('Telemetry requires an existing diagnostic session.');
-    }
-    final timestamp = capturedAt.toUtc().toIso8601String();
-    final qualityJson = jsonEncode(qualityFlags);
-    final previous = _latestSampleHash(sessionId) ?? 'GENESIS';
-    final hash = _telemetryHash(
-      sessionId: sessionId,
-      capturedAt: timestamp,
-      snapshotJson: snapshotJson,
-      qualityFlagsJson: qualityJson,
-      aggregateJson: null,
-      isAggregate: false,
-      previousHash: previous,
-    );
-    _database.execute(
-      '''
-      INSERT INTO telemetry_samples (
-        session_id, captured_at, snapshot_json, quality_flags_json,
-        aggregate_json, is_aggregate, previous_hash, sample_hash
-      ) VALUES (?, ?, ?, ?, NULL, 0, ?, ?)
-      ''',
-      [sessionId, timestamp, snapshotJson, qualityJson, previous, hash],
-    );
-    _applyTelemetryRetention(sessionId, capturedAt.toUtc());
-    _rehashTelemetry(sessionId);
-  }
-
-  List<TelemetrySampleRecord> listTelemetrySamples(String sessionId) => [
-    for (final row in _database.select(
-      '''
-      SELECT * FROM telemetry_samples
-      WHERE session_id = ?
-      ORDER BY captured_at ASC, id ASC
-      ''',
-      [sessionId],
-    ))
-      _telemetryRecord(row),
-  ];
-
-  bool verifyTelemetryChain(String sessionId) {
-    var previous = 'GENESIS';
-    for (final sample in listTelemetrySamples(sessionId)) {
-      if (sample.previousHash != previous) return false;
-      final expected = _telemetryHash(
-        sessionId: sample.sessionId,
-        capturedAt: sample.capturedAt.toUtc().toIso8601String(),
-        snapshotJson: sample.snapshotJson,
-        qualityFlagsJson: sample.qualityFlagsJson,
-        aggregateJson: sample.aggregateJson,
-        isAggregate: sample.isAggregate,
-        previousHash: previous,
-      );
-      if (sample.sampleHash != expected) return false;
-      previous = sample.sampleHash;
-    }
-    final sessions = _database.select(
-      'SELECT data_hash FROM diagnostic_sessions WHERE id = ?',
-      [sessionId],
-    );
-    return sessions.isNotEmpty && sessions.single['data_hash'] == previous;
-  }
-
-  void _applyTelemetryRetention(String sessionId, DateTime referenceTime) {
-    final oldestAllowed = referenceTime.subtract(
-      telemetryRetentionPolicy.maximumAge,
-    );
-    _database.execute(
-      'DELETE FROM telemetry_samples WHERE session_id = ? AND captured_at < ?',
-      [sessionId, oldestAllowed.toIso8601String()],
-    );
-
-    final fullResolutionCutoff = referenceTime.subtract(
-      telemetryRetentionPolicy.fullResolutionWindow,
-    );
-    final oldRows = _database.select(
-      '''
-      SELECT * FROM telemetry_samples
-      WHERE session_id = ? AND captured_at < ? AND is_aggregate = 0
-      ORDER BY captured_at ASC, id ASC
-      ''',
-      [sessionId, fullResolutionCutoff.toIso8601String()],
-    );
-    final bucketMillis =
-        telemetryRetentionPolicy.downsampleBucket.inMilliseconds;
-    if (bucketMillis <= 0) return;
-    final buckets = <int, List<Row>>{};
-    for (final row in oldRows) {
-      final time = DateTime.parse(row['captured_at'] as String).toUtc();
-      final key = time.millisecondsSinceEpoch ~/ bucketMillis;
-      buckets.putIfAbsent(key, () => []).add(row);
-    }
-    for (final entry in buckets.entries) {
-      if (entry.value.length < 2) continue;
-      final rows = entry.value;
-      final latest = rows.last;
-      final aggregate = _aggregateSnapshots(rows);
-      final bucketTime = DateTime.fromMillisecondsSinceEpoch(
-        entry.key * bucketMillis,
-        isUtc: true,
-      ).toIso8601String();
-      final ids = rows.map((row) => row['id'] as int).toList();
-      final placeholders = List.filled(ids.length, '?').join(',');
-      _database.execute(
-        'DELETE FROM telemetry_samples WHERE id IN ($placeholders)',
-        ids,
-      );
-      _database.execute(
-        '''
-        INSERT INTO telemetry_samples (
-          session_id, captured_at, snapshot_json, quality_flags_json,
-          aggregate_json, is_aggregate, previous_hash, sample_hash
-        ) VALUES (?, ?, ?, ?, ?, 1, '', '')
-        ''',
-        [
-          sessionId,
-          bucketTime,
-          latest['snapshot_json'] as String,
-          jsonEncode({'downsampled': true, 'sampleCount': rows.length}),
-          jsonEncode(aggregate),
-        ],
-      );
-    }
-  }
-
-  Map<String, Object?> _aggregateSnapshots(List<Row> rows) {
-    final values = <String, List<num>>{};
-    for (final row in rows) {
-      final decoded = jsonDecode(row['snapshot_json'] as String);
-      if (decoded is Map<String, Object?>) {
-        _collectNumericValues(decoded, '', values);
-      }
-    }
-    return {
-      'sampleCount': rows.length,
-      'series': {
-        for (final entry in values.entries)
-          entry.key: {
-            'min': entry.value.reduce((a, b) => a < b ? a : b),
-            'max': entry.value.reduce((a, b) => a > b ? a : b),
-            'mean':
-                entry.value.fold<double>(0, (sum, value) => sum + value) /
-                entry.value.length,
-          },
-      },
-    };
-  }
-
-  static void _collectNumericValues(
-    Object? value,
-    String path,
-    Map<String, List<num>> output,
-  ) {
-    if (value is num) {
-      output.putIfAbsent(path, () => []).add(value);
-      return;
-    }
-    if (value is Map<String, Object?>) {
-      for (final entry in value.entries) {
-        final child = path.isEmpty ? entry.key : '$path.${entry.key}';
-        _collectNumericValues(entry.value, child, output);
-      }
-      return;
-    }
-    if (value is List) {
-      for (var index = 0; index < value.length; index++) {
-        _collectNumericValues(value[index], '$path[$index]', output);
-      }
-    }
-  }
-
-  void _rehashTelemetry(String sessionId) {
-    var previous = 'GENESIS';
-    final rows = _database.select(
-      '''
-      SELECT * FROM telemetry_samples
-      WHERE session_id = ? ORDER BY captured_at ASC, id ASC
-      ''',
-      [sessionId],
-    );
-    for (final row in rows) {
-      final hash = _telemetryHash(
-        sessionId: sessionId,
-        capturedAt: row['captured_at'] as String,
-        snapshotJson: row['snapshot_json'] as String,
-        qualityFlagsJson: row['quality_flags_json'] as String,
-        aggregateJson: row['aggregate_json'] as String?,
-        isAggregate: row['is_aggregate'] == 1,
-        previousHash: previous,
-      );
-      _database.execute(
-        '''
-        UPDATE telemetry_samples
-        SET previous_hash = ?, sample_hash = ? WHERE id = ?
-        ''',
-        [previous, hash, row['id']],
-      );
-      previous = hash;
-    }
-    _database.execute(
-      'UPDATE diagnostic_sessions SET data_hash = ? WHERE id = ?',
-      [previous, sessionId],
-    );
-  }
-
-  String? _latestSampleHash(String sessionId) {
-    final rows = _database.select(
-      '''
-      SELECT sample_hash FROM telemetry_samples
-      WHERE session_id = ? ORDER BY captured_at DESC, id DESC LIMIT 1
-      ''',
-      [sessionId],
-    );
-    return rows.isEmpty ? null : rows.single['sample_hash'] as String;
-  }
-
-  static String _telemetryHash({
-    required String sessionId,
-    required String capturedAt,
-    required String snapshotJson,
-    required String qualityFlagsJson,
-    required String? aggregateJson,
-    required bool isAggregate,
-    required String previousHash,
-  }) => sha256
-      .convert(
-        utf8.encode(
-          jsonEncode({
-            'sessionId': sessionId,
-            'capturedAt': capturedAt,
-            'snapshot': snapshotJson,
-            'qualityFlags': qualityFlagsJson,
-            'aggregate': aggregateJson,
-            'isAggregate': isAggregate,
-            'previousHash': previousHash,
-          }),
-        ),
-      )
-      .toString();
-
-  static TelemetrySampleRecord _telemetryRecord(Row row) =>
-      TelemetrySampleRecord(
-        id: row['id'] as int,
-        sessionId: row['session_id'] as String,
-        capturedAt: DateTime.parse(row['captured_at'] as String),
-        snapshotJson: row['snapshot_json'] as String,
-        qualityFlagsJson: row['quality_flags_json'] as String,
-        aggregateJson: row['aggregate_json'] as String?,
-        isAggregate: row['is_aggregate'] == 1,
-        previousHash: row['previous_hash'] as String,
-        sampleHash: row['sample_hash'] as String,
-      );
 
   void saveEvent({
     required String sessionId,
@@ -681,24 +340,6 @@ class LocalDatabase implements LifecycleHistoryStore {
       ON CONFLICT(key) DO UPDATE SET value = excluded.value
       ''',
       [key, value ? 'true' : 'false'],
-    );
-  }
-
-  String? getSetting(String key) {
-    final rows = _database.select(
-      'SELECT value FROM app_settings WHERE key = ?',
-      [key],
-    );
-    return rows.isEmpty ? null : rows.single['value'] as String;
-  }
-
-  void setSetting(String key, String value) {
-    _database.execute(
-      '''
-      INSERT INTO app_settings (key, value) VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value
-      ''',
-      [key, value],
     );
   }
 
@@ -857,8 +498,6 @@ class LocalDatabase implements LifecycleHistoryStore {
   }
 
   void close() => _database.close();
-
-  int get schemaVersionForTest => _database.userVersion;
 
   /// للاختبار فقط: تنفيذ SQL خام للتحقق من صحة triggers.
   // ignore: avoid_returning_null_for_void

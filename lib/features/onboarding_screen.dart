@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 
 import '../app/theme.dart';
-import '../design/solar_icon.dart';
-import '../design/solar_icons.g.dart';
-import '../design/tokens.g.dart';
 import '../l10n/generated/app_localizations.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -29,9 +27,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     final pages = [
-      (SolarIcons.solar, s.onboardingPurpose, s.onboardingPurposeDetail),
-      (SolarIcons.readOnly, s.onboardingReadOnly, s.onboardingReadOnlyDetail),
-      (SolarIcons.gateway, s.onboardingConnect, s.onboardingConnectDetail),
+      (
+        Icons.energy_savings_leaf_outlined,
+        s.onboardingPurpose,
+        s.onboardingPurposeDetail,
+      ),
+      (Icons.shield_outlined, s.onboardingReadOnly, s.onboardingReadOnlyDetail),
+      (Icons.cable, s.onboardingConnect, s.onboardingConnectDetail),
     ];
     return Scaffold(
       body: SafeArea(
@@ -61,13 +63,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       width: page == i ? 28 : 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: page == i
-                            ? Theme.of(
-                                context,
-                              ).extension<SolarTokens>()!.palette.tint
-                            : Theme.of(
-                                context,
-                              ).extension<SolarTokens>()!.palette.separator,
+                        color: page == i ? SolarColors.green : SolarColors.line,
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
@@ -79,9 +75,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     onPressed: page == pages.length - 1
                         ? widget.onComplete
                         : () => controller.nextPage(
-                            duration: MediaQuery.disableAnimationsOf(context)
-                                ? Duration.zero
-                                : SolarMotion.normal,
+                            duration: const Duration(milliseconds: 220),
                             curve: Curves.easeOut,
                           ),
                     child: Text(
@@ -106,46 +100,56 @@ class _OnboardingPage extends StatelessWidget {
     required this.title,
     required this.detail,
   });
-  final SolarIconData icon;
+  final IconData icon;
   final String title;
   final String detail;
 
   @override
-  Widget build(BuildContext context) {
-    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 620),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  color: palette.simulated,
-                  borderRadius: BorderRadius.circular(30),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(32),
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF1E5D8C), Color(0xFF0C2A50)],
                 ),
-                child: SolarIcon(icon, size: 46, color: palette.labelPrimary),
+                border: Border.all(color: const Color(0xFF00D5FF), width: 1.5),
+                borderRadius: BorderRadius.circular(30),
               ),
-              const SizedBox(height: 30),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.displaySmall,
+              child: Icon(icon, size: 46, color: SolarColors.green),
+            ),
+            const SizedBox(height: 30),
+            Text(
+              'SOLARDIAG PRO',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: SolarColors.green,
+                letterSpacing: 2.0,
               ),
-              const SizedBox(height: 14),
-              Text(
-                detail,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.displaySmall,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              detail,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
 }

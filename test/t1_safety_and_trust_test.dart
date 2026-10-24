@@ -2,11 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:solardiag_pro/auth/authorization_controller.dart';
 import 'package:solardiag_pro/audit/audit_chain.dart';
-import 'package:solardiag_pro/core/battery_models.dart';
 import 'package:solardiag_pro/gateway/gateway_contract.dart';
-import 'package:solardiag_pro/parameters/parameter_backup.dart';
 import 'package:solardiag_pro/parameters/parameter_models.dart';
 import 'package:solardiag_pro/parameters/write_pipeline.dart';
 import 'package:solardiag_pro/protocol/capabilities.dart';
@@ -225,185 +222,223 @@ void main() {
       expect(restored, isEmpty);
     });
 
-    test('architecture rule: lib/session/ contains no self-issued auth/tokens', () {
-      final dir = Directory('lib/session');
-      for (final file in dir.listSync().whereType<File>()) {
-        final content = file.readAsStringSync();
-        expect(
-          content.contains('AuthorizationSession('),
-          isFalse,
-          reason: '${file.path} must not construct AuthorizationSession directly',
-        );
-        expect(
-          content.contains('ConfirmationToken('),
-          isFalse,
-          reason: '${file.path} must not construct ConfirmationToken directly',
-        );
-        expect(
-          content.contains('safetyAcknowledged: true'),
-          isFalse,
-          reason: '${file.path} must not contain literal safetyAcknowledged: true',
-        );
-      }
-    });
-
-    test('architecture rule: AuthorizationSession and ConfirmationToken constructors restricted', () {
-      final libDir = Directory('lib');
-      for (final file in libDir.listSync(recursive: true).whereType<File>()) {
-        if (!file.path.endsWith('.dart')) continue;
-        final normalized = file.path.replaceAll(r'\', '/');
-        final content = file.readAsStringSync();
-
-        final isAllowed = normalized.contains('lib/auth/') ||
-            normalized.contains('lib/features/') ||
-            normalized.contains('lib/parameters/parameter_models.dart');
-        if (!isAllowed) {
+    test(
+      'architecture rule: lib/session/ contains no self-issued auth/tokens',
+      () {
+        final dir = Directory('lib/session');
+        for (final file in dir.listSync().whereType<File>()) {
+          final content = file.readAsStringSync();
+          expect(
+            content.contains('AuthorizationSession('),
+            isFalse,
+            reason:
+                '${file.path} must not construct AuthorizationSession directly',
+          );
           expect(
             content.contains('ConfirmationToken('),
             isFalse,
-            reason: '$normalized must not construct ConfirmationToken',
+            reason:
+                '${file.path} must not construct ConfirmationToken directly',
+          );
+          expect(
+            content.contains('safetyAcknowledged: true'),
+            isFalse,
+            reason:
+                '${file.path} must not contain literal safetyAcknowledged: true',
           );
         }
-      }
-    });
+      },
+    );
+
+    test(
+      'architecture rule: AuthorizationSession and ConfirmationToken constructors restricted',
+      () {
+        final libDir = Directory('lib');
+        for (final file in libDir.listSync(recursive: true).whereType<File>()) {
+          if (!file.path.endsWith('.dart')) continue;
+          final normalized = file.path.replaceAll(r'\', '/');
+          final content = file.readAsStringSync();
+
+          final isAllowed =
+              normalized.contains('lib/auth/') ||
+              normalized.contains('lib/features/') ||
+              normalized.contains('lib/parameters/parameter_models.dart');
+          if (!isAllowed) {
+            expect(
+              content.contains('ConfirmationToken('),
+              isFalse,
+              reason: '$normalized must not construct ConfirmationToken',
+            );
+          }
+        }
+      },
+    );
   });
 
   group('T1 - S2: Parameter Rollback & Dynamic Write Context Integrity', () {
-    test('DeviceWriteContext is derived dynamically from session state', () async {
-      final session = DeviceSession(
-        scenario: SimulationScenario.healthy,
-        autoStart: false,
-      );
-      addTearDown(session.dispose);
-      await session.refresh();
+    test(
+      'DeviceWriteContext is derived dynamically from session state',
+      () async {
+        final session = DeviceSession(
+          scenario: SimulationScenario.healthy,
+          autoStart: false,
+        );
+        addTearDown(session.dispose);
+        await session.refresh();
 
-      final context = session.createWriteContext();
-      expect(context.sessionId, isNotEmpty);
-      expect(context.deviceId, isNotEmpty);
-      expect(context.exactIdentityMatch, isTrue);
-      expect(context.state, DeviceWriteState.known);
-    });
+        final context = session.createWriteContext();
+        expect(context.sessionId, isNotEmpty);
+        expect(context.deviceId, isNotEmpty);
+        expect(context.exactIdentityMatch, isTrue);
+        expect(context.state, DeviceWriteState.known);
+      },
+    );
 
-    test('SimulationScenario.identityMismatch returns unknown model and breaks exactIdentityMatch', () async {
-      final adapter = SimulatedBmsAdapter(
-        scenario: SimulationScenario.identityMismatch,
-      );
-      final id = await adapter.identify();
-      expect(id.model, 'LFP-UNKNOWN-MISMATCH');
+    test(
+      'SimulationScenario.identityMismatch returns unknown model and breaks exactIdentityMatch',
+      () async {
+        final adapter = SimulatedBmsAdapter(
+          scenario: SimulationScenario.identityMismatch,
+        );
+        final id = await adapter.identify();
+        expect(id.model, 'LFP-UNKNOWN-MISMATCH');
 
-      final session = DeviceSession(
-        scenario: SimulationScenario.identityMismatch,
-        autoStart: false,
-      );
-      addTearDown(session.dispose);
-      await session.refresh();
+        final session = DeviceSession(
+          scenario: SimulationScenario.identityMismatch,
+          autoStart: false,
+        );
+        addTearDown(session.dispose);
+        await session.refresh();
 
-      final context = session.createWriteContext();
-      expect(context.exactIdentityMatch, isFalse);
-    });
+        final context = session.createWriteContext();
+        expect(context.exactIdentityMatch, isFalse);
+      },
+    );
   });
 
   group('T1 - S3: SimulatedParameterTransport Isolation', () {
-    test('architecture rule: SimulatedParameterBackend & transport can only be built with token', () {
-      final libDir = Directory('lib');
-      for (final file in libDir.listSync(recursive: true).whereType<File>()) {
-        if (!file.path.endsWith('.dart')) continue;
-        final normalized = file.path.replaceAll(r'\', '/');
-        final content = file.readAsStringSync();
+    test(
+      'architecture rule: SimulatedParameterBackend & transport can only be built with token',
+      () {
+        final libDir = Directory('lib');
+        for (final file in libDir.listSync(recursive: true).whereType<File>()) {
+          if (!file.path.endsWith('.dart')) continue;
+          final normalized = file.path.replaceAll(r'\', '/');
+          final content = file.readAsStringSync();
 
-        if (!normalized.contains('lib/simulator/') &&
-            !normalized.contains('lib/parameters/write_pipeline.dart')) {
-          expect(
-            content.contains('createSimulatedParameterTransport'),
-            isFalse,
-            reason: '$normalized must not call createSimulatedParameterTransport directly',
-          );
+          if (!normalized.contains('lib/simulator/') &&
+              !normalized.contains('lib/parameters/write_pipeline.dart')) {
+            expect(
+              content.contains('createSimulatedParameterTransport'),
+              isFalse,
+              reason:
+                  '$normalized must not call createSimulatedParameterTransport directly',
+            );
+          }
         }
-      }
-    });
+      },
+    );
   });
 
-  group('T1 - S4 & S5: Write Capability vs Signature and Schema Validation', () {
-    test('ParameterAccess rejects unknown values via FormatException', () {
-      expect(
-        () => ParameterAccess.from('readWriteUnknownCustom'),
-        throwsA(isA<FormatException>()),
+  group(
+    'T1 - S4 & S5: Write Capability vs Signature and Schema Validation',
+    () {
+      test('ParameterAccess rejects unknown values via FormatException', () {
+        expect(
+          () => ParameterAccess.from('readWriteUnknownCustom'),
+          throwsA(isA<FormatException>()),
+        );
+        expect(ParameterAccess.from('readOnly'), ParameterAccess.readOnly);
+        expect(ParameterAccess.from('readWrite'), ParameterAccess.readWrite);
+        expect(ParameterAccess.from('calibrate'), ParameterAccess.calibrate);
+      });
+
+      test(
+        'hasWriteCapability is true if any parameter has non-readOnly access',
+        () {
+          final profile = DeviceProfile(
+            schemaVersion: 2,
+            id: 'test.profile',
+            category: 'bms',
+            manufacturer: 'Test',
+            family: 'Test',
+            models: const ['T1'],
+            firmwareRanges: const ['1.0'],
+            provenance: Provenance(
+              source: 'test',
+              documentId: 'doc',
+              retrievedOn: DateTime.utc(2026, 1, 1),
+              verifiedBy: 'tester',
+            ),
+            transport: const TransportRequirement(
+              interfaceType: InterfaceType.can,
+              listenOnlyByDefault: true,
+            ),
+            capabilities: CapabilitySet({}),
+            allowedReadFrames: const {},
+            allowedModbusReadRanges: const [],
+            telemetryMap: const [],
+            alarmDictionary: const {},
+            parameters: const [
+              ProfileParameterDefinition(
+                id: 'limit',
+                label: LocalizedText(en: 'Limit', ar: 'الحد'),
+                access: ParameterAccess.readWrite,
+                definition: {},
+              ),
+            ],
+            topology: const {},
+            inverterLink: const {},
+            testVectors: const [],
+            connectionChecklist: const [],
+            simulated: false,
+          );
+
+          expect(profile.hasWriteCapability, isTrue);
+        },
       );
-      expect(ParameterAccess.from('readOnly'), ParameterAccess.readOnly);
-      expect(ParameterAccess.from('readWrite'), ParameterAccess.readWrite);
-      expect(ParameterAccess.from('calibrate'), ParameterAccess.calibrate);
-    });
 
-    test('hasWriteCapability is true if any parameter has non-readOnly access', () {
-      final profile = DeviceProfile(
-        schemaVersion: 2,
-        id: 'test.profile',
-        category: 'bms',
-        manufacturer: 'Test',
-        family: 'Test',
-        models: const ['T1'],
-        firmwareRanges: const ['1.0'],
-        provenance: Provenance(
-          source: 'test',
-          documentId: 'doc',
-          retrievedOn: DateTime.utc(2026, 1, 1),
-          verifiedBy: 'tester',
-        ),
-        transport: const TransportRequirement(
-          interfaceType: InterfaceType.can,
-          listenOnlyByDefault: true,
-        ),
-        capabilities: CapabilitySet({}),
-        allowedReadFrames: const {},
-        allowedModbusReadRanges: const [],
-        telemetryMap: const [],
-        alarmDictionary: const {},
-        parameters: const [
-          ProfileParameterDefinition(
-            id: 'limit',
-            label: LocalizedText(en: 'Limit', ar: 'الحد'),
-            access: ParameterAccess.readWrite,
-            definition: {},
-          ),
-        ],
-        topology: const {},
-        inverterLink: const {},
-        testVectors: const [],
-        connectionChecklist: const [],
-        simulated: false,
+      test(
+        'ProfileApproval requires published stage and approvalEngineer role',
+        () {
+          const approvalPending = ProfileApproval(
+            approvedByRole: 'approvalEngineer',
+            lifecycleStage: 'candidate',
+            verifiedCapabilities: ['writeParameter'],
+          );
+          expect(
+            approvalPending.isApprovedFor(DeviceCapability.writeParameter),
+            isFalse,
+          );
+
+          const approvalRoleMismatch = ProfileApproval(
+            approvedByRole: 'technician',
+            lifecycleStage: 'published',
+            verifiedCapabilities: ['writeParameter'],
+          );
+          expect(
+            approvalRoleMismatch.isApprovedFor(DeviceCapability.writeParameter),
+            isFalse,
+          );
+
+          const approvalValid = ProfileApproval(
+            approvedByRole: 'approvalEngineer',
+            lifecycleStage: 'published',
+            verifiedCapabilities: ['writeParameter'],
+          );
+          expect(
+            approvalValid.isApprovedFor(DeviceCapability.writeParameter),
+            isTrue,
+          );
+        },
       );
 
-      expect(profile.hasWriteCapability, isTrue);
-    });
-
-    test('ProfileApproval requires published stage and approvalEngineer role', () {
-      const approvalPending = ProfileApproval(
-        approvedByRole: 'approvalEngineer',
-        lifecycleStage: 'candidate',
-        verifiedCapabilities: ['writeParameter'],
-      );
-      expect(approvalPending.isApprovedFor(DeviceCapability.writeParameter), isFalse);
-
-      const approvalRoleMismatch = ProfileApproval(
-        approvedByRole: 'technician',
-        lifecycleStage: 'published',
-        verifiedCapabilities: ['writeParameter'],
-      );
-      expect(approvalRoleMismatch.isApprovedFor(DeviceCapability.writeParameter), isFalse);
-
-      const approvalValid = ProfileApproval(
-        approvedByRole: 'approvalEngineer',
-        lifecycleStage: 'published',
-        verifiedCapabilities: ['writeParameter'],
-      );
-      expect(approvalValid.isApprovedFor(DeviceCapability.writeParameter), isTrue);
-    });
-
-    test('ProfileRegistry enforces approval for writes', () {
-      final registry = ProfileRegistry.empty();
-      expect(registry.canWrite('unknown.profile'), isFalse);
-    });
-  });
+      test('ProfileRegistry enforces approval for writes', () {
+        final registry = ProfileRegistry.empty();
+        expect(registry.canWrite('unknown.profile'), isFalse);
+      });
+    },
+  );
 
   group('T1 - S6: Revocation List Anti-Rollback & 14-Day Staleness', () {
     test('LibrarySync rejects revocation list with sequence rollback', () {
@@ -415,7 +450,10 @@ void main() {
       sync.recordRevocationSequence(5);
       expect(sync.highestRevocationSequence, 5);
 
-      expect(() => sync.recordRevocationSequence(4), throwsA(isA<StateError>()));
+      expect(
+        () => sync.recordRevocationSequence(4),
+        throwsA(isA<StateError>()),
+      );
     });
 
     test('InstalledLibrary flags revocation older than 14 days as stale', () {
@@ -450,45 +488,50 @@ void main() {
   });
 
   group('T1 - S7: Spoofed Simulated Profiles', () {
-    test('ProfileRegistry rejects unbundled simulated profiles from writes/loading', () {
-      final spoofedJson = jsonEncode({
-        'schema_version': 2,
-        'id': 'external.spoofed.simulated',
-        'category': 'bms',
-        'manufacturer': 'Spoofed',
-        'family': 'Spoofed',
-        'models': ['S1'],
-        'firmware_ranges': ['1.0'],
-        'provenance': {
-          'source': 'untrusted',
-          'document_id': 'doc',
-          'retrieved_on': '2026-01-01T00:00:00Z',
-          'verified_by': 'untrusted',
-        },
-        'transport': {
-          'interface_type': 'simulator',
-          'listen_only_by_default': true,
-        },
-        'capabilities': {
-          'writeParameter': 'simulated',
-        },
-        'allowed_read_frames': [],
-        'allowed_modbus_read_ranges': [],
-        'telemetry_map': [],
-        'alarm_dictionary': {},
-        'parameters': [],
-        'topology': {},
-        'inverter_link': {},
-        'test_vectors': [],
-        'connection_checklist': [],
-        'simulated': true,
-      });
+    test(
+      'ProfileRegistry rejects unbundled simulated profiles from writes/loading',
+      () {
+        final spoofedJson = jsonEncode({
+          'schema_version': 2,
+          'id': 'external.spoofed.simulated',
+          'category': 'bms',
+          'manufacturer': 'Spoofed',
+          'family': 'Spoofed',
+          'models': ['S1'],
+          'firmware_ranges': ['1.0'],
+          'provenance': {
+            'source': 'untrusted',
+            'document_id': 'doc',
+            'retrieved_on': '2026-01-01T00:00:00Z',
+            'verified_by': 'untrusted',
+          },
+          'transport': {
+            'interface_type': 'simulator',
+            'listen_only_by_default': true,
+          },
+          'capabilities': {'writeParameter': 'simulated'},
+          'allowed_read_frames': [],
+          'allowed_modbus_read_ranges': [],
+          'telemetry_map': [],
+          'alarm_dictionary': {},
+          'parameters': [],
+          'topology': {},
+          'inverter_link': {},
+          'test_vectors': [],
+          'connection_checklist': [],
+          'simulated': true,
+        });
 
-      expect(
-        () => ProfileRegistry.fromJsonDocuments([spoofedJson], technicianMode: true, isBundled: false),
-        throwsA(isA<FormatException>()),
-      );
-    });
+        expect(
+          () => ProfileRegistry.fromJsonDocuments(
+            [spoofedJson],
+            technicianMode: true,
+            isBundled: false,
+          ),
+          throwsA(isA<FormatException>()),
+        );
+      },
+    );
   });
 
   group('T1 - S8: Audit Chain HMAC & Tamper Detection', () {
@@ -509,9 +552,7 @@ void main() {
         ),
         audit.entries.last,
       ];
-      final tamperedChain = AuditChain(
-        clock: () => DateTime.now(),
-      );
+      final tamperedChain = AuditChain(clock: () => DateTime.now());
       for (final e in corrupted) {
         tamperedChain.append(e.action, e.details);
       }
@@ -520,7 +561,10 @@ void main() {
 
     test('Audit head HMAC verification fails on unauthorized head change', () {
       final secretStore = InMemorySecretStore();
-      secretStore.setSecret('installation_audit_key', 'my-super-secret-key-1234');
+      secretStore.setSecret(
+        'installation_audit_key',
+        'my-super-secret-key-1234',
+      );
       final audit = AuditChain.inMemory(secretStore: secretStore);
       audit.append('op_one', {'val': 1});
 
@@ -583,10 +627,7 @@ void main() {
       // Wrong DLC
       expect(
         rule.matches(
-          const BusFrame(
-            identifier: 0x100,
-            payload: [0x01, 0x00, 0x00],
-          ),
+          const BusFrame(identifier: 0x100, payload: [0x01, 0x00, 0x00]),
         ),
         isFalse,
       );
@@ -619,40 +660,45 @@ void main() {
       );
 
       expect(transport.observedBusLoad, 0.0);
-      transport.receive(const BusFrame(identifier: 0, payload: [], isError: true));
+      transport.receive(
+        const BusFrame(identifier: 0, payload: [], isError: true),
+      );
       expect(transport.observedBusLoad, 0.8);
     });
 
-    test('Gateway capability negotiation rejects write on read-only gateway', () {
-      const readOnlyDescriptor = GatewayInterfaceDescriptor(
-        type: InterfaceType.can,
-        isolated: true,
-        listenOnlyCapable: true,
-        writeCapable: false,
-      );
-      const negotiator = GatewaySessionNegotiator();
-      const requirement = TransportRequirement(
-        interfaceType: InterfaceType.can,
-        listenOnlyByDefault: true,
-      );
-      const gateway = GatewayDescriptor(
-        protocolVersion: 1,
-        hardwareRevision: 'v1',
-        firmwareVersion: '1.0',
-        bootId: 'boot1',
-        physicalTxInterlock: true,
-        interfaces: [readOnlyDescriptor],
-      );
+    test(
+      'Gateway capability negotiation rejects write on read-only gateway',
+      () {
+        const readOnlyDescriptor = GatewayInterfaceDescriptor(
+          type: InterfaceType.can,
+          isolated: true,
+          listenOnlyCapable: true,
+          writeCapable: false,
+        );
+        const negotiator = GatewaySessionNegotiator();
+        const requirement = TransportRequirement(
+          interfaceType: InterfaceType.can,
+          listenOnlyByDefault: true,
+        );
+        const gateway = GatewayDescriptor(
+          protocolVersion: 1,
+          hardwareRevision: 'v1',
+          firmwareVersion: '1.0',
+          bootId: 'boot1',
+          physicalTxInterlock: true,
+          interfaces: [readOnlyDescriptor],
+        );
 
-      expect(
-        () => negotiator.negotiateWrite(
-          gateway,
-          requirement,
-          writeVerifiedOnHardware: true,
-          explicitlyStarted: true,
-        ),
-        throwsA(isA<GatewayContractException>()),
-      );
-    });
+        expect(
+          () => negotiator.negotiateWrite(
+            gateway,
+            requirement,
+            writeVerifiedOnHardware: true,
+            explicitlyStarted: true,
+          ),
+          throwsA(isA<GatewayContractException>()),
+        );
+      },
+    );
   });
 }

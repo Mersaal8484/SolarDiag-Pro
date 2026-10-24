@@ -111,10 +111,6 @@ class DeviceSession extends ChangeNotifier {
   List<DiagnosticSessionRecord> get history => database?.listSessions() ?? [];
   List<DiagnosticEventRecord> eventsFor(String sessionId) =>
       database?.listEvents(sessionId) ?? [];
-  List<TelemetrySampleRecord> samplesFor(String sessionId) =>
-      database?.listTelemetrySamples(sessionId) ?? [];
-  String auditHeadFor(String sessionId) =>
-      database?.loadAuditHead(sessionId) ?? 'GENESIS';
 
   static const parameterDefinitions = <String, ParameterDefinition>{
     'charge_limit': ParameterDefinition(
@@ -469,24 +465,6 @@ class DeviceSession extends ChangeNotifier {
         snapshotJson: snapshotJson,
         dataHash: sha256.convert(utf8.encode(snapshotJson)).toString(),
       ),
-    );
-    store.saveTelemetrySample(
-      sessionId: _sessionId,
-      capturedAt: snapshot.timestamp,
-      snapshotJson: snapshotJson,
-      qualityFlags: {
-        'voltage': snapshot.voltage.quality.name,
-        'current': snapshot.current.quality.name,
-        'soc': snapshot.soc.quality.name,
-        'soh': snapshot.soh.quality.name,
-        'cells': [
-          for (final cell in snapshot.cellMeasurements) cell.quality.name,
-        ],
-        'temperatures': [
-          for (final sensor in snapshot.temperatureSensors)
-            sensor.measurement.quality.name,
-        ],
-      },
     );
     _persistStateEvents();
   }

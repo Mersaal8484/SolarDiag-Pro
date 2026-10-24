@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 import '../app/theme.dart';
 import '../studio/capture_analysis.dart';
 import '../studio/capture_importers.dart';
@@ -9,9 +10,6 @@ import '../studio/profile_builder.dart';
 import '../studio/protocol_analysis.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../design/accessibility.dart';
-import '../design/solar_icon.dart';
-import '../design/solar_icons.g.dart';
-import '../design/tokens.g.dart';
 
 enum StudioSection {
   sessions,
@@ -106,9 +104,7 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
             ),
           Expanded(
             child: AnimatedSwitcher(
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : SolarMotion.fast,
+              duration: const Duration(milliseconds: 180),
               child: _section(context, section),
             ),
           ),
@@ -123,7 +119,7 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
                   .take(5)
                   .map(
                     (item) => NavigationDestination(
-                      icon: SolarIcon(_icon(item)),
+                      icon: Icon(_icon(item)),
                       label: _label(item),
                     ),
                   )
@@ -241,57 +237,54 @@ class _SectionList extends StatelessWidget {
   final StudioSection selected;
   final ValueChanged<StudioSection> onSelected;
   @override
-  Widget build(BuildContext context) {
-    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
-    return Material(
-      color: palette.labelPrimary,
-      child: ListView(
-        padding: const EdgeInsets.all(12),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
-            child: Text(
-              AppLocalizations.of(context).studioEngineering,
-              style: TextStyle(
-                color: palette.simulated,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
-              ),
+  Widget build(BuildContext context) => Material(
+    color: SolarColors.deep,
+    child: ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
+          child: Text(
+            AppLocalizations.of(context).studioEngineering,
+            style: const TextStyle(
+              color: SolarColors.lime,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
             ),
           ),
-          for (final item in StudioSection.values)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: ListTile(
-                selected: selected == item,
-                selectedTileColor: palette.simulated,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                leading: SolarIcon(
-                  _icon(item),
-                  color: selected == item
-                      ? palette.labelPrimary
-                      : palette.background.withValues(alpha: .62),
-                ),
-                title: Text(
-                  _label(item),
-                  style: TextStyle(
-                    color: selected == item
-                        ? palette.labelPrimary
-                        : palette.background.withValues(alpha: .72),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-                onTap: () => onSelected(item),
+        ),
+        for (final item in StudioSection.values)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: ListTile(
+              selected: selected == item,
+              selectedTileColor: SolarColors.green.withValues(alpha: .17),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
               ),
+              leading: Icon(
+                _icon(item),
+                color: selected == item
+                    ? SolarColors.green
+                    : SolarColors.onDarkMuted,
+              ),
+              title: Text(
+                _label(item),
+                style: TextStyle(
+                  color: selected == item
+                      ? SolarColors.onDark
+                      : SolarColors.onDarkStrong,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+              onTap: () => onSelected(item),
             ),
-        ],
-      ),
-    );
-  }
+          ),
+      ],
+    ),
+  );
 }
 
 class _StudioPage extends StatelessWidget {
@@ -307,67 +300,44 @@ class _StudioPage extends StatelessWidget {
   final String subtitle;
   final Widget body;
   @override
-  Widget build(BuildContext context) {
-    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
-    return ListView(
-      padding: const EdgeInsets.all(28),
-      children: [
-        Text(
-          eyebrow,
-          style: TextStyle(
-            color: palette.tint,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.3,
-            fontSize: 11,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(title, style: Theme.of(context).textTheme.displaySmall),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 28),
-        body,
-      ],
-    );
-  }
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(28),
+    children: [
+      PrecisionPageHeading(
+        title: title,
+        subtitle: '$eyebrow · $subtitle',
+        icon: Icons.science_outlined,
+      ),
+      const SizedBox(height: 28),
+      body,
+    ],
+  );
 }
 
 class _ReplayLockBadge extends StatelessWidget {
   const _ReplayLockBadge();
   @override
-  Widget build(BuildContext context) {
-    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: palette.simulated,
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Row(
-        children: [
-          SolarIcon(
-            SolarIcons.replayLock,
-            size: 15,
-            color: palette.labelPrimary,
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+    decoration: BoxDecoration(
+      color: SolarColors.lime,
+      borderRadius: BorderRadius.circular(99),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.lock_outline, size: 15, color: SolarColors.deep),
+        const SizedBox(width: 6),
+        Text(
+          AppLocalizations.of(context).replayLock,
+          style: const TextStyle(
+            color: SolarColors.deep,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
           ),
-          const SizedBox(width: 6),
-          Text(
-            AppLocalizations.of(context).replayLock,
-            style: TextStyle(
-              color: palette.labelPrimary,
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 }
 
 class _Stat extends StatelessWidget {
@@ -405,7 +375,7 @@ class _EmptyInstrument extends StatelessWidget {
     required this.title,
     required this.detail,
   });
-  final SolarIconData icon;
+  final IconData icon;
   final String title;
   final String detail;
   @override
@@ -414,11 +384,7 @@ class _EmptyInstrument extends StatelessWidget {
       padding: const EdgeInsets.all(32),
       child: Column(
         children: [
-          SolarIcon(
-            icon,
-            size: 42,
-            color: Theme.of(context).extension<SolarTokens>()!.palette.tint,
-          ),
+          Icon(icon, size: 42, color: SolarColors.green),
           const SizedBox(height: 14),
           Text(title, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 6),
@@ -439,7 +405,7 @@ class _CaptureSourcesView extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       const _EmptyInstrument(
-        icon: SolarIcons.offline,
+        icon: Icons.sensors_off_outlined,
         title: 'No gateway connected',
         detail:
             'Import or generate synthetic data. Captured frames can never be replayed to hardware.',
@@ -471,7 +437,7 @@ class _CaptureSourcesView extends StatelessWidget {
                 onPressed: onSessionImported == null
                     ? null
                     : () => _showImportDialog(context),
-                icon: const SolarIcon(SolarIcons.export),
+                icon: const Icon(Icons.file_upload_outlined),
                 label: const Text(_StudioCopy.importCapture),
               ),
               const SizedBox(height: 16),
@@ -521,9 +487,8 @@ class _CaptureSourcesView extends StatelessWidget {
                       ),
                     ],
                     onChanged: (val) {
-                      if (val != null) {
+                      if (val != null)
                         setDialogState(() => selectedFormat = val);
-                      }
                     },
                   ),
                   const SizedBox(height: 12),
@@ -676,7 +641,7 @@ class _DifferentialView extends StatelessWidget {
   Widget build(BuildContext context) {
     if (report.candidates.isEmpty) {
       return const _EmptyInstrument(
-        icon: SolarIcons.diff,
+        icon: Icons.difference_outlined,
         title: 'No differential candidates',
         detail: 'The controlled captures have equivalent field distributions.',
       );
@@ -740,7 +705,7 @@ class _FrameTable extends StatelessWidget {
                 const Expanded(
                   flex: 2,
                   child: TechnicalText(
-                    _StudioCopy.identifier,
+                    'ID',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -825,12 +790,12 @@ class _AnalysisRow extends StatelessWidget {
   Widget build(BuildContext context) => Card(
     child: ListTile(
       contentPadding: const EdgeInsets.all(18),
-      leading: const SolarIcon(SolarIcons.frame),
+      leading: const Icon(Icons.memory),
       title: TechnicalText(
         '0x${stats.identifier.toRadixString(16).toUpperCase()}',
       ),
       subtitle: TechnicalText(
-        '${localizedNumber(context, stats.frameCount)} frames · ${stats.averagePeriodMicros == null ? '—' : localizedNumber(context, stats.averagePeriodMicros!)} µs period',
+        '${stats.frameCount} frames · ${stats.averagePeriodMicros?.toStringAsFixed(0) ?? '—'} µs period',
       ),
       trailing: TechnicalText(
         'Δ [${stats.changedByteOffsets.join(', ')}]',
@@ -867,7 +832,7 @@ class _FindingView extends StatelessWidget {
           for (final evidence in finding.evidence)
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const SolarIcon(SolarIcons.linkDiagnostics),
+              leading: const Icon(Icons.link),
               title: Text(evidence.reference),
               subtitle: Text(evidence.summary),
             ),
@@ -910,15 +875,12 @@ class _MappingRow extends StatelessWidget {
   Widget build(BuildContext context) => Card(
     child: ListTile(
       contentPadding: const EdgeInsets.all(18),
-      leading: const SolarIcon(SolarIcons.registerMap),
+      leading: const Icon(Icons.account_tree_outlined),
       title: Text(mapping.field),
       subtitle: Text(
         '0x${mapping.frameIdentifier.toRadixString(16)} · offset ${mapping.offset} · ${mapping.dataType.name} · ×${mapping.scale} ${mapping.unit}',
       ),
-      trailing: SolarIcon(
-        SolarIcons.verifiedDocument,
-        color: Theme.of(context).extension<SolarTokens>()!.palette.tint,
-      ),
+      trailing: const Icon(Icons.verified_outlined, color: SolarColors.green),
     ),
   );
 }
@@ -932,10 +894,10 @@ class _ValidationView extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: Row(
         children: [
-          SolarIcon(
-            result.isValid ? SolarIcons.confirmedCheck : SolarIcons.critical,
+          Icon(
+            result.isValid ? Icons.check_circle : Icons.error_outline,
             color: result.isValid
-                ? Theme.of(context).extension<SolarTokens>()!.palette.ok
+                ? SolarColors.green
                 : Theme.of(context).colorScheme.error,
             size: 36,
           ),
@@ -964,19 +926,13 @@ class _ExportView extends StatelessWidget {
       Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Theme.of(
-            context,
-          ).extension<SolarTokens>()!.palette.labelPrimary,
+          color: SolarColors.deep,
           borderRadius: BorderRadius.circular(20),
         ),
         child: SelectableText(
           json,
-          style: TextStyle(
-            color: Theme.of(context)
-                .extension<SolarTokens>()!
-                .palette
-                .background
-                .withValues(alpha: .72),
+          style: const TextStyle(
+            color: SolarColors.onDarkStrong,
             fontFamily: 'monospace',
             height: 1.45,
           ),
@@ -1099,21 +1055,20 @@ String _label(StudioSection section) => switch (section) {
   StudioSection.validation => 'Validation',
   StudioSection.export => 'Export',
 };
-SolarIconData _icon(StudioSection section) => switch (section) {
-  StudioSection.sessions => SolarIcons.library,
-  StudioSection.capture => SolarIcons.captureRecord,
-  StudioSection.frames => SolarIcons.frame,
-  StudioSection.analysis => SolarIcons.evidence,
-  StudioSection.differential => SolarIcons.diff,
-  StudioSection.hypotheses => SolarIcons.hypothesis,
-  StudioSection.profileBuilder => SolarIcons.profileBuilder,
-  StudioSection.mapping => SolarIcons.registerMap,
-  StudioSection.validation => SolarIcons.confirmedCheck,
-  StudioSection.export => SolarIcons.export,
+IconData _icon(StudioSection section) => switch (section) {
+  StudioSection.sessions => Icons.folder_open_outlined,
+  StudioSection.capture => Icons.sensors_outlined,
+  StudioSection.frames => Icons.table_rows_outlined,
+  StudioSection.analysis => Icons.analytics_outlined,
+  StudioSection.differential => Icons.difference_outlined,
+  StudioSection.hypotheses => Icons.lightbulb_outline,
+  StudioSection.profileBuilder => Icons.build_outlined,
+  StudioSection.mapping => Icons.account_tree_outlined,
+  StudioSection.validation => Icons.fact_check_outlined,
+  StudioSection.export => Icons.ios_share_outlined,
 };
 
 abstract final class _StudioCopy {
-  static const identifier = 'ID';
   static const importFormats = 'Import formats';
   static const sdcap = '.sdcap v1/v2';
   static const candump = 'candump';

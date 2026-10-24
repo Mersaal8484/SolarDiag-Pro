@@ -1,8 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 import '../config/feature_flags.dart';
 import '../features/advanced_diagnostics.dart';
 import '../features/battery_workspace.dart';
@@ -14,7 +11,6 @@ import '../features/link_screen.dart';
 import '../features/onboarding_screen.dart';
 import '../features/parameters_screen.dart';
 import '../features/session_history_screen.dart';
-import '../features/settings_screen.dart';
 import '../features/workspace_shell.dart';
 import '../design/accessibility.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -46,9 +42,8 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
   late final bool _ownsDeviceSession;
   late final bool _ownsDatabase;
   Locale _locale = const Locale('en');
-  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode _themeMode = ThemeMode.dark;
   bool _highContrast = false;
-  bool _wakelockEnabled = false;
   late bool _onboardingVisible;
   @override
   void initState() {
@@ -57,62 +52,12 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
     _ownsDatabase = widget.session == null && widget.database != null;
     _deviceSession = widget.session ?? DeviceSession(database: widget.database);
     _onboardingVisible = widget.showOnboarding;
-    _restoreSettings();
-    if (_designPreferences.workshopMode) {
-      unawaited(_applyWorkshopMode());
-    }
-  }
-
-  Future<void> _applyWorkshopMode() async {
-    final enabled = _designPreferences.workshopMode;
-    if (_wakelockEnabled == enabled) return;
-    await WakelockPlus.toggle(enable: enabled);
-    _wakelockEnabled = enabled;
-  }
-
-  void _restoreSettings() {
-    final database = widget.database;
-    if (database == null) return;
-    _locale = Locale(database.getSetting('language') ?? 'en');
-    _themeMode = ThemeMode.values.firstWhere(
-      (value) => value.name == database.getSetting('theme_mode'),
-      orElse: () => ThemeMode.light,
-    );
-    _designPreferences.digits = DigitPreference.values.firstWhere(
-      (value) => value.name == database.getSetting('digit_preference'),
-      orElse: () => DigitPreference.western,
-    );
-    _designPreferences.workshopMode = database.getBool('workshop_mode');
-    _designPreferences.outdoorHighContrast = database.getBool(
-      'outdoor_high_contrast',
-    );
-    _designPreferences.timeAxisLtr = database.getBool(
-      'time_axis_ltr',
-      defaultValue: true,
-    );
-    _designPreferences.reduceTransparency = database.getBool(
-      'reduce_transparency',
-    );
-  }
-
-  void _persistSettings() {
-    final database = widget.database;
-    if (database == null) return;
-    database
-      ..setSetting('language', _locale.languageCode)
-      ..setSetting('theme_mode', _themeMode.name)
-      ..setSetting('digit_preference', _designPreferences.digits.name)
-      ..setBool('workshop_mode', _designPreferences.workshopMode)
-      ..setBool('outdoor_high_contrast', _designPreferences.outdoorHighContrast)
-      ..setBool('time_axis_ltr', _designPreferences.timeAxisLtr)
-      ..setBool('reduce_transparency', _designPreferences.reduceTransparency);
   }
 
   @override
   void dispose() {
     if (_ownsDeviceSession) _deviceSession.dispose();
     if (_ownsDatabase) widget.database!.close();
-    if (_wakelockEnabled) unawaited(WakelockPlus.disable());
     _designPreferences.dispose();
     super.dispose();
   }
@@ -145,35 +90,16 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
           '/gateway': (_) => const GatewayScreen(),
           '/parameters': (_) => const ParametersScreen(),
           '/design-lab': (_) => const DesignLab(),
-          '/settings': (_) => SettingsScreen(
-            locale: _locale,
-            themeMode: _themeMode,
-            onLocaleChanged: (value) {
-              setState(() => _locale = value);
-              _persistSettings();
-            },
-            onThemeModeChanged: (value) {
-              setState(() => _themeMode = value);
-              _persistSettings();
-            },
-            onPreferencesChanged: () {
-              setState(() {});
-              _persistSettings();
-              unawaited(_applyWorkshopMode());
-            },
-          ),
         },
         theme: solarTheme(
           brightness: Brightness.light,
           highContrast: _highContrast || _designPreferences.outdoorHighContrast,
           workshop: _designPreferences.workshopMode,
-          reduceTransparency: _designPreferences.reduceTransparency,
         ),
         darkTheme: solarTheme(
           brightness: Brightness.dark,
           highContrast: _highContrast || _designPreferences.outdoorHighContrast,
           workshop: _designPreferences.workshopMode,
-          reduceTransparency: _designPreferences.reduceTransparency,
         ),
         home: Builder(
           builder: (context) {
@@ -202,8 +128,6 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
                   Navigator.of(context).pushNamed('/design-lab'),
               onOpenDiagnostics: () =>
                   Navigator.of(context).pushNamed('/diagnostics'),
-              onOpenSettings: () =>
-                  Navigator.of(context).pushNamed('/settings'),
               studioEnabled: widget.flags.studioEnabled,
               contributionsEnabled: widget.flags.contributionsEnabled,
             );

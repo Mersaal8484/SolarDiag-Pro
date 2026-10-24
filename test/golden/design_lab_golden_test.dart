@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -19,43 +17,54 @@ void main() {
     'desktop': Size(1440, 900),
   };
   const locales = [Locale('en'), Locale('ar')];
+  const textScales = <String, double>{'normal': 1, 'large': 2};
 
   for (final viewport in viewports.entries) {
     for (final brightness in Brightness.values) {
       for (final locale in locales) {
-        final name = [
-          viewport.key,
-          brightness.name,
-          locale.languageCode,
-        ].join('_');
-        testWidgets('Design Lab golden $name', (tester) async {
-          tester.view.devicePixelRatio = 1;
-          tester.view.physicalSize = viewport.value;
-          addTearDown(tester.view.resetDevicePixelRatio);
-          addTearDown(tester.view.resetPhysicalSize);
+        for (final textScale in textScales.entries) {
+          final name = [
+            viewport.key,
+            brightness.name,
+            locale.languageCode,
+            textScale.key,
+          ].join('_');
+          testWidgets('Design Lab golden $name', (tester) async {
+            tester.view.devicePixelRatio = 1;
+            tester.view.physicalSize = viewport.value;
+            addTearDown(tester.view.resetDevicePixelRatio);
+            addTearDown(tester.view.resetPhysicalSize);
 
-          await tester.pumpWidget(
-            MaterialApp(
-              debugShowCheckedModeBanner: false,
-              locale: locale,
-              supportedLocales: AppLocalizations.supportedLocales,
-              localizationsDelegates: const [
-                AppLocalizations.delegate,
-                GlobalMaterialLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-              ],
-              theme: solarTheme(brightness: brightness),
-              home: const RepaintBoundary(child: DesignLab()),
-            ),
-          );
-          await tester.pumpAndSettle();
+            await tester.pumpWidget(
+              MaterialApp(
+                debugShowCheckedModeBanner: false,
+                locale: locale,
+                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: const [
+                  AppLocalizations.delegate,
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
+                theme: solarTheme(brightness: brightness),
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    disableAnimations: true,
+                    textScaler: TextScaler.linear(textScale.value),
+                  ),
+                  child: child!,
+                ),
+                home: const RepaintBoundary(child: DesignLab()),
+              ),
+            );
+            await tester.pumpAndSettle();
 
-          await expectLater(
-            find.byType(DesignLab),
-            matchesGoldenFile('design_lab/$name.png'),
-          );
-        });
+            await expectLater(
+              find.byType(DesignLab),
+              matchesGoldenFile('design_lab/$name.png'),
+            );
+          });
+        }
       }
     }
   }
@@ -63,7 +72,6 @@ void main() {
 
 Future<void> _loadBundledFonts() async {
   final loaders = [
-    FontLoader('MaterialIcons')..addFont(_loadMaterialIcons()),
     FontLoader('Inter')
       ..addFont(rootBundle.load('assets/fonts/Inter-Variable.ttf')),
     FontLoader('IBM Plex Sans Arabic')
@@ -73,17 +81,4 @@ Future<void> _loadBundledFonts() async {
       ..addFont(rootBundle.load('assets/fonts/JetBrainsMono-Variable.ttf')),
   ];
   await Future.wait(loaders.map((loader) => loader.load()));
-}
-
-Future<ByteData> _loadMaterialIcons() async {
-  final executable = File(Platform.resolvedExecutable);
-  final inferredRoot = executable.parent.parent.parent.parent.parent.path;
-  final flutterRoot = Platform.environment['FLUTTER_ROOT'] ?? inferredRoot;
-  final separator = Platform.pathSeparator;
-  final font = File(
-    '$flutterRoot${separator}bin${separator}cache${separator}artifacts'
-    '${separator}material_fonts${separator}MaterialIcons-Regular.otf',
-  );
-  final bytes = await font.readAsBytes();
-  return bytes.buffer.asByteData(bytes.offsetInBytes, bytes.lengthInBytes);
 }

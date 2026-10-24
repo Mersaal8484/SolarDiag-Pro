@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 
 import '../app/theme.dart';
-
-import '../design/solar_icon.dart';
-import '../design/solar_icons.g.dart';
 import '../l10n/generated/app_localizations.dart';
 
 class DeviceLibraryScreen extends StatelessWidget {
@@ -30,21 +28,16 @@ class DeviceLibraryScreen extends StatelessWidget {
         Card(
           child: ListTile(
             contentPadding: const EdgeInsets.all(20),
-            leading: _Badge(
-              text: s.simulated,
-              color: Theme.of(
-                context,
-              ).extension<SolarTokens>()!.palette.simulated,
-            ),
+            leading: _Badge(text: s.simulated, color: SolarColors.lime),
             title: Text(s.deterministicBms),
             subtitle: Text(s.simulatorOnly),
-            trailing: const SolarIcon(SolarIcons.currentFlow),
+            trailing: const Icon(Icons.chevron_right),
           ),
         ),
         const SizedBox(height: 18),
         Card(
           child: ListTile(
-            leading: const SolarIcon(SolarIcons.inverter),
+            leading: const Icon(Icons.solar_power_outlined),
             title: const Text(freconName),
             subtitle: Text(s.registerMapRequired),
             trailing: _Badge(
@@ -54,15 +47,15 @@ class DeviceLibraryScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 18),
-        Text(
-          s.researchTargets,
-          style: Theme.of(context).textTheme.headlineSmall,
+        PrecisionSectionHeading(
+          label: s.researchTargets,
+          icon: Icons.biotech_outlined,
         ),
         const SizedBox(height: 10),
         ...targets.map(
           (name) => Card(
             child: ListTile(
-              leading: const SolarIcon(SolarIcons.battery),
+              leading: const Icon(Icons.battery_unknown_outlined),
               title: Text(name),
               subtitle: Text(s.noVerifiedDefinition),
               trailing: _Badge(
@@ -90,7 +83,11 @@ class _Badge extends StatelessWidget {
     ),
     child: Text(
       text,
-      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
+      style: const TextStyle(
+        color: Color(0xFF061424),
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+      ),
     ),
   );
 }
@@ -108,9 +105,11 @@ class _Page extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(24),
     children: [
-      Text(title, style: Theme.of(context).textTheme.displaySmall),
-      const SizedBox(height: 8),
-      Text(subtitle),
+      PrecisionPageHeading(
+        title: title,
+        subtitle: subtitle,
+        icon: Icons.library_books_outlined,
+      ),
       const SizedBox(height: 24),
       ...children,
     ],

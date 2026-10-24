@@ -1,0 +1,1063 @@
+From db1636639cebb9ad67ee62fe3cf2edc0ad3a622a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 24 Oct 2026 18:58:01 +0300
+Subject: [PATCH] fix(R4): compile break, diagnostics, trust gaps (static,
+ unverified)
+
+- X1: update m3 stream-decoder test to the sealed result type; add exception,
+  split-chunk, consumed-buffer, noise and back-to-back tests
+- Z2: diagnostics use device-reported SOH, no longer import the simulator
+  (ModuleStatus in lib/core), dart:math sqrt, absent-cell evidence + confidence
+- Y4: hasWriteCapability counts verifiedHardware/verifiedDocument/communitySourced
+  write or calibrate claims; approval requires a hardware validation record id
+- Y5: revocation sequence persisted (RevocationSequenceStore), equal sequence
+  accepted, lower rejected, validUntil enforced
+- S7: remove ProfileRegistry.registerExternalProfile (unverified back door)
+- tests: repair contribution_platform_test revocation helper (signs the real
+  payload), add r4_diagnostics_test and r4_trust_test
+
+Not compiled or run: Dart/Flutter unavailable in this environment.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XooV4YyxmUFozUCiuxk5BS
+---
+ lib/core/module_status.dart               |  16 ++
+ lib/diagnostics/battery_diagnostics.dart  |  31 +--
+ lib/features/advanced_diagnostics.dart    |  31 ++-
+ lib/protocol/device_profile.dart          |  27 ++-
+ lib/protocol/profile_registry.dart        |   4 -
+ lib/simulator/simulation_scenario.dart    |  19 +-
+ lib/trust/signed_tokens.dart              |  95 +++++++-
+ test/contribution_platform_test.dart      |  35 ++-
+ test/m3_modbus_profile_inverter_test.dart |  61 ++++-
+ test/r4_diagnostics_test.dart             | 132 +++++++++++
+ test/r4_trust_test.dart                   | 262 ++++++++++++++++++++++
+ test/t1_safety_and_trust_test.dart        |  12 +
+ 12 files changed, 664 insertions(+), 61 deletions(-)
+ create mode 100644 lib/core/module_status.dart
+ create mode 100644 test/r4_diagnostics_test.dart
+ create mode 100644 test/r4_trust_test.dart
+
+diff --git a/lib/core/module_status.dart b/lib/core/module_status.dart
+new file mode 100644
+index 0000000..dc345bc
+--- /dev/null
++++ b/lib/core/module_status.dart
+@@ -0,0 +1,16 @@
++/// One battery module (pack) in a parallel bank, as reported by an adapter.
++///
++/// This neutral type lives in `lib/core/` so diagnostics and integration code
++/// never need to import the simulator.
++class ModuleStatus {
++  const ModuleStatus({
++    required this.address,
++    required this.role,
++    required this.soc,
++    required this.current,
++  });
++  final int address;
++  final String role;
++  final double soc;
++  final double current;
++}
+diff --git a/lib/diagnostics/battery_diagnostics.dart b/lib/diagnostics/battery_diagnostics.dart
+index 0a89319..03591ef 100644
+--- a/lib/diagnostics/battery_diagnostics.dart
++++ b/lib/diagnostics/battery_diagnostics.dart
+@@ -1,6 +1,8 @@
++import 'dart:math' as math;
++
+ import '../core/battery_models.dart';
++import '../core/module_status.dart';
+ import 'diagnostic_models.dart';
+-import '../simulator/simulation_scenario.dart';
+ 
+ class DiagnosticThresholds {
+   const DiagnosticThresholds({
+@@ -31,9 +33,12 @@ class BatteryDiagnostics {
+         (code) => FaultInterpreter.interpret(code, faultDictionary),
+       ),
+     ];
++    final reportedSoh = snapshot.soh.value;
+     return HealthAssessment(
+-      stateOfHealth: null,
+-      reason: 'SOH_NOT_REPORTED_OR_DERIVABLE',
++      stateOfHealth: reportedSoh,
++      reason: reportedSoh != null
++          ? 'SOH_DEVICE_REPORTED'
++          : 'SOH_NOT_REPORTED_OR_DERIVABLE',
+       findings: List.unmodifiable(findings),
+     );
+   }
+@@ -71,8 +76,14 @@ class BatteryDiagnostics {
+         'min_v': min,
+         'max_v': max,
+         'cell_count': snapshot.cellVoltages.length,
++        'cell_count_expected': snapshot.cellMeasurements.length,
++        'cell_count_used': snapshot.cellVoltages.length,
+       },
+-      confidence: DiagnosticConfidence.high,
++      // Missing cells mean the spread was computed from a subset only.
++      confidence:
++          snapshot.cellVoltages.length < snapshot.cellMeasurements.length
++          ? DiagnosticConfidence.medium
++          : DiagnosticConfidence.high,
+     );
+   }
+ 
+@@ -151,7 +162,7 @@ extension CompletedBatteryDiagnostics on BatteryDiagnostics {
+             .map((value) => (value - mean) * (value - mean))
+             .reduce((a, b) => a + b) /
+         cells.length;
+-    return variance <= 0 ? 0 : _sqrt(variance);
++    return variance <= 0 ? 0 : math.sqrt(variance);
+   }
+ 
+   Set<int> persistentOutliers(
+@@ -202,7 +213,7 @@ extension CompletedBatteryDiagnostics on BatteryDiagnostics {
+     );
+   }
+ 
+-  ParallelDiagnosticResult analyzeParallel(List<SimulatedModule> modules) {
++  ParallelDiagnosticResult analyzeParallel(List<ModuleStatus> modules) {
+     if (modules.isEmpty) {
+       return const ParallelDiagnosticResult(
+         socSpread: null,
+@@ -305,12 +316,4 @@ extension CompletedBatteryDiagnostics on BatteryDiagnostics {
+       available: available,
+     );
+   }
+-
+-  double _sqrt(double value) {
+-    var estimate = value;
+-    for (var i = 0; i < 12; i++) {
+-      estimate = (estimate + value / estimate) / 2;
+-    }
+-    return estimate;
+-  }
+ }
+diff --git a/lib/features/advanced_diagnostics.dart b/lib/features/advanced_diagnostics.dart
+index 51bde3f..ad84fab 100644
+--- a/lib/features/advanced_diagnostics.dart
++++ b/lib/features/advanced_diagnostics.dart
+@@ -30,7 +30,10 @@ class AdvancedDiagnosticsScreen extends StatelessWidget {
+           const SizedBox(height: 10),
+           Text(s.diagnosticEvidenceNote),
+           const SizedBox(height: 24),
+-          _SohUnavailable(reason: assessment.reason),
++          if (assessment.stateOfHealth == null)
++            _SohUnavailable(reason: assessment.reason)
++          else
++            _SohReported(value: assessment.stateOfHealth!),
+           const SizedBox(height: 16),
+           for (final finding in assessment.findings)
+             Padding(
+@@ -43,6 +46,32 @@ class AdvancedDiagnosticsScreen extends StatelessWidget {
+   }
+ }
+ 
++class _SohReported extends StatelessWidget {
++  const _SohReported({required this.value});
++  final double value;
++  @override
++  Widget build(BuildContext context) {
++    final s = AppLocalizations.of(context);
++    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
++    return Container(
++      padding: const EdgeInsets.all(22),
++      decoration: BoxDecoration(
++        color: palette.surface,
++        borderRadius: BorderRadius.circular(24),
++        border: Border.all(color: palette.separator),
++      ),
++      child: Row(
++        children: [
++          Expanded(child: Text(s.stateOfHealth)),
++          TechnicalText(
++            '${localizedNumber(context, value, fractionDigits: 1)} %',
++          ),
++        ],
++      ),
++    );
++  }
++}
++
+ class _SohUnavailable extends StatelessWidget {
+   const _SohUnavailable({required this.reason});
+   final String reason;
+diff --git a/lib/protocol/device_profile.dart b/lib/protocol/device_profile.dart
+index 0c8f67b..9854905 100644
+--- a/lib/protocol/device_profile.dart
++++ b/lib/protocol/device_profile.dart
+@@ -116,6 +116,8 @@ class ProfileApproval {
+     if (lifecycleStage != 'published' || approvedByRole != 'approvalEngineer') {
+       return false;
+     }
++    // Verified write/calibration needs a hardware validation evidence record.
++    if (hardwareValidationRecordId.trim().isEmpty) return false;
+     return verifiedCapabilities.contains(capability.name);
+   }
+ }
+@@ -179,22 +181,29 @@ class DeviceProfile {
+   final bool simulated;
+   final ProfileApproval? approval;
+ 
+-  /// يُحدَّد `hasWriteCapability` بحيث يكون صحيحاً إذا كانت أي قدرة كتابة أو معايرة
+-  /// مدعومة (ليست unsupported)، أو إذا كان أي معامل يتطلب وصولاً غير readOnly.
+-  /// هذا يضمن عدم تخطي مرحلة مراجعة السلامة لأي مساهمة تحتوي قدرة كتابة محتملة.
++  /// True when the profile claims any write or calibration ability that is
++  /// backed by evidence of any kind (hardware, document or community), or when
++  /// any parameter is not read-only. Such a profile must go through validation
++  /// and safety review, whatever the status of the claim. `researchTarget`,
++  /// `studioDraft` and `simulated` statuses on their own claim nothing real.
+   bool get hasWriteCapability {
+     const writeCapabilities = [
+       DeviceCapability.writeParameter,
+       DeviceCapability.calibrate,
+     ];
+-    final hasCap = writeCapabilities.any(
+-      (cap) =>
+-          capabilities.statusOf(cap) == VerificationStatus.verifiedHardware,
++    const claimedStatuses = {
++      VerificationStatus.verifiedHardware,
++      VerificationStatus.verifiedDocument,
++      VerificationStatus.communitySourced,
++    };
++    final hasCapability = writeCapabilities.any(
++      (capability) =>
++          claimedStatuses.contains(capabilities.statusOf(capability)),
+     );
+-    final hasParamWrite = parameters.any(
+-      (p) => p.access != ParameterAccess.readOnly,
++    final hasWritableParameter = parameters.any(
++      (parameter) => parameter.access != ParameterAccess.readOnly,
+     );
+-    return hasCap || hasParamWrite;
++    return hasCapability || hasWritableParameter;
+   }
+ 
+   static Map<String, Object?> migrateV1ToV2(Map<String, Object?> source) =>
+diff --git a/lib/protocol/profile_registry.dart b/lib/protocol/profile_registry.dart
+index 0efed6c..b6b9c6b 100644
+--- a/lib/protocol/profile_registry.dart
++++ b/lib/protocol/profile_registry.dart
+@@ -24,10 +24,6 @@ class ProfileRegistry {
+     DeviceCapability capability = DeviceCapability.writeParameter,
+   ]) => _writeCapabilities[id]?.contains(capability) ?? false;
+ 
+-  void registerExternalProfile(DeviceProfile profile) {
+-    _profiles[profile.id] = profile;
+-  }
+-
+   static ProfileRegistry fromJsonDocuments(
+     Iterable<String> documents, {
+     required bool technicianMode,
+diff --git a/lib/simulator/simulation_scenario.dart b/lib/simulator/simulation_scenario.dart
+index 3d6caf6..c11d3c7 100644
+--- a/lib/simulator/simulation_scenario.dart
++++ b/lib/simulator/simulation_scenario.dart
+@@ -1,4 +1,10 @@
+ import '../core/battery_models.dart';
++import '../core/module_status.dart';
++
++export '../core/module_status.dart' show ModuleStatus;
++
++/// The simulator's name for a module; the neutral type is [ModuleStatus].
++typedef SimulatedModule = ModuleStatus;
+ 
+ enum SimulationScenario {
+   healthy,
+@@ -14,19 +20,6 @@ enum SimulationScenario {
+   identityMismatch,
+ }
+ 
+-class SimulatedModule {
+-  const SimulatedModule({
+-    required this.address,
+-    required this.role,
+-    required this.soc,
+-    required this.current,
+-  });
+-  final int address;
+-  final String role;
+-  final double soc;
+-  final double current;
+-}
+-
+ class ScenarioFrame {
+   const ScenarioFrame({
+     required this.snapshot,
+diff --git a/lib/trust/signed_tokens.dart b/lib/trust/signed_tokens.dart
+index feb1786..4206b29 100644
+--- a/lib/trust/signed_tokens.dart
++++ b/lib/trust/signed_tokens.dart
+@@ -94,9 +94,37 @@ abstract interface class LibraryPackStore {
+   Future<LibraryPack?> load();
+ }
+ 
+-class FileLibraryPackStore implements LibraryPackStore {
++/// Optional capability of a [LibraryPackStore]: persist the highest accepted
++/// revocation-list sequence so that a replayed older list is rejected even
++/// after an app restart.
++abstract interface class RevocationSequenceStore {
++  Future<int> loadHighestRevocationSequence();
++  Future<void> saveHighestRevocationSequence(int sequence);
++}
++
++class FileLibraryPackStore
++    implements LibraryPackStore, RevocationSequenceStore {
+   const FileLibraryPackStore(this.path);
+   final String path;
++
++  String get _sequencePath => '$path.revseq';
++
++  @override
++  Future<int> loadHighestRevocationSequence() async {
++    final file = File(_sequencePath);
++    if (!await file.exists()) return 0;
++    return int.tryParse((await file.readAsString()).trim()) ?? 0;
++  }
++
++  @override
++  Future<void> saveHighestRevocationSequence(int sequence) async {
++    final target = File(_sequencePath);
++    await target.parent.create(recursive: true);
++    final temporary = File('$_sequencePath.tmp');
++    await temporary.writeAsString('$sequence', flush: true);
++    await temporary.rename(_sequencePath);
++  }
++
+   @override
+   Future<LibraryPack?> load() async {
+     final file = File(path);
+@@ -140,8 +168,14 @@ class InstalledLibrary {
+   bool get isRevocationStale =>
+       _clock().toUtc().difference(revocations.issuedAt) > maxRevocationAge;
+ 
++  /// True once the revocation list's own `valid_until` has passed.
++  bool get isRevocationExpired => _clock().toUtc().isAfter(
++    revocations.validUntil.toUtc(),
++  );
++
+   String? get writeDisabledReason {
+     if (packRevoked) return 'Library pack is revoked.';
++    if (isRevocationExpired) return 'revocation list expired';
+     if (isRevocationStale) return 'revocation data stale';
+     return null;
+   }
+@@ -150,13 +184,16 @@ class InstalledLibrary {
+     String profileId, [
+     DeviceCapability capability = DeviceCapability.writeParameter,
+   ]) {
+-    if (packRevoked || isRevocationStale) return false;
++    if (packRevoked || isRevocationStale || isRevocationExpired) return false;
+     if (revokedProfileIds.contains(profileId)) return false;
+     return registry.profileCanWrite(profileId, capability);
+   }
+ 
+   bool get showRevokedBanner =>
+-      packRevoked || revokedProfileIds.isNotEmpty || isRevocationStale;
++      packRevoked ||
++      revokedProfileIds.isNotEmpty ||
++      isRevocationStale ||
++      isRevocationExpired;
+ }
+ 
+ class LibrarySync {
+@@ -175,11 +212,48 @@ class LibrarySync {
+   final DateTime Function() _clock;
+   InstalledLibrary? _installed;
+   int _highestRevocationSequence = 0;
++  String? _highestRevocationPayload;
++  bool _sequenceLoaded = false;
+ 
+   InstalledLibrary? get installed => _installed;
+   LibraryPack? get lastKnownGood => _installed?.pack;
+   int get highestRevocationSequence => _highestRevocationSequence;
+ 
++  /// Loads the persisted highest sequence (if the store supports it) once.
++  Future<void> _ensureSequenceLoaded() async {
++    if (_sequenceLoaded) return;
++    final sequenceStore = store;
++    if (sequenceStore is RevocationSequenceStore) {
++      final persisted = await sequenceStore.loadHighestRevocationSequence();
++      if (persisted > _highestRevocationSequence) {
++        _highestRevocationSequence = persisted;
++      }
++    }
++    _sequenceLoaded = true;
++  }
++
++  /// A list is acceptable when its sequence is higher than any seen before, or
++  /// equal to the highest seen: re-applying the same list for another pack, or
++  /// after a restart (only the number is persisted, so the content can only be
++  /// compared within one run). Lower sequences are replays and are rejected.
++  bool _sequenceAcceptable(RevocationList revocations) {
++    if (revocations.sequence > _highestRevocationSequence) return true;
++    if (revocations.sequence < _highestRevocationSequence) return false;
++    return _highestRevocationPayload == null ||
++        canonicalJson(revocations.payload) == _highestRevocationPayload;
++  }
++
++  Future<void> _acceptSequence(RevocationList revocations) async {
++    _highestRevocationSequence = revocations.sequence;
++    _highestRevocationPayload = canonicalJson(revocations.payload);
++    final sequenceStore = store;
++    if (sequenceStore is RevocationSequenceStore) {
++      await sequenceStore.saveHighestRevocationSequence(
++        _highestRevocationSequence,
++      );
++    }
++  }
++
+   void recordRevocationSequence(int sequence) {
+     if (_highestRevocationSequence > 0 &&
+         sequence <= _highestRevocationSequence) {
+@@ -202,10 +276,8 @@ class LibrarySync {
+         !await verifier.verifyPayload(pack.payload, pack.signature)) {
+       return false;
+     }
+-    if (_highestRevocationSequence > 0 &&
+-        revocations.sequence <= _highestRevocationSequence) {
+-      return false;
+-    }
++    await _ensureSequenceLoaded();
++    if (!_sequenceAcceptable(revocations)) return false;
+     final hashKeys = pack.profileHashes.keys.toSet();
+     final profileKeys = pack.profiles.keys.toSet();
+     if (revocations.revokedPackIds.contains(pack.id) ||
+@@ -229,7 +301,7 @@ class LibrarySync {
+       technicianMode: true,
+     );
+     await store.save(pack);
+-    _highestRevocationSequence = revocations.sequence;
++    await _acceptSequence(revocations);
+     _installed = InstalledLibrary(
+       pack: pack,
+       registry: registry,
+@@ -259,10 +331,9 @@ class LibrarySync {
+     )) {
+       return false;
+     }
+-    if (revocations.sequence <= _highestRevocationSequence) {
+-      return false;
+-    }
+-    _highestRevocationSequence = revocations.sequence;
++    await _ensureSequenceLoaded();
++    if (!_sequenceAcceptable(revocations)) return false;
++    await _acceptSequence(revocations);
+     final current = _installed;
+     if (current == null) return true;
+     _installed = InstalledLibrary(
+diff --git a/test/contribution_platform_test.dart b/test/contribution_platform_test.dart
+index 9de9e2c..2b03482 100644
+--- a/test/contribution_platform_test.dart
++++ b/test/contribution_platform_test.dart
+@@ -422,21 +422,31 @@ void main() {
+       );
+     }
+ 
++    // The signature must cover the list's own payload (sequence, issued_at,
++    // valid_until, revoked ids), exactly as the verifier recomputes it.
+     Future<RevocationList> revocations(
+       Set<String> ids, {
+       Set<String> profiles = const {},
++      int sequence = 1,
+     }) async {
+-      final payload = {
+-        'revoked_packs': ids.toList()..sort(),
+-        'revoked_profiles': profiles.toList()..sort(),
+-      };
++      final unsigned = RevocationList(
++        sequence: sequence,
++        revokedPackIds: ids,
++        revokedProfileIds: profiles,
++      );
+       return RevocationList(
++        sequence: sequence,
++        issuedAt: unsigned.issuedAt,
++        validUntil: unsigned.validUntil,
+         revokedPackIds: ids,
+         revokedProfileIds: profiles,
+-        signature: await signer.signPayload(payload),
++        signature: await signer.signPayload(unsigned.payload),
+       );
+     }
+ 
++    // Fixed clock inside the default revocation list's freshness window.
++    DateTime freshClock() => DateTime.utc(2026, 1, 5);
++
+     test('accepts valid pack and retains last known good', () async {
+       final sync = LibrarySync(
+         verifier: Ed25519TrustVerifier(signer.publicKeyBytes),
+@@ -492,6 +502,7 @@ void main() {
+         verifier: verifier,
+         appVersion: 2,
+         store: store,
++        clock: freshClock,
+       );
+       expect(
+         await first.apply(
+@@ -505,6 +516,7 @@ void main() {
+         verifier: verifier,
+         appVersion: 2,
+         store: store,
++        clock: freshClock,
+       );
+       expect(
+         await restarted.restoreOffline(
+@@ -514,7 +526,9 @@ void main() {
+         isTrue,
+       );
+       expect(
+-        await restarted.refreshRevocations(await revocations({'stable'})),
++        await restarted.refreshRevocations(
++          await revocations({'stable'}, sequence: 2),
++        ),
+         isTrue,
+       );
+       expect(restarted.installed!.showRevokedBanner, isTrue);
+@@ -536,6 +550,12 @@ void main() {
+                   : 'verifiedDocument',
+             );
+         json['capabilities'] = capabilities;
++        json['approval'] = {
++          'lifecycle_stage': 'published',
++          'approved_by_role': 'approvalEngineer',
++          'hardware_validation_record_id': 'hw-validation-001',
++          'verified_capabilities': ['writeParameter'],
++        };
+         final profile = await signer.signProfile(jsonEncode(json));
+         final payload = {
+           'id': 'physical-pack',
+@@ -557,6 +577,7 @@ void main() {
+           verifier: Ed25519TrustVerifier(signer.publicKeyBytes),
+           appVersion: 2,
+           store: _MemoryPackStore(),
++          clock: freshClock,
+         );
+         expect(
+           await sync.apply(
+@@ -568,7 +589,7 @@ void main() {
+         );
+         expect(sync.installed!.profileCanWrite('physical.profile'), isTrue);
+         await sync.refreshRevocations(
+-          await revocations({}, profiles: {'physical.profile'}),
++          await revocations({}, profiles: {'physical.profile'}, sequence: 2),
+         );
+         expect(sync.installed!.profileCanWrite('physical.profile'), isFalse);
+         expect(sync.installed!.showRevokedBanner, isTrue);
+diff --git a/test/m3_modbus_profile_inverter_test.dart b/test/m3_modbus_profile_inverter_test.dart
+index 3d6fd20..00aad3a 100644
+--- a/test/m3_modbus_profile_inverter_test.dart
++++ b/test/m3_modbus_profile_inverter_test.dart
+@@ -48,7 +48,9 @@ void main() {
+       );
+       final stream = ModbusRtuStreamDecoder();
+       expect(stream.add([99, 88, ...bytes.take(3)]), isEmpty);
+-      expect(stream.add(bytes.skip(3).toList()).single.data, [2, 0, 42]);
++      final results = stream.add(bytes.skip(3).toList());
++      expect(results.single, isA<SuccessFrameResult>());
++      expect((results.single as SuccessFrameResult).frame.data, [2, 0, 42]);
+       expect(
+         ModbusRtuCodec.interFrameDelay(9600).inMicroseconds,
+         greaterThanOrEqualTo(4000),
+@@ -56,6 +58,63 @@ void main() {
+       expect(ModbusRtuCodec.interFrameDelay(38400).inMicroseconds, 1750);
+     });
+ 
++    group('RTU stream decoder exception frames (X1)', () {
++      List<int> exceptionFrame() {
++        final body = [1, 0x83, 2];
++        final crc = ModbusCrc16.calculate(body);
++        return [...body, crc & 0xff, crc >> 8];
++      }
++
++      List<int> normalFrame() => const ModbusRtuCodec().encode(
++        const ModbusRtuFrame(address: 1, functionCode: 3, data: [2, 0, 42]),
++      );
++
++      test('exception followed by a normal frame in one chunk', () {
++        final stream = ModbusRtuStreamDecoder();
++        final results = stream.add([...exceptionFrame(), ...normalFrame()]);
++        expect(results, hasLength(2));
++        expect(results[0], isA<ExceptionFrameResult>());
++        final exception = (results[0] as ExceptionFrameResult).exception;
++        expect(exception.functionCode, 3);
++        expect(exception.exceptionCode, 2);
++        expect(results[1], isA<SuccessFrameResult>());
++        expect((results[1] as SuccessFrameResult).frame.data, [2, 0, 42]);
++      });
++
++      test('exception split across chunks is returned once', () {
++        final stream = ModbusRtuStreamDecoder();
++        final bytes = exceptionFrame();
++        expect(stream.add(bytes.take(3).toList()), isEmpty);
++        final results = stream.add(bytes.skip(3).toList());
++        expect(results.single, isA<ExceptionFrameResult>());
++      });
++
++      test('buffer is consumed after an exception (no re-emission)', () {
++        final stream = ModbusRtuStreamDecoder();
++        expect(
++          stream.add(exceptionFrame()).single,
++          isA<ExceptionFrameResult>(),
++        );
++        expect(stream.add(const []), isEmpty);
++        final next = stream.add(normalFrame());
++        expect(next, hasLength(1));
++        expect(next.single, isA<SuccessFrameResult>());
++      });
++
++      test('noise before an exception frame is discarded', () {
++        final stream = ModbusRtuStreamDecoder();
++        final results = stream.add([0x55, 0xaa, ...exceptionFrame()]);
++        expect(results.single, isA<ExceptionFrameResult>());
++      });
++
++      test('two normal frames back to back are both returned in order', () {
++        final stream = ModbusRtuStreamDecoder();
++        final results = stream.add([...normalFrame(), ...normalFrame()]);
++        expect(results, hasLength(2));
++        expect(results.every((item) => item is SuccessFrameResult), isTrue);
++      });
++    });
++
+     test('RTU surfaces protocol exception and timeout', () async {
+       final body = [1, 0x83, 2];
+       final crc = ModbusCrc16.calculate(body);
+diff --git a/test/r4_diagnostics_test.dart b/test/r4_diagnostics_test.dart
+new file mode 100644
+index 0000000..08c6664
+--- /dev/null
++++ b/test/r4_diagnostics_test.dart
+@@ -0,0 +1,132 @@
++import 'dart:io';
++
++import 'package:flutter_test/flutter_test.dart';
++import 'package:solardiag_pro/core/battery_models.dart';
++import 'package:solardiag_pro/diagnostics/battery_diagnostics.dart';
++import 'package:solardiag_pro/diagnostics/diagnostic_models.dart';
++import 'package:solardiag_pro/simulator/simulation_scenario.dart';
++
++TelemetrySnapshot _withSoh(TelemetrySnapshot base, Measurement soh) =>
++    TelemetrySnapshot(
++      voltage: base.voltage,
++      current: base.current,
++      power: base.power,
++      soc: base.soc,
++      soh: soh,
++      remainingCapacity: base.remainingCapacity,
++      fullChargeCapacity: base.fullChargeCapacity,
++      cycleCount: base.cycleCount,
++      cellMeasurements: base.cellMeasurements,
++      temperatureSensors: base.temperatureSensors,
++      chargeMosfet: base.chargeMosfet,
++      dischargeMosfet: base.dischargeMosfet,
++      contactor: base.contactor,
++      balancingMask: base.balancingMask,
++      chargeCurrentLimit: base.chargeCurrentLimit,
++      dischargeCurrentLimit: base.dischargeCurrentLimit,
++      chargeVoltageLimit: base.chargeVoltageLimit,
++      rawAlarmBits: base.rawAlarmBits,
++      rawProtectionBits: base.rawProtectionBits,
++      linkStatus: base.linkStatus,
++      timestamp: base.timestamp,
++      staleAfter: base.staleAfter,
++    );
++
++TelemetrySnapshot _withCells(
++  TelemetrySnapshot base,
++  List<Measurement> cells,
++) => TelemetrySnapshot(
++  voltage: base.voltage,
++  current: base.current,
++  power: base.power,
++  soc: base.soc,
++  soh: base.soh,
++  remainingCapacity: base.remainingCapacity,
++  fullChargeCapacity: base.fullChargeCapacity,
++  cycleCount: base.cycleCount,
++  cellMeasurements: cells,
++  temperatureSensors: base.temperatureSensors,
++  chargeMosfet: base.chargeMosfet,
++  dischargeMosfet: base.dischargeMosfet,
++  contactor: base.contactor,
++  balancingMask: base.balancingMask,
++  chargeCurrentLimit: base.chargeCurrentLimit,
++  dischargeCurrentLimit: base.dischargeCurrentLimit,
++  chargeVoltageLimit: base.chargeVoltageLimit,
++  rawAlarmBits: base.rawAlarmBits,
++  rawProtectionBits: base.rawProtectionBits,
++  linkStatus: base.linkStatus,
++  timestamp: base.timestamp,
++  staleAfter: base.staleAfter,
++);
++
++void main() {
++  final base = ScenarioFactory.create(SimulationScenario.healthy).snapshot;
++  const diagnostics = BatteryDiagnostics();
++
++  test('SOH absent in the snapshot stays unavailable with a reason', () {
++    final assessment = diagnostics.analyze(base);
++    expect(assessment.stateOfHealth, isNull);
++    expect(assessment.reason, 'SOH_NOT_REPORTED_OR_DERIVABLE');
++  });
++
++  test('device-reported SOH is used and not discarded (R4 Z2)', () {
++    final reported = _withSoh(
++      base,
++      Measurement.value(91.5, '%', timestamp: base.timestamp),
++    );
++    final assessment = diagnostics.analyze(reported);
++    expect(assessment.stateOfHealth, 91.5);
++    expect(assessment.reason, 'SOH_DEVICE_REPORTED');
++  });
++
++  test('absent cells are counted and lower the confidence (R4 Z2)', () {
++    final cells = [...base.cellMeasurements];
++    cells[3] = Measurement.absent(
++      DataAbsenceReason.readFailed,
++      unit: 'V',
++      timestamp: base.timestamp,
++    );
++    final assessment = diagnostics.analyze(_withCells(base, cells));
++    final finding = assessment.findings.firstWhere(
++      (item) => item.code == 'CELL_DELTA',
++    );
++    expect(finding.evidence['cell_count_expected'], 16);
++    expect(finding.evidence['cell_count_used'], 15);
++    expect(finding.confidence, DiagnosticConfidence.medium);
++  });
++
++  test('complete cell data keeps high confidence', () {
++    final finding = diagnostics
++        .analyze(base)
++        .findings
++        .firstWhere((item) => item.code == 'CELL_DELTA');
++    expect(finding.evidence['cell_count_expected'], 16);
++    expect(finding.evidence['cell_count_used'], 16);
++    expect(finding.confidence, DiagnosticConfidence.high);
++  });
++
++  test('standard deviation uses a real square root', () {
++    final stdDev = diagnostics.cellStandardDeviation(base);
++    expect(stdDev, isNotNull);
++    expect(stdDev!, greaterThan(0));
++    expect(stdDev, lessThan(0.01));
++  });
++
++  test('architecture: core, diagnostics and integration never import the '
++      'simulator', () {
++    for (final directory in ['lib/core', 'lib/diagnostics', 'lib/integration']) {
++      for (final file in Directory(directory)
++          .listSync(recursive: true)
++          .whereType<File>()
++          .where((file) => file.path.endsWith('.dart'))) {
++        final source = file.readAsStringSync();
++        expect(
++          source.contains("simulator/"),
++          isFalse,
++          reason: '${file.path} must not depend on lib/simulator',
++        );
++      }
++    }
++  });
++}
+diff --git a/test/r4_trust_test.dart b/test/r4_trust_test.dart
+new file mode 100644
+index 0000000..55853c8
+--- /dev/null
++++ b/test/r4_trust_test.dart
+@@ -0,0 +1,262 @@
++import 'dart:io';
++
++import 'package:flutter_test/flutter_test.dart';
++import 'package:solardiag_pro/core/battery_models.dart';
++import 'package:solardiag_pro/protocol/capabilities.dart';
++import 'package:solardiag_pro/protocol/device_profile.dart';
++import 'package:solardiag_pro/trust/profile_integrity.dart';
++import 'package:solardiag_pro/trust/signed_tokens.dart';
++
++import 'support/test_signer.dart';
++
++DeviceProfile _profile({
++  Map<DeviceCapability, VerificationStatus> capabilities = const {},
++  List<ParameterAccess> access = const [],
++}) => DeviceProfile(
++  schemaVersion: 2,
++  id: 'test.profile',
++  category: 'bms',
++  manufacturer: 'Test',
++  family: 'Test',
++  models: const ['T1'],
++  firmwareRanges: const ['1.0'],
++  provenance: Provenance(
++    source: 'test',
++    documentId: 'doc',
++    retrievedOn: DateTime.utc(2026, 1, 1),
++    verifiedBy: 'tester',
++  ),
++  transport: const TransportRequirement(
++    interfaceType: InterfaceType.can,
++    listenOnlyByDefault: true,
++  ),
++  capabilities: CapabilitySet(capabilities),
++  allowedReadFrames: const {},
++  allowedModbusReadRanges: const [],
++  telemetryMap: const [],
++  alarmDictionary: const {},
++  parameters: [
++    for (var i = 0; i < access.length; i++)
++      ProfileParameterDefinition(
++        id: 'p$i',
++        label: const LocalizedText(en: 'Parameter', ar: 'معامل'),
++        access: access[i],
++        definition: const {},
++      ),
++  ],
++  topology: const {},
++  inverterLink: const {},
++  testVectors: const [],
++  connectionChecklist: const [],
++  simulated: false,
++);
++
++class _SequenceStore implements LibraryPackStore, RevocationSequenceStore {
++  LibraryPack? pack;
++  int sequence = 0;
++  @override
++  Future<LibraryPack?> load() async => pack;
++  @override
++  Future<void> save(LibraryPack value) async => pack = value;
++  @override
++  Future<int> loadHighestRevocationSequence() async => sequence;
++  @override
++  Future<void> saveHighestRevocationSequence(int value) async =>
++      sequence = value;
++}
++
++void main() {
++  group('R4 Y4: hasWriteCapability covers every claimed status', () {
++    for (final capability in [
++      DeviceCapability.writeParameter,
++      DeviceCapability.calibrate,
++    ]) {
++      for (final entry in {
++        VerificationStatus.verifiedHardware: true,
++        VerificationStatus.verifiedDocument: true,
++        VerificationStatus.communitySourced: true,
++        VerificationStatus.researchTarget: false,
++        VerificationStatus.simulated: false,
++        VerificationStatus.studioDraft: false,
++      }.entries) {
++        test('${capability.name} as ${entry.key.name} -> ${entry.value}', () {
++          final profile = _profile(capabilities: {capability: entry.key});
++          expect(profile.hasWriteCapability, entry.value);
++        });
++      }
++    }
++
++    test('read-only parameters alone do not imply write capability', () {
++      expect(
++        _profile(access: const [ParameterAccess.readOnly]).hasWriteCapability,
++        isFalse,
++      );
++    });
++
++    for (final access in [
++      ParameterAccess.readWrite,
++      ParameterAccess.writeOnly,
++      ParameterAccess.calibrate,
++      ParameterAccess.factory,
++    ]) {
++      test('a ${access.name} parameter implies write capability', () {
++        expect(_profile(access: [access]).hasWriteCapability, isTrue);
++      });
++    }
++
++    test('approval needs a non-empty hardware validation record id', () {
++      const withoutRecord = ProfileApproval(
++        lifecycleStage: 'published',
++        approvedByRole: 'approvalEngineer',
++        verifiedCapabilities: ['writeParameter'],
++      );
++      expect(
++        withoutRecord.isApprovedFor(DeviceCapability.writeParameter),
++        isFalse,
++      );
++      const withRecord = ProfileApproval(
++        lifecycleStage: 'published',
++        approvedByRole: 'approvalEngineer',
++        hardwareValidationRecordId: 'hw-001',
++        verifiedCapabilities: ['writeParameter'],
++      );
++      expect(
++        withRecord.isApprovedFor(DeviceCapability.writeParameter),
++        isTrue,
++      );
++    });
++  });
++
++  test('architecture: the registry has no unverified registration back door', () {
++    final source = File('lib/protocol/profile_registry.dart').readAsStringSync();
++    expect(source.contains('registerExternalProfile'), isFalse);
++  });
++
++  group('R4 Y5: revocation sequence and expiry', () {
++    late TestSigner signer;
++    late String simulatorProfile;
++    setUp(() async {
++      signer = await TestSigner.create(7);
++      simulatorProfile = await File(
++        'device_profiles/batteries/_simulated/solardiag_sim.json',
++      ).readAsString();
++    });
++
++    Future<LibraryPack> pack(int version) async {
++      final profile = await signer.signProfile(simulatorProfile);
++      final expires = DateTime.utc(2027);
++      final payload = {
++        'id': 'stable',
++        'version': version,
++        'min_app_version': 1,
++        'expires_at': expires.toIso8601String(),
++        'profile_hashes': {'sim': profile.contentHash},
++      };
++      return LibraryPack(
++        id: 'stable',
++        version: version,
++        minAppVersion: 1,
++        expiresAt: expires,
++        profileHashes: {'sim': profile.contentHash},
++        profiles: {'sim': profile},
++        signature: await signer.signPayload(payload),
++      );
++    }
++
++    Future<RevocationList> list(int sequence, {DateTime? validUntil}) async {
++      final unsigned = RevocationList(
++        sequence: sequence,
++        validUntil: validUntil,
++      );
++      return RevocationList(
++        sequence: sequence,
++        issuedAt: unsigned.issuedAt,
++        validUntil: unsigned.validUntil,
++        signature: await signer.signPayload(unsigned.payload),
++      );
++    }
++
++    LibrarySync sync(_SequenceStore store, {DateTime? now}) => LibrarySync(
++      verifier: Ed25519TrustVerifier(signer.publicKeyBytes),
++      appVersion: 2,
++      store: store,
++      clock: () => now ?? DateTime.utc(2026, 1, 5),
++    );
++
++    test('the same list can be applied again for a newer pack', () async {
++      final store = _SequenceStore();
++      final library = sync(store);
++      final revocations = await list(3);
++      expect(
++        await library.apply(
++          await pack(1),
++          now: DateTime.utc(2026),
++          revocations: revocations,
++        ),
++        isTrue,
++      );
++      expect(
++        await library.apply(
++          await pack(2),
++          now: DateTime.utc(2026),
++          revocations: revocations,
++        ),
++        isTrue,
++      );
++    });
++
++    test('a replayed older list is rejected after an app restart', () async {
++      final store = _SequenceStore();
++      expect(
++        await sync(store).apply(
++          await pack(1),
++          now: DateTime.utc(2026),
++          revocations: await list(5),
++        ),
++        isTrue,
++      );
++      expect(store.sequence, 5, reason: 'highest sequence must be persisted');
++
++      final restarted = sync(store); // new process: memory is empty
++      expect(
++        await restarted.apply(
++          await pack(2),
++          now: DateTime.utc(2026),
++          revocations: await list(4),
++        ),
++        isFalse,
++      );
++      expect(await restarted.refreshRevocations(await list(4)), isFalse);
++      expect(await restarted.refreshRevocations(await list(6)), isTrue);
++      expect(store.sequence, 6);
++    });
++
++    test('the persisted sequence file survives with FileLibraryPackStore',
++        () async {
++      final directory = await Directory.systemTemp.createTemp('r4_revseq_');
++      addTearDown(() => directory.delete(recursive: true));
++      final store = FileLibraryPackStore('${directory.path}/pack.json');
++      expect(await store.loadHighestRevocationSequence(), 0);
++      await store.saveHighestRevocationSequence(9);
++      expect(await store.loadHighestRevocationSequence(), 9);
++    });
++
++    test('an expired revocation list disables writes with a reason', () async {
++      final store = _SequenceStore();
++      final library = sync(store, now: DateTime.utc(2026, 1, 5));
++      await library.apply(
++        await pack(1),
++        now: DateTime.utc(2026),
++        revocations: await list(
++          1,
++          validUntil: DateTime.utc(2026, 1, 3),
++        ),
++      );
++      final installed = library.installed!;
++      expect(installed.isRevocationExpired, isTrue);
++      expect(installed.writeDisabledReason, contains('expired'));
++      expect(installed.profileCanWrite('anything'), isFalse);
++      expect(installed.showRevokedBanner, isTrue);
++    });
++  });
++}
+diff --git a/test/t1_safety_and_trust_test.dart b/test/t1_safety_and_trust_test.dart
+index e43f850..00da43b 100644
+--- a/test/t1_safety_and_trust_test.dart
++++ b/test/t1_safety_and_trust_test.dart
+@@ -391,9 +391,21 @@ void main() {
+       );
+       expect(approvalRoleMismatch.isApprovedFor(DeviceCapability.writeParameter), isFalse);
+ 
++      const approvalWithoutEvidence = ProfileApproval(
++        approvedByRole: 'approvalEngineer',
++        lifecycleStage: 'published',
++        verifiedCapabilities: ['writeParameter'],
++      );
++      expect(
++        approvalWithoutEvidence.isApprovedFor(DeviceCapability.writeParameter),
++        isFalse,
++        reason: 'approval needs a hardware validation record id',
++      );
++
+       const approvalValid = ProfileApproval(
+         approvedByRole: 'approvalEngineer',
+         lifecycleStage: 'published',
++        hardwareValidationRecordId: 'hw-validation-001',
+         verifiedCapabilities: ['writeParameter'],
+       );
+       expect(approvalValid.isApprovedFor(DeviceCapability.writeParameter), isTrue);
+-- 
+2.43.0
+

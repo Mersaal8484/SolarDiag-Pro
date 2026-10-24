@@ -57,9 +57,11 @@ void main() {
       final document = File(
         'device_profiles/batteries/_simulated/solardiag_sim.json',
       ).readAsStringSync();
-      profile = ProfileRegistry.fromJsonDocuments([
-        document,
-      ], technicianMode: true).profiles.single;
+      profile = ProfileRegistry.fromJsonDocuments(
+        [document],
+        technicianMode: true,
+        isBundled: true,
+      ).profiles.single;
     });
     test(
       'single passive observation needs confirmation without transmitting',

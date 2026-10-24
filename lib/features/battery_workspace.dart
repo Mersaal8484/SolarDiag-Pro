@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 
 import '../core/battery_models.dart';
-import '../design/components.dart';
-import '../design/solar_icon.dart';
-import '../design/solar_icons.g.dart';
-import '../design/accessibility.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../session/device_session.dart';
 
@@ -21,19 +18,14 @@ enum BatterySection {
 }
 
 class BatteryWorkspace extends StatefulWidget {
-  const BatteryWorkspace({
-    super.key,
-    this.initialSection = BatterySection.overview,
-  });
-
-  final BatterySection initialSection;
+  const BatteryWorkspace({super.key});
 
   @override
   State<BatteryWorkspace> createState() => _BatteryWorkspaceState();
 }
 
 class _BatteryWorkspaceState extends State<BatteryWorkspace> {
-  late BatterySection section = widget.initialSection;
+  BatterySection section = BatterySection.overview;
 
   @override
   Widget build(BuildContext context) {
@@ -43,12 +35,11 @@ class _BatteryWorkspaceState extends State<BatteryWorkspace> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 56),
         children: [
-          Text(
-            s.batteryBmsDiagnostics,
-            style: Theme.of(context).textTheme.displaySmall,
+          PrecisionPageHeading(
+            title: s.batteryBmsDiagnostics,
+            subtitle: s.batteryWorkspaceDescription,
+            icon: Icons.battery_charging_full_outlined,
           ),
-          const SizedBox(height: 8),
-          Text(s.batteryWorkspaceDescription),
           const SizedBox(height: 18),
           SingleChildScrollView(
             key: const Key('battery-section-scroll'),
@@ -57,47 +48,47 @@ class _BatteryWorkspaceState extends State<BatteryWorkspace> {
               segments: [
                 ButtonSegment(
                   value: BatterySection.overview,
-                  icon: const SolarIcon(SolarIcons.home),
+                  icon: const Icon(Icons.dashboard_outlined),
                   label: Text(s.overview),
                 ),
                 ButtonSegment(
                   value: BatterySection.cells,
-                  icon: const SolarIcon(SolarIcons.cellGrid),
+                  icon: const Icon(Icons.grid_view_outlined),
                   label: Text(s.cellMonitoring),
                 ),
                 ButtonSegment(
                   value: BatterySection.temperature,
-                  icon: const SolarIcon(SolarIcons.temperature),
+                  icon: const Icon(Icons.thermostat_outlined),
                   label: Text(s.temperature),
                 ),
                 ButtonSegment(
                   value: BatterySection.faults,
-                  icon: const SolarIcon(SolarIcons.warning),
+                  icon: const Icon(Icons.warning_amber_outlined),
                   label: Text(s.faultDiagnostics),
                 ),
                 ButtonSegment(
                   value: BatterySection.balancing,
-                  icon: const SolarIcon(SolarIcons.balancing),
+                  icon: const Icon(Icons.balance),
                   label: Text(s.cellBalancing),
                 ),
                 ButtonSegment(
                   value: BatterySection.health,
-                  icon: const SolarIcon(SolarIcons.soh),
+                  icon: const Icon(Icons.monitor_heart_outlined),
                   label: Text(s.batteryHealth),
                 ),
                 ButtonSegment(
                   value: BatterySection.service,
-                  icon: const SolarIcon(SolarIcons.configure),
+                  icon: const Icon(Icons.build_outlined),
                   label: Text(s.serviceFunctions),
                 ),
                 ButtonSegment(
                   value: BatterySection.reports,
-                  icon: const SolarIcon(SolarIcons.report),
+                  icon: const Icon(Icons.description_outlined),
                   label: Text(s.reports),
                 ),
                 ButtonSegment(
                   value: BatterySection.parallel,
-                  icon: const SolarIcon(SolarIcons.parallelBank),
+                  icon: const Icon(Icons.account_tree_outlined),
                   label: Text(s.parallelBank),
                 ),
               ],
@@ -139,12 +130,7 @@ class _Balancing extends StatelessWidget {
         const SizedBox(height: 12),
         Card(
           child: ListTile(
-            leading: mask.value != null && mask.value != 0
-                ? const SolarAnimatedIcon(
-                    icon: SolarIcons.balancing,
-                    state: SolarAnimatedIconState.balancing,
-                  )
-                : const SolarIcon(SolarIcons.evidence),
+            leading: const Icon(Icons.info_outline),
             title: Text(
               mask.value == null
                   ? s.balancingUnavailable
@@ -202,17 +188,17 @@ class _ServiceFunctions extends StatelessWidget {
         _LockedService(
           title: s.configurationParameters,
           detail: s.simulatedWriteOnly,
-          icon: SolarIcons.configure,
+          icon: Icons.tune,
         ),
         _LockedService(
           title: s.calibration,
           detail: s.noVerifiedCalibrationProcedure,
-          icon: SolarIcons.calibrate,
+          icon: Icons.straighten_outlined,
         ),
         _LockedService(
           title: s.factoryFunctions,
           detail: s.factoryFunctionsUnavailable,
-          icon: SolarIcons.factory,
+          icon: Icons.factory_outlined,
         ),
       ],
     );
@@ -227,15 +213,15 @@ class _LockedService extends StatelessWidget {
   });
   final String title;
   final String detail;
-  final SolarIconData icon;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) => Card(
     child: ListTile(
-      leading: SolarIcon(icon),
+      leading: Icon(icon),
       title: Text(title),
       subtitle: Text(detail),
-      trailing: const SolarIcon(SolarIcons.locked),
+      trailing: const Icon(Icons.lock_outline),
     ),
   );
 }
@@ -294,10 +280,6 @@ class _Cells extends StatelessWidget {
     if (cells.isEmpty) return _Unavailable(s.noCellReadings);
     final minimum = cells.first;
     final maximum = cells.last;
-    final orderedValues = snapshot.cellMeasurements
-        .map((measurement) => measurement.value)
-        .nonNulls
-        .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -309,19 +291,19 @@ class _Cells extends StatelessWidget {
               s.minimumCell,
               s.cellVoltageValue(
                 minimum.index + 1,
-                localizedNumber(context, minimum.value, fractionDigits: 3),
+                minimum.value.toStringAsFixed(3),
               ),
             ),
             _SummaryCard(
               s.maximumCell,
               s.cellVoltageValue(
                 maximum.index + 1,
-                localizedNumber(context, maximum.value, fractionDigits: 3),
+                maximum.value.toStringAsFixed(3),
               ),
             ),
             _SummaryCard(
               s.cellDelta,
-              '${localizedNumber(context, (maximum.value - minimum.value) * 1000, fractionDigits: 1)} mV',
+              '${((maximum.value - minimum.value) * 1000).toStringAsFixed(1)} mV',
             ),
           ],
         ),
@@ -341,7 +323,7 @@ class _Cells extends StatelessWidget {
                         Text(s.cellNumber(cell.index + 1)),
                         const SizedBox(height: 6),
                         Text(
-                          '${localizedNumber(context, cell.value, fractionDigits: 3)} V',
+                          '${cell.value.toStringAsFixed(3)} V',
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                       ],
@@ -351,12 +333,6 @@ class _Cells extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 18),
-        CellGrid(values: orderedValues),
-        const SizedBox(height: 18),
-        CellBarChart(values: orderedValues),
-        const SizedBox(height: 18),
-        CellHeatmap(values: orderedValues),
       ],
     );
   }
@@ -372,22 +348,15 @@ class _Temperatures extends StatelessWidget {
     if (snapshot.temperatureSensors.isEmpty) {
       return _Unavailable(s.temperatureUnavailableDetail);
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
       children: [
-        ThermalMap(label: s.temperature, readings: snapshot.temperatureSensors),
-        const SizedBox(height: 18),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            for (final sensor in snapshot.temperatureSensors)
-              _MeasurementCard(
-                '${sensor.label} · ${sensor.kind.name}',
-                sensor.measurement,
-              ),
-          ],
-        ),
+        for (final sensor in snapshot.temperatureSensors)
+          _MeasurementCard(
+            '${sensor.label} · ${sensor.kind.name}',
+            sensor.measurement,
+          ),
       ],
     );
   }
@@ -406,7 +375,7 @@ class _Faults extends StatelessWidget {
         for (final code in alarms)
           Card(
             child: ListTile(
-              leading: const SolarIcon(SolarIcons.warning),
+              leading: const Icon(Icons.warning_amber_outlined),
               title: Text(switch (code) {
                 'CELL_OVERVOLTAGE' => s.cellOvervoltageAlarm,
                 'CELL_OVERTEMPERATURE' => s.temperatureHigh,
@@ -426,36 +395,16 @@ class _MeasurementCard extends StatelessWidget {
   final Measurement value;
 
   @override
-  Widget build(BuildContext context) {
-    final valueLabel = value.value == null
-        ? AppLocalizations.of(context).notReportedByDevice
-        : '${localizedNumber(context, value.value!, fractionDigits: 1)} ${value.unit}';
-    return Semantics(
-      label: '$label, $valueLabel',
-      child: SizedBox(
-        width: 220,
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label),
-                const SizedBox(height: 10),
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Text(
-                    valueLabel,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SizedBox(
+    width: 220,
+    child: PrecisionReading(
+      label: label,
+      value: value.value == null
+          ? AppLocalizations.of(context).notReportedByDevice
+          : value.value!.toStringAsFixed(1),
+      unit: value.value == null ? null : value.unit,
+    ),
+  );
 }
 
 class _SummaryCard extends StatelessWidget {
@@ -466,19 +415,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     width: 220,
-    child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label),
-            const SizedBox(height: 8),
-            Text(value, style: Theme.of(context).textTheme.titleLarge),
-          ],
-        ),
-      ),
-    ),
+    child: PrecisionReading(label: label, value: value),
   );
 }
 
@@ -492,7 +429,7 @@ class _Unavailable extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          const SolarIcon(SolarIcons.evidence),
+          const Icon(Icons.info_outline),
           const SizedBox(width: 12),
           Expanded(child: Text(message)),
         ],

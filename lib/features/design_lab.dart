@@ -1,10 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 
 import '../app/theme.dart';
 import '../design/components.dart';
-import '../design/solar_icon.dart';
 import '../design/solar_icons.g.dart';
 import '../design/tokens.g.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -37,14 +35,10 @@ class DesignLab extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      l10n.designLab,
-                      style: Theme.of(context).textTheme.displaySmall,
-                    ),
-                    const SizedBox(height: SolarSpace.sm),
-                    Text(
-                      l10n.designLabIntro,
-                      style: Theme.of(context).textTheme.bodyLarge,
+                    PrecisionPageHeading(
+                      title: l10n.designLab,
+                      subtitle: l10n.designLabIntro,
+                      icon: Icons.palette_outlined,
                     ),
                   ],
                 ),
@@ -117,10 +111,7 @@ class DesignLab extends StatelessWidget {
                       status: SolarStatus.ok,
                     ),
                     const SizedBox(height: SolarSpace.md),
-                    HexGrid(
-                      title: l10n.evidence,
-                      bytes: Uint8List.fromList(const [1, 3, 0, 0, 0, 2]),
-                    ),
+                    HexGrid(title: l10n.evidence),
                     const SizedBox(height: SolarSpace.md),
                     HypothesisCard(
                       title: l10n.evidence,
@@ -129,16 +120,7 @@ class DesignLab extends StatelessWidget {
                   ],
                 ),
               ),
-              _Section(
-                title: l10n.symbols,
-                child: const Column(
-                  children: [
-                    _AnimatedIconStates(),
-                    SizedBox(height: SolarSpace.lg),
-                    _IconGallery(),
-                  ],
-                ),
-              ),
+              _Section(title: l10n.symbols, child: const _IconGallery()),
             ],
           );
         },
@@ -212,7 +194,14 @@ class _IconGallery extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SolarIcon(icon, size: 24, semanticLabel: icon.name),
+            Icon(
+              _previewIcon(index),
+              size: 24,
+              semanticLabel: icon.name,
+              textDirection: icon.directional
+                  ? Directionality.of(context)
+                  : TextDirection.ltr,
+            ),
             const SizedBox(height: SolarSpace.sm),
             Text(
               icon.name,
@@ -225,36 +214,10 @@ class _IconGallery extends StatelessWidget {
       );
     },
   );
-}
-
-class _AnimatedIconStates extends StatelessWidget {
-  const _AnimatedIconStates();
-
-  @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: SolarSpace.xxl,
-    runSpacing: SolarSpace.md,
-    children: const [
-      SolarAnimatedIcon(
-        icon: SolarIcons.balancing,
-        state: SolarAnimatedIconState.balancing,
-        semanticLabel: 'balancing',
-      ),
-      SolarAnimatedIcon(
-        icon: SolarIcons.battery,
-        state: SolarAnimatedIconState.charging,
-        semanticLabel: 'charging',
-      ),
-      SolarAnimatedIcon(
-        icon: SolarIcons.currentFlow,
-        state: SolarAnimatedIconState.linkPulse,
-        semanticLabel: 'link pulse',
-      ),
-      SolarAnimatedIcon(
-        icon: SolarIcons.search,
-        state: SolarAnimatedIconState.scanning,
-        semanticLabel: 'scanning',
-      ),
-    ],
-  );
+  IconData _previewIcon(int index) => [
+    Icons.wb_sunny_outlined,
+    Icons.battery_charging_full,
+    Icons.monitor_heart_outlined,
+    Icons.hub_outlined,
+  ][index % 4];
 }

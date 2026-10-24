@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solardiag_pro/app/solardiag_app.dart';
+import 'package:solardiag_pro/audit/audit_chain.dart';
+import 'package:solardiag_pro/gateway/gateway_contract.dart';
+import 'package:solardiag_pro/parameters/parameter_models.dart';
+import 'package:solardiag_pro/parameters/write_pipeline.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
 import 'package:solardiag_pro/persistence/local_database.dart';
+import 'package:solardiag_pro/transport/safe_frame_transport.dart';
 
 void main() {
   testWidgets('three-step onboarding persists completion locally', (
@@ -68,14 +73,14 @@ void main() {
 
   testWidgets('switches to Arabic RTL and dark theme', (tester) async {
     await tester.pumpWidget(const SolarDiagApp());
-    await tester.tap(find.byIcon(Icons.language));
+    await tester.tap(find.byKey(const Key('toggle-locale')));
     await tester.pumpAndSettle();
     expect(find.text('الطاقة، بوضوح كامل.'), findsOneWidget);
     expect(
       Directionality.of(tester.element(find.text('الطاقة، بوضوح كامل.'))),
       TextDirection.rtl,
     );
-    await tester.tap(find.byIcon(Icons.contrast));
+    await tester.tap(find.byKey(const Key('toggle-theme')));
     await tester.pumpAndSettle();
     expect(
       Theme.of(tester.element(find.text('الطاقة، بوضوح كامل.'))).brightness,
@@ -208,8 +213,52 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Transmission guard'), findsOneWidget);
-    expect(find.text('Transmission blocked in read-only mode'), findsOneWidget);
+    expect(find.text('No transmission attempted'), findsOneWidget);
+    expect(find.text('Passive session accepted'), findsOneWidget);
     expect(find.text('ENFORCED'), findsNothing);
+  });
+
+  testWidgets('gateway shows a real blocked decision and counters', (
+    tester,
+  ) async {
+    final transport = LoopbackGatewayTransport(
+      mode: GatewayOperatingMode.activeRead,
+      guard: const TransmissionGuard(
+        activeSession: true,
+        profileVerifiedForHardware: false,
+        allowedReadIdentifiers: {0x100},
+      ),
+      maxFramesPerSecond: 5,
+      busLoadCap: 0.2,
+      audit: AuditChain(),
+      negotiationState: GatewayNegotiationState.activeReadAccepted,
+    );
+    final session = DeviceSession(
+      gatewayTransport: transport,
+      autoStart: false,
+    );
+    addTearDown(session.dispose);
+
+    await expectLater(
+      transport.send(
+        const BusFrame(identifier: 0x200, payload: [1]),
+        TransmissionPurpose.documentedRead,
+      ),
+      throwsStateError,
+    );
+    await tester.pumpWidget(
+      SolarDiagApp(session: session, initialRoute: '/gateway'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Blocked'), findsOneWidget);
+    expect(find.text('1'), findsNWidgets(2));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('gateway-last-decision-reason')),
+      250,
+    );
+    expect(find.text('Frame is not in the read allow-list.'), findsOneWidget);
+    expect(find.text('Active-read session accepted'), findsOneWidget);
   });
 
   testWidgets('parameters are read from adapter and backup is functional', (
@@ -284,9 +333,30 @@ void main() {
     await session.refresh();
     await session.refreshParameters();
     session.createParameterBackup();
+    await session.auth.unlock(
+      tier: AuthorizationTier.technician,
+      credentials: 'pin',
+    );
+    final before = session.parameters['charge_limit']!;
+    final context = session.createWriteContext();
+    final diffHash = VerifiedWritePipeline.previewHash(
+      ParameterChange(
+        definition: DeviceSession.parameterDefinitions['charge_limit']!,
+        requestedValue: 54.8,
+      ),
+      before,
+      context,
+    );
     await session.applySimulatedParameterChange(
       parameterId: 'charge_limit',
       requestedValue: 54.8,
+      authorization: session.auth.current!,
+      confirmation: ConfirmationToken(
+        diffHash: diffHash,
+        deviceId: context.deviceId,
+        sessionId: context.sessionId,
+        expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+      ),
       safetyAcknowledged: true,
     );
     await tester.pumpWidget(SolarDiagApp(session: session));
@@ -318,6 +388,8 @@ void main() {
     await tester.tap(find.byKey(const Key('restore-latest-backup')));
     await tester.pumpAndSettle();
     expect(find.text('Restore configuration backup'), findsOneWidget);
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('confirm-backup-restore')));
     await tester.pumpAndSettle();
 

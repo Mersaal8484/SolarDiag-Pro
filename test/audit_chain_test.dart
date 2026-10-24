@@ -14,7 +14,11 @@ class _MemoryAuditStore implements AuditChainStore {
     if (entries == null || head == null) {
       throw const FormatException('Incomplete audit store.');
     }
-    return StoredAuditChain(entries: List.of(entries), head: head, headMac: storedMac);
+    return StoredAuditChain(
+      entries: List.of(entries),
+      head: head,
+      headMac: storedMac,
+    );
   }
 
   @override

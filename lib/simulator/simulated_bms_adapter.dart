@@ -57,11 +57,7 @@ class SimulatedBmsAdapter implements BmsAdapter, SimulatedParameterBackend {
   Future<Map<String, num>> readConfiguration() async => Map.of(_parameters);
 
   @override
-  Future<void> applyRawParameter(
-    String id,
-    int raw,
-    String idempotencyKey,
-  ) async {
+  Future<void> writeParameter(String id, int raw, String idempotencyKey) async {
     if (scenario == SimulationScenario.parameterProfile &&
         frame.metadata['write_failure'] == true) {
       throw StateError('Injected simulated write failure.');

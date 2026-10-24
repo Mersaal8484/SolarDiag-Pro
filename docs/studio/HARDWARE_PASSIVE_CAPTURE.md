@@ -33,3 +33,10 @@ A physical adapter remains **unavailable** until tests demonstrate isolation,
 listen-only behavior, timestamp accuracy, sustained ingestion, overflow/error
 reporting and safe disconnect behavior on every advertised interface. Synthetic
 and imported captures do not constitute physical hardware validation.
+
+Imported captures enter through the Studio wizard, which records source,
+interface settings, device metadata, clock source, and clock accuracy. Large
+captures must use bounded streaming analysis instead of materializing every
+frame in the UI. Before a draft leaves the research workspace, redact secrets
+and identifiers and complete `LEGAL_REVIEW_CHECKLIST.md`; the release gate still
+requires separate authorized physical-hardware evidence.

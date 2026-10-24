@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../app/theme.dart';
-import '../design/solar_icon.dart';
-import '../design/solar_icons.g.dart';
-import '../design/accessibility.dart';
 import '../integration/compatibility_models.dart';
 import '../session/device_session.dart';
 
@@ -12,7 +10,6 @@ class LinkScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     final session = DeviceSessionScope.of(context);
     final assessment = session.compatibilityAssessment;
     final link = session.linkDiagnostics;
@@ -21,26 +18,26 @@ class LinkScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text(
-          s.inverterBatteryLink,
-          style: Theme.of(context).textTheme.displaySmall,
+        PrecisionPageHeading(
+          title: s.inverterBatteryLink,
+          subtitle: s.linkDescription,
+          icon: Icons.hub_outlined,
         ),
-        const SizedBox(height: 8),
-        Text(s.linkDescription),
         const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: palette.labelPrimary,
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF173659), Color(0xFF0A1A30)],
+            ),
             borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: const Color(0xFF355271)),
           ),
           child: Row(
             children: [
-              SolarIcon(
-                SolarIcons.linkDiagnostics,
-                color: palette.simulated,
-                size: 30,
-              ),
+              const Icon(Icons.link, color: SolarColors.lime, size: 30),
               const SizedBox(width: 15),
               Expanded(
                 child: Column(
@@ -51,8 +48,8 @@ class LinkScreen extends StatelessWidget {
                         session.simulated ? s.simulated : s.live,
                         _verdictLabel(s, assessment.verdict),
                       ].join(' · '),
-                      style: TextStyle(
-                        color: palette.background,
+                      style: const TextStyle(
+                        color: SolarColors.onDark,
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
                       ),
@@ -60,10 +57,8 @@ class LinkScreen extends StatelessWidget {
                     Text(
                       delivery == null
                           ? s.deliveryUnavailable
-                          : '${localizedNumber(context, delivery * 100)}% ${s.messageDelivery}',
-                      style: TextStyle(
-                        color: palette.background.withValues(alpha: .72),
-                      ),
+                          : '${(delivery * 100).toStringAsFixed(0)}% ${s.messageDelivery}',
+                      style: const TextStyle(color: SolarColors.onDarkStrong),
                     ),
                   ],
                 ),
@@ -84,7 +79,7 @@ class LinkScreen extends StatelessWidget {
           for (final item in recommendations)
             Card(
               child: ListTile(
-                leading: const SolarIcon(SolarIcons.evidence),
+                leading: const Icon(Icons.tips_and_updates_outlined),
                 title: Text([item.device, item.setting].join(': ')),
                 subtitle: Text(
                   [item.suggestedValue, item.menu, item.reason].join(' · '),
@@ -114,8 +109,8 @@ class _FindingTile extends StatelessWidget {
     final ok = finding.state == CompatibilityState.compatible;
     return Card(
       child: ListTile(
-        leading: SolarIcon(
-          ok ? SolarIcons.confirmedCheck : SolarIcons.warning,
+        leading: Icon(
+          ok ? Icons.check_circle : Icons.help_outline,
           color: ok
               ? Theme.of(context).extension<SolarTokens>()!.success
               : Theme.of(context).extension<SolarTokens>()!.warning,
@@ -123,7 +118,9 @@ class _FindingTile extends StatelessWidget {
         title: Text(_findingTitle(s, finding.code)),
         subtitle: Text(_findingMessage(s, finding)),
         trailing: Text(
-          _compatibilityStateLabel(s, finding.state).toUpperCase(),
+          finding.state == CompatibilityState.unknown
+              ? s.unknown.toUpperCase()
+              : finding.state.name.toUpperCase(),
           style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
         ),
       ),
@@ -132,21 +129,9 @@ class _FindingTile extends StatelessWidget {
 }
 
 String _verdictLabel(AppLocalizations s, IntegrationVerdict verdict) =>
-    switch (verdict) {
-      IntegrationVerdict.compatible => s.compatibilityCompatible,
-      IntegrationVerdict.compatibleWithLimits =>
-        s.compatibilityCompatibleWithLimits,
-      IntegrationVerdict.incompatibleProfile => s.compatibilityIncompatible,
-      IntegrationVerdict.cannotDetermine => s.compatibilityCannotDetermine,
-    };
-
-String _compatibilityStateLabel(AppLocalizations s, CompatibilityState state) =>
-    switch (state) {
-      CompatibilityState.compatible => s.compatibilityStateCompatible,
-      CompatibilityState.attention => s.compatibilityStateAttention,
-      CompatibilityState.incompatible => s.compatibilityStateIncompatible,
-      CompatibilityState.unknown => s.unknown,
-    };
+    verdict == IntegrationVerdict.cannotDetermine
+    ? s.compatibilityCannotDetermine
+    : verdict.name;
 
 String _findingTitle(AppLocalizations s, String code) => switch (code) {
   'CHARGE_VOLTAGE' => s.chargeVoltage,
