@@ -473,23 +473,26 @@ void main() {
   );
 
   group('T1 - S6: Revocation List Anti-Rollback & 14-Day Staleness', () {
-    test('LibrarySync rejects revocation list with sequence rollback', () async {
-      final directory = Directory.systemTemp.createTempSync('t1_revocation_');
-      addTearDown(() => directory.deleteSync(recursive: true));
-      final sync = LibrarySync(
-        verifier: Ed25519TrustVerifier(List<int>.filled(32, 1)),
-        appVersion: 1,
-        store: FileLibraryPackStore('${directory.path}/test_store.json'),
-      );
-      await sync.recordRevocationSequence(5);
-      expect(sync.highestRevocationSequence, 5);
+    test(
+      'LibrarySync rejects revocation list with sequence rollback',
+      () async {
+        final directory = Directory.systemTemp.createTempSync('t1_revocation_');
+        addTearDown(() => directory.deleteSync(recursive: true));
+        final sync = LibrarySync(
+          verifier: Ed25519TrustVerifier(List<int>.filled(32, 1)),
+          appVersion: 1,
+          store: FileLibraryPackStore('${directory.path}/test_store.json'),
+        );
+        await sync.recordRevocationSequence(5);
+        expect(sync.highestRevocationSequence, 5);
 
-      await expectLater(
-        sync.recordRevocationSequence(4),
-        throwsA(isA<StateError>()),
-      );
-      expect(sync.highestRevocationSequence, 5);
-    });
+        await expectLater(
+          sync.recordRevocationSequence(4),
+          throwsA(isA<StateError>()),
+        );
+        expect(sync.highestRevocationSequence, 5);
+      },
+    );
 
     test('InstalledLibrary flags revocation older than 14 days as stale', () {
       final pack = LibraryPack(
