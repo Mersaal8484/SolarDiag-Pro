@@ -9,15 +9,51 @@ abstract interface class TechnicianAuthenticator {
   });
 }
 
-class MockTechnicianAuthenticator implements TechnicianAuthenticator {
-  const MockTechnicianAuthenticator({this.acceptAll = true});
-  final bool acceptAll;
+/// Fail-closed default authenticator. Always rejects authentication attempts.
+class NoAuthenticator implements TechnicianAuthenticator {
+  const NoAuthenticator();
 
   @override
   Future<bool> authenticate({
     required AuthorizationTier tier,
     required String credentials,
-  }) async => acceptAll;
+  }) async => false;
+}
+
+/// Configuration injected into app and test sessions.
+/// In production, [isDemoMode] is false and authentication fails closed unless
+/// an external authentication provider is configured.
+class DemoConfiguration {
+  /// A demo authenticator is never enabled implicitly.  The credential is
+  /// supplied only by the demo/test harness and is deliberately not shipped
+  /// as a literal application secret.
+  const DemoConfiguration({this.isDemoMode = false, required this.demoPin});
+
+  final bool isDemoMode;
+  final String demoPin;
+
+  TechnicianAuthenticator createAuthenticator() {
+    if (!isDemoMode) return const NoAuthenticator();
+    return MockTechnicianAuthenticator(demoPin: demoPin);
+  }
+}
+
+class MockTechnicianAuthenticator implements TechnicianAuthenticator {
+  const MockTechnicianAuthenticator({
+    this.acceptAll = false,
+    required this.demoPin,
+  });
+  final bool acceptAll;
+  final String demoPin;
+
+  @override
+  Future<bool> authenticate({
+    required AuthorizationTier tier,
+    required String credentials,
+  }) async {
+    if (acceptAll) return true;
+    return credentials == demoPin;
+  }
 }
 
 sealed class AuthorizationState {
@@ -45,7 +81,7 @@ class AuthorizationController extends ChangeNotifier {
   AuthorizationController({
     TechnicianAuthenticator? authenticator,
     DateTime Function()? clock,
-  }) : _authenticator = authenticator ?? const MockTechnicianAuthenticator(),
+  }) : _authenticator = authenticator ?? const NoAuthenticator(),
        _clock = clock ?? DateTime.now;
 
   final TechnicianAuthenticator _authenticator;

@@ -46,6 +46,12 @@ void _validateReferences(ReferenceRegistry registry) {
         '${reference.id} has a non-SPDX license identifier: ${reference.license}',
       );
     }
+    if (reference.type == 'open-source-research' &&
+        !RegExp(r'^[0-9a-f]{40}$').hasMatch(reference.exactVersion)) {
+      throw FormatException(
+        '${reference.id} must pin a full 40-character Git commit.',
+      );
+    }
     for (final artifact in reference.derivedArtifacts) {
       if (!File(artifact).existsSync()) {
         throw FormatException(

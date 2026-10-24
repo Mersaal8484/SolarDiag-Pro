@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solardiag_pro/audit/audit_chain.dart';
 import 'package:solardiag_pro/core/battery_models.dart';
@@ -53,13 +52,8 @@ void main() {
 
   group('identification state machine', () {
     late DeviceProfile profile;
-    setUp(() {
-      final document = File(
-        'device_profiles/batteries/_simulated/solardiag_sim.json',
-      ).readAsStringSync();
-      profile = ProfileRegistry.fromJsonDocuments([
-        document,
-      ], technicianMode: true).profiles.single;
+    setUp(() async {
+      profile = (await ProfileRegistry.loadBundledSimulator()).profiles.single;
     });
     test(
       'single passive observation needs confirmation without transmitting',

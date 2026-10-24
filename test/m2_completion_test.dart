@@ -7,8 +7,8 @@ import 'package:solardiag_pro/simulator/simulated_bms_adapter.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
 
 void main() {
-  test('all ten deterministic simulator scenarios are present', () {
-    expect(SimulationScenario.values, hasLength(10));
+  test('all eleven deterministic simulator scenarios are present', () {
+    expect(SimulationScenario.values, hasLength(11));
     for (final scenario in SimulationScenario.values) {
       final first = ScenarioFactory.create(scenario, tick: 3);
       final second = ScenarioFactory.create(scenario, tick: 3);

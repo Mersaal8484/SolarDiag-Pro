@@ -17,8 +17,7 @@ import '../parameters/parameter_models.dart' hide RestorePlan;
 import '../parameters/write_pipeline.dart';
 import '../persistence/local_database.dart';
 import '../protocol/bms_adapter.dart';
-import '../simulator/simulated_bms_adapter.dart';
-import '../simulator/simulated_inverter_adapter.dart';
+import '../protocol/inverter_adapter.dart';
 import '../simulator/simulation_scenario.dart';
 import '../transport/safe_frame_transport.dart';
 
@@ -31,6 +30,11 @@ class DeviceSession extends ChangeNotifier {
     SimulationScenario scenario = SimulationScenario.communicationFaults,
     this.pollInterval = const Duration(milliseconds: 500),
     this.database,
+    this.auditSecretStore,
+    this.batteryIntegrationProfile,
+    this.inverterIntegrationProfile,
+    this.linkHealthReader,
+    TechnicianAuthenticator? authenticator,
     LoopbackGatewayTransport? gatewayTransport,
     bool autoStart = true,
   }) : _scenario = scenario,
@@ -42,7 +46,8 @@ class DeviceSession extends ChangeNotifier {
          scenario: scenario,
          initialTick: _initialTick(scenario),
        ),
-       _providedGatewayTransport = gatewayTransport {
+       _providedGatewayTransport = gatewayTransport,
+       auth = AuthorizationController(authenticator: authenticator) {
     _beginSession();
     _gatewayTransport =
         _providedGatewayTransport ??
@@ -64,14 +69,18 @@ class DeviceSession extends ChangeNotifier {
 
   final Duration pollInterval;
   final LocalDatabase? database;
-  final AuthorizationController auth = AuthorizationController();
+  final SecretStore? auditSecretStore;
+  final BatteryIntegrationProfile? batteryIntegrationProfile;
+  final InverterIntegrationProfile? inverterIntegrationProfile;
+  final LinkHealth Function()? linkHealthReader;
+  final AuthorizationController auth;
   final LoopbackGatewayTransport? _providedGatewayTransport;
   late final LoopbackGatewayTransport _gatewayTransport;
   SimulationScenario _scenario;
   TelemetrySnapshot _snapshot;
-  SimulatedBmsAdapter _adapter;
+  BmsAdapter _adapter;
   IdentificationResult? _lastIdentification;
-  final SimulatedInverterAdapter _inverterAdapter = SimulatedInverterAdapter();
+  final InverterAdapter _inverterAdapter = SimulatedInverterAdapter();
   InverterTelemetrySnapshot? _inverterSnapshot;
   Timer? _pollTimer;
   bool _polling = false;
@@ -90,6 +99,7 @@ class DeviceSession extends ChangeNotifier {
   bool _sessionStartedEventSaved = false;
   DeviceSessionLinkState? _persistedLinkState;
   Set<String>? _persistedAlarmCodes;
+  bool _libraryWritesBlocked = false;
 
   SimulationScenario get scenario => _scenario;
   TelemetrySnapshot get snapshot => _snapshot;
@@ -105,6 +115,9 @@ class DeviceSession extends ChangeNotifier {
   AuditChain get audit => _audit;
   WriteResult? get lastWriteResult => _lastWriteResult;
   Object? get lastError => _lastError;
+  AuditAvailability get auditAvailability => _audit.availability;
+  bool get auditIntegrityAvailable =>
+      auditAvailability == AuditAvailability.available;
   bool get simulated => true;
   InverterTelemetrySnapshot? get inverterSnapshot => _inverterSnapshot;
   GatewayRuntimeStatus get gatewayStatus => _gatewayTransport.status;
@@ -115,6 +128,19 @@ class DeviceSession extends ChangeNotifier {
       database?.listTelemetrySamples(sessionId) ?? [];
   String auditHeadFor(String sessionId) =>
       database?.loadAuditHead(sessionId) ?? 'GENESIS';
+  String get activeProfileId => _adapter.profileIdentity.profileId;
+  int? get expectedCellCount {
+    final count = _adapter.activeProfile?.topology['series_cells'];
+    return count is int && count > 0 ? count : null;
+  }
+
+  bool get libraryWritesBlocked => _libraryWritesBlocked;
+
+  void setLibraryWriteBlocked(bool blocked) {
+    if (_libraryWritesBlocked == blocked) return;
+    _libraryWritesBlocked = blocked;
+    notifyListeners();
+  }
 
   static const parameterDefinitions = <String, ParameterDefinition>{
     'charge_limit': ParameterDefinition(
@@ -144,48 +170,54 @@ class DeviceSession extends ChangeNotifier {
   };
 
   CompatibilityAssessment get compatibilityAssessment {
-    final battery = BatteryIntegrationProfile(
-      chargeVoltageWindow: _snapshot.chargeVoltageLimit.value == null
-          ? const SourcedValue.unavailable('not_reported')
-          : SourcedValue.reported(
-              VoltageWindow(
-                minimum: _snapshot.voltage.value ?? 0,
-                maximum: _snapshot.chargeVoltageLimit.value!,
-              ),
-              EvidenceSource.deviceReported,
-            ),
-      dischargeVoltageWindow: const SourcedValue.unavailable('not_reported'),
-      maximumChargeCurrent: _snapshot.chargeCurrentLimit.value == null
-          ? const SourcedValue.unavailable('not_reported')
-          : SourcedValue.reported(
-              _snapshot.chargeCurrentLimit.value!,
-              EvidenceSource.deviceReported,
-            ),
-      maximumDischargeCurrent: _snapshot.dischargeCurrentLimit.value == null
-          ? const SourcedValue.unavailable('not_reported')
-          : SourcedValue.reported(
-              _snapshot.dischargeCurrentLimit.value!,
-              EvidenceSource.deviceReported,
-            ),
-      chemistry: const SourcedValue.unavailable('profile_required'),
-      spokenProtocols: const {},
-    );
-    const inverter = InverterIntegrationProfile(
-      configuredChargeVoltage: SourcedValue.unavailable(
-        'inverter_not_connected',
-      ),
-      configuredLowVoltageCutoff: SourcedValue.unavailable(
-        'inverter_not_connected',
-      ),
-      configuredChargeCurrent: SourcedValue.unavailable(
-        'inverter_not_connected',
-      ),
-      configuredDischargeCurrent: SourcedValue.unavailable(
-        'inverter_not_connected',
-      ),
-      supportedChemistries: {},
-      supportedBatteryProtocols: {},
-    );
+    final battery =
+        batteryIntegrationProfile ??
+        BatteryIntegrationProfile(
+          chargeVoltageWindow: _snapshot.chargeVoltageLimit.value == null
+              ? const SourcedValue.unavailable('not_reported')
+              : SourcedValue.reported(
+                  VoltageWindow(
+                    minimum: _snapshot.voltage.value ?? 0,
+                    maximum: _snapshot.chargeVoltageLimit.value!,
+                  ),
+                  EvidenceSource.deviceReported,
+                ),
+          dischargeVoltageWindow: const SourcedValue.unavailable(
+            'not_reported',
+          ),
+          maximumChargeCurrent: _snapshot.chargeCurrentLimit.value == null
+              ? const SourcedValue.unavailable('not_reported')
+              : SourcedValue.reported(
+                  _snapshot.chargeCurrentLimit.value!,
+                  EvidenceSource.deviceReported,
+                ),
+          maximumDischargeCurrent: _snapshot.dischargeCurrentLimit.value == null
+              ? const SourcedValue.unavailable('not_reported')
+              : SourcedValue.reported(
+                  _snapshot.dischargeCurrentLimit.value!,
+                  EvidenceSource.deviceReported,
+                ),
+          chemistry: const SourcedValue.unavailable('profile_required'),
+          spokenProtocols: const {},
+        );
+    final inverter =
+        inverterIntegrationProfile ??
+        const InverterIntegrationProfile(
+          configuredChargeVoltage: SourcedValue.unavailable(
+            'inverter_not_connected',
+          ),
+          configuredLowVoltageCutoff: SourcedValue.unavailable(
+            'inverter_not_connected',
+          ),
+          configuredChargeCurrent: SourcedValue.unavailable(
+            'inverter_not_connected',
+          ),
+          configuredDischargeCurrent: SourcedValue.unavailable(
+            'inverter_not_connected',
+          ),
+          supportedChemistries: {},
+          supportedBatteryProtocols: {},
+        );
     return const CompatibilityEngine().assess(
       battery: battery,
       inverter: inverter,
@@ -193,16 +225,16 @@ class DeviceSession extends ChangeNotifier {
   }
 
   LinkDiagnosticResult get linkDiagnostics {
-    // يُشتق عدد الرسائل المتوقعة من معدل الاستطلاع الفعلي:
-    // بافتراض رسالتين لكل دورة استطلاع (telemetry + alarms) وفق الـ protocol
-    // المحاكى. عند توفر profile حقيقي، يُمرَّر هذا الرقم من الـ adapter.
-    final expectedMessages = pollInterval.inMilliseconds > 0
+    final countersAvailable = _linkHealth != null;
+    final expectedMessages =
+        countersAvailable && pollInterval.inMilliseconds > 0
         ? (const Duration(seconds: 1).inMilliseconds ~/
                   pollInterval.inMilliseconds) *
               2
-        : 2;
-    final receivedMessages = _linkState == DeviceSessionLinkState.online
-        ? (expectedMessages * (1 - (_linkHealth?.errorRate ?? 0))).round()
+        : 0;
+    final receivedMessages =
+        countersAvailable && _linkState == DeviceSessionLinkState.online
+        ? (expectedMessages * (1 - _linkHealth!.errorRate)).round()
         : 0;
     final batterySoc = _snapshot.soc.value == null
         ? const SourcedValue<double>.unavailable('not_reported')
@@ -237,14 +269,12 @@ class DeviceSession extends ChangeNotifier {
     _persistedAlarmCodes = null;
     auth.lock('session switch');
     _lastIdentification = null;
-    _audit = database != null
-        ? AuditChain(
-            store: DatabaseAuditChainStore(
-              database: database!,
-              sessionId: _sessionId,
-            ),
-          )
-        : AuditChain();
+    _audit = AuditChain(
+      store: database == null
+          ? null
+          : DatabaseAuditChainStore(database: database!, sessionId: _sessionId),
+      secretStore: auditSecretStore,
+    );
   }
 
   void start() {
@@ -289,11 +319,12 @@ class DeviceSession extends ChangeNotifier {
     if (_parameters.isEmpty) {
       throw StateError('Parameters must be read before creating a backup.');
     }
+    final profile = _adapter.profileIdentity;
     final backup = ParameterBackup(
       schemaVersion: 1,
-      profileId: 'solardiag.simulated.lfp16.v2',
-      deviceIdentity: 'SOLARDIAG-SIM-BMS',
-      firmware: 'simulator-v2',
+      profileId: profile.profileId,
+      deviceIdentity: profile.deviceId,
+      firmware: profile.firmware,
       capturedAt: DateTime.now().toUtc(),
       values: Map.unmodifiable(_parameters),
     );
@@ -304,28 +335,47 @@ class DeviceSession extends ChangeNotifier {
   }
 
   DeviceWriteContext createWriteContext() {
-    final connectedModel = _lastIdentification?.model ?? 'LFP-16S-SIM';
-    final connectedFirmware = _lastIdentification?.firmware ?? 'simulator-v2';
+    final ident = _lastIdentification;
+    final profile = _adapter.profileIdentity;
+    final String? connectedModel = ident?.model;
+    final String? connectedFirmware = ident?.firmware;
+    final DeviceWriteState state;
+    final bool writeLocked;
+
+    if (ident == null || connectedModel == null || connectedFirmware == null) {
+      state = DeviceWriteState.unknownVerify;
+      writeLocked = true;
+    } else if (connectedModel != profile.model ||
+        connectedFirmware != profile.firmware) {
+      state = DeviceWriteState.identityMismatch;
+      writeLocked = true;
+    } else {
+      state = DeviceWriteState.known;
+      writeLocked =
+          !auth.isUnlocked ||
+          _linkState != DeviceSessionLinkState.online ||
+          _lastError != null ||
+          !auditIntegrityAvailable ||
+          _libraryWritesBlocked;
+    }
+
     return DeviceWriteContext(
-      deviceId: 'SOLARDIAG-SIM-BMS',
+      deviceId: connectedModel != null ? profile.deviceId : 'UNIDENTIFIED',
       sessionId: _sessionId,
-      profileModel: 'LFP-16S-SIM',
-      profileFirmware: 'simulator-v2',
+      profileModel: profile.model,
+      profileFirmware: profile.firmware,
       connectedModel: connectedModel,
       connectedFirmware: connectedFirmware,
       linkHealthy: _linkState == DeviceSessionLinkState.online,
-      writeLocked:
-          !auth.isUnlocked ||
-          _linkState != DeviceSessionLinkState.online ||
-          _lastError != null,
-      state: DeviceWriteState.known,
+      writeLocked: writeLocked,
+      state: state,
     );
   }
 
   RestorePlan planRestore(ParameterBackup backup) => backup.createRestorePlan(
-    activeProfileId: 'solardiag.simulated.lfp16.v2',
-    activeDeviceIdentity: 'SOLARDIAG-SIM-BMS',
-    activeFirmware: 'simulator-v2',
+    activeProfileId: _adapter.profileIdentity.profileId,
+    activeDeviceIdentity: _adapter.profileIdentity.deviceId,
+    activeFirmware: _adapter.profileIdentity.firmware,
     definitions: parameterDefinitions,
     current: ParameterSnapshot(_parameters, capturedAt: DateTime.now().toUtc()),
   );
@@ -403,10 +453,10 @@ class DeviceSession extends ChangeNotifier {
     try {
       _lastIdentification ??= await _adapter.identify();
       final next = await _adapter.readTelemetry();
-      final health = await _adapter.health();
+      final health = linkHealthReader?.call() ?? await _adapter.health();
       final alarms = await _adapter.readAlarms();
       _inverterSnapshot = await _inverterAdapter.readTelemetry();
-      _inverterAdapter.tick++;
+      _inverterAdapter.simulationClock?.advance();
       _snapshot = next;
       _linkHealth = health;
       _alarmCodes = Set.unmodifiable(alarms);
@@ -418,7 +468,7 @@ class DeviceSession extends ChangeNotifier {
       _lastError = error;
       _persistStateEvents();
     } finally {
-      _adapter.advance();
+      _adapter.simulationClock?.advance();
       _polling = false;
       if (!_disposed) notifyListeners();
     }

@@ -1,0 +1,21 @@
+{
+  "id": "fixture.missing-required",
+  "category": "battery",
+  "manufacturer": "Fixture",
+  "family": "Invalid",
+  "models": ["Fixture"],
+  "firmware_ranges": ["1.x"],
+  "simulated": true,
+  "provenance": {},
+  "transport": {},
+  "capabilities": {},
+  "allowed_read_frames": [],
+  "allowed_modbus_read_ranges": [],
+  "telemetry_map": [],
+  "alarm_dictionary": {},
+  "parameters": [],
+  "topology": {},
+  "inverter_link": {},
+  "test_vectors": [],
+  "connection_checklist": []
+}

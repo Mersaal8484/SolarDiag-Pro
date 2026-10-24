@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../app/theme.dart';
+import '../design/components.dart';
 
 import '../design/solar_icon.dart';
 import '../design/solar_icons.g.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../trust/signed_tokens.dart';
 
 class DeviceLibraryScreen extends StatelessWidget {
-  const DeviceLibraryScreen({super.key});
+  const DeviceLibraryScreen({super.key, this.installedLibrary});
+  final InstalledLibrary? installedLibrary;
   static const freconName = 'FRECON PV100 / PV200';
   static const targets = [
     'Pylontech',
@@ -27,6 +30,8 @@ class DeviceLibraryScreen extends StatelessWidget {
       title: s.deviceLibrary,
       subtitle: s.libraryVerificationNote,
       children: [
+        if (installedLibrary?.showRevokedBanner ?? false)
+          RevokedBanner(title: s.warning, message: s.physicalWriteLocked),
         Card(
           child: ListTile(
             contentPadding: const EdgeInsets.all(20),

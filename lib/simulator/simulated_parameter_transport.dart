@@ -1,6 +1,8 @@
 part of '../parameters/write_pipeline.dart';
 
-abstract interface class SimulatedParameterBackend {
+sealed class SimulatedParameterBackend {
+  const SimulatedParameterBackend();
+
   Future<num> readParameter(String id);
   Future<Map<String, num>> readConfiguration();
   Future<void> applyRawParameter(
@@ -10,14 +12,8 @@ abstract interface class SimulatedParameterBackend {
   );
 }
 
-final class SimulatorToken {
-  const SimulatorToken._();
-  static const instance = SimulatorToken._();
-}
-
 ParameterTransport createSimulatedParameterTransport(
   SimulatedParameterBackend backend,
-  SimulatorToken token,
 ) => ParameterTransport._simulator(
   read: backend.readParameter,
   readAll: backend.readConfiguration,

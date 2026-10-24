@@ -14,6 +14,7 @@ void main() {
             )
             .toList()
       : <File>[];
+  files.sort((left, right) => left.path.compareTo(right.path));
   final rows = <String>[];
   for (final file in files) {
     final json = jsonDecode(file.readAsStringSync()) as Map<String, Object?>;

@@ -1,15 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solardiag_pro/audit/audit_chain.dart';
+import 'package:solardiag_pro/auth/authorization_controller.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
 import 'package:solardiag_pro/parameters/parameter_models.dart';
 import 'package:solardiag_pro/parameters/write_pipeline.dart';
 import 'package:solardiag_pro/persistence/local_database.dart';
+import 'support/test_secret_store.dart';
 
 void main() {
   test('session reads changing telemetry through the adapter', () async {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      auditSecretStore: TestSecretStore(),
     );
     addTearDown(session.dispose);
 
@@ -31,6 +35,7 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.communicationFaults,
         autoStart: false,
+        auditSecretStore: TestSecretStore(),
       );
       addTearDown(session.dispose);
 
@@ -45,7 +50,10 @@ void main() {
   );
 
   test('scenario selection replaces the adapter and snapshot', () async {
-    final session = DeviceSession(autoStart: false);
+    final session = DeviceSession(
+      autoStart: false,
+      auditSecretStore: TestSecretStore(),
+    );
     addTearDown(session.dispose);
 
     await session.selectScenario(SimulationScenario.highTemperature);
@@ -59,6 +67,7 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      auditSecretStore: TestSecretStore(),
     );
     addTearDown(session.dispose);
 
@@ -73,6 +82,7 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      auditSecretStore: TestSecretStore(),
     );
     addTearDown(session.dispose);
 
@@ -91,6 +101,11 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
+        auditSecretStore: TestSecretStore(),
+        authenticator: const DemoConfiguration(
+          isDemoMode: true,
+          demoPin: 'pin',
+        ).createAuthenticator(),
       );
       addTearDown(session.dispose);
       await session.refresh();
@@ -136,6 +151,11 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      auditSecretStore: TestSecretStore(),
+      authenticator: const DemoConfiguration(
+        isDemoMode: true,
+        demoPin: 'pin',
+      ).createAuthenticator(),
     );
     addTearDown(session.dispose);
     await session.refresh();
@@ -184,6 +204,7 @@ void main() {
       scenario: SimulationScenario.healthy,
       autoStart: false,
       database: database,
+      auditSecretStore: TestSecretStore(),
     );
     addTearDown(session.dispose);
     addTearDown(database.close);
@@ -206,15 +227,65 @@ void main() {
     ]);
   });
 
+  test('test secret store enables authenticated audit persistence', () async {
+    final database = LocalDatabase.inMemory();
+    final secretStore = TestSecretStore();
+    final session = DeviceSession(
+      scenario: SimulationScenario.healthy,
+      autoStart: false,
+      database: database,
+      auditSecretStore: secretStore,
+    );
+    addTearDown(session.dispose);
+    addTearDown(database.close);
+    await session.refresh();
+
+    final sessionId = session.history.single.id;
+    session.audit.append('test_persistence', const {'ok': true});
+
+    expect(session.auditAvailability, AuditAvailability.available);
+    expect(database.loadAuditEntries(sessionId), hasLength(1));
+    expect(database.loadAuditHead(sessionId), session.audit.head);
+    expect(database.loadAuditHeadMac(sessionId), isNotNull);
+    final store = DatabaseAuditChainStore(
+      database: database,
+      sessionId: sessionId,
+    );
+    expect(
+      () => AuditChain.load(store, secretStore: secretStore),
+      returnsNormally,
+    );
+    database.saveAuditHeadMac(sessionId, 'invalid');
+    expect(
+      () => AuditChain.load(store, secretStore: secretStore),
+      throwsFormatException,
+    );
+    database.rawExecuteForTest(
+      "UPDATE audit_chain_heads SET head_mac = NULL WHERE session_id = '$sessionId'",
+    );
+    expect(
+      () => AuditChain.load(store, secretStore: secretStore),
+      throwsFormatException,
+    );
+  });
+
   test('parameter backups are restored into a later session', () async {
     final database = LocalDatabase.inMemory();
     addTearDown(database.close);
-    final first = DeviceSession(autoStart: false, database: database);
+    final first = DeviceSession(
+      autoStart: false,
+      database: database,
+      auditSecretStore: TestSecretStore(),
+    );
     await first.refreshParameters();
     final backup = first.createParameterBackup();
     first.dispose();
 
-    final restored = DeviceSession(autoStart: false, database: database);
+    final restored = DeviceSession(
+      autoStart: false,
+      database: database,
+      auditSecretStore: TestSecretStore(),
+    );
     addTearDown(restored.dispose);
 
     expect(restored.backups, hasLength(1));
@@ -226,6 +297,11 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      auditSecretStore: TestSecretStore(),
+      authenticator: const DemoConfiguration(
+        isDemoMode: true,
+        demoPin: 'pin',
+      ).createAuthenticator(),
     );
     addTearDown(session.dispose);
     await session.refresh();
@@ -294,6 +370,11 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.parameterProfile,
         autoStart: false,
+        auditSecretStore: TestSecretStore(),
+        authenticator: const DemoConfiguration(
+          isDemoMode: true,
+          demoPin: 'pin',
+        ).createAuthenticator(),
       );
       addTearDown(session.dispose);
       await session.refresh();
@@ -339,6 +420,7 @@ void main() {
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
+        auditSecretStore: TestSecretStore(),
       );
       addTearDown(session.dispose);
 

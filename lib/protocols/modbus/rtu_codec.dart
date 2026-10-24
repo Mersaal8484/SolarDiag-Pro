@@ -50,6 +50,9 @@ class ModbusRtuCodec {
     if (function == null) {
       throw const FormatException('Unsupported Modbus function.');
     }
+    if (frame.data.length + 1 > 253) {
+      throw const FormatException('Modbus PDU exceeds 253 bytes.');
+    }
     if (frame.isBroadcast && !function.isWrite) {
       throw const FormatException('Broadcast reads are prohibited.');
     }
@@ -65,6 +68,9 @@ class ModbusRtuCodec {
     final address = bytes[0];
     if (address > 247) throw const FormatException('Invalid RTU address.');
     final functionCode = bytes[1];
+    if (bytes.length - 4 > 253) {
+      throw const FormatException('Modbus PDU exceeds 253 bytes.');
+    }
     if (functionCode & 0x80 != 0) {
       if (bytes.length != 5) {
         throw const FormatException('Malformed exception response.');

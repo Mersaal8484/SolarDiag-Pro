@@ -15,6 +15,7 @@ import 'link_screen.dart';
 import 'parameters_screen.dart';
 import 'session_history_screen.dart';
 import 'studio_workspace.dart';
+import '../trust/signed_tokens.dart';
 
 class WorkspaceShell extends StatefulWidget {
   const WorkspaceShell({
@@ -27,6 +28,7 @@ class WorkspaceShell extends StatefulWidget {
     required this.onOpenSettings,
     required this.studioEnabled,
     required this.contributionsEnabled,
+    this.installedLibrary,
   });
   final VoidCallback onToggleLocale;
   final VoidCallback onToggleTheme;
@@ -36,6 +38,7 @@ class WorkspaceShell extends StatefulWidget {
   final VoidCallback onOpenSettings;
   final bool studioEnabled;
   final bool contributionsEnabled;
+  final InstalledLibrary? installedLibrary;
   @override
   State<WorkspaceShell> createState() => _WorkspaceShellState();
 }
@@ -60,7 +63,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
       ),
       const InverterDiagnosticsScreen(),
       const BatteryWorkspace(),
-      const DeviceLibraryScreen(),
+      DeviceLibraryScreen(installedLibrary: widget.installedLibrary),
       const LinkScreen(),
       const GatewayScreen(),
       const ParametersScreen(),

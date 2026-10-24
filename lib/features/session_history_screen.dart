@@ -140,6 +140,7 @@ class _SessionCard extends StatelessWidget {
     final assessment = const BatteryDiagnostics().analyze(
       snapshot,
       rawAlarmCodes: alarms,
+      expectedCellCount: session.expectedCellCount,
     );
     return [
       for (final finding in assessment.findings)

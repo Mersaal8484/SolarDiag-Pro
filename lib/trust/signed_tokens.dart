@@ -87,16 +87,54 @@ class RevocationList {
     'revoked_packs': revokedPackIds.toList()..sort(),
     'revoked_profiles': revokedProfileIds.toList()..sort(),
   };
+
+  Map<String, Object?> toJson() => {...payload, 'signature': signature};
+
+  factory RevocationList.fromJson(Map<String, Object?> json) {
+    Set<String> identifiers(String key) {
+      final value = json[key];
+      if (value is! List || value.any((item) => item is! String)) {
+        throw FormatException('$key must be a list of strings.');
+      }
+      return Set.unmodifiable(value.cast<String>());
+    }
+
+    final sequence = json['sequence'];
+    final issuedAt = json['issued_at'];
+    final validUntil = json['valid_until'];
+    final signature = json['signature'];
+    if (sequence is! int ||
+        issuedAt is! String ||
+        validUntil is! String ||
+        signature is! String) {
+      throw const FormatException('Invalid stored revocation list.');
+    }
+    return RevocationList(
+      sequence: sequence,
+      issuedAt: DateTime.parse(issuedAt),
+      validUntil: DateTime.parse(validUntil),
+      revokedPackIds: identifiers('revoked_packs'),
+      revokedProfileIds: identifiers('revoked_profiles'),
+      signature: signature,
+    );
+  }
 }
 
 abstract interface class LibraryPackStore {
   Future<void> save(LibraryPack pack);
   Future<LibraryPack?> load();
+  Future<void> saveRevocations(RevocationList revocations);
+  Future<RevocationList?> loadRevocations();
+  Future<int> loadHighestRevocationSequence();
+  Future<void> saveHighestRevocationSequence(int sequence);
 }
 
 class FileLibraryPackStore implements LibraryPackStore {
   const FileLibraryPackStore(this.path);
   final String path;
+  String get _seqPath => '$path.revseq';
+  String get _revocationsPath => '$path.revocations';
+
   @override
   Future<LibraryPack?> load() async {
     final file = File(path);
@@ -115,6 +153,49 @@ class FileLibraryPackStore implements LibraryPackStore {
     final temporary = File('$path.tmp');
     await temporary.writeAsString(jsonEncode(pack.toJson()), flush: true);
     await temporary.rename(path);
+  }
+
+  @override
+  Future<RevocationList?> loadRevocations() async {
+    final file = File(_revocationsPath);
+    if (!await file.exists()) return null;
+    final decoded = jsonDecode(await file.readAsString());
+    if (decoded is! Map<String, Object?>) {
+      throw const FormatException('Stored revocation list is not an object.');
+    }
+    return RevocationList.fromJson(decoded);
+  }
+
+  @override
+  Future<void> saveRevocations(RevocationList revocations) async {
+    final target = File(_revocationsPath);
+    await target.parent.create(recursive: true);
+    final temporary = File('$_revocationsPath.tmp');
+    await temporary.writeAsString(
+      jsonEncode(revocations.toJson()),
+      flush: true,
+    );
+    await temporary.rename(_revocationsPath);
+  }
+
+  @override
+  Future<int> loadHighestRevocationSequence() async {
+    final file = File(_seqPath);
+    if (!await file.exists()) return 0;
+    try {
+      return int.parse((await file.readAsString()).trim());
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  @override
+  Future<void> saveHighestRevocationSequence(int sequence) async {
+    final target = File(_seqPath);
+    await target.parent.create(recursive: true);
+    final temporary = File('$_seqPath.tmp');
+    await temporary.writeAsString('$sequence', flush: true);
+    await temporary.rename(_seqPath);
   }
 }
 
@@ -139,9 +220,18 @@ class InstalledLibrary {
 
   bool get isRevocationStale =>
       _clock().toUtc().difference(revocations.issuedAt) > maxRevocationAge;
+  bool get isRevocationExpired =>
+      _clock().toUtc().isAfter(revocations.validUntil);
+
+  bool blocksWritesFor(String profileId) =>
+      packRevoked ||
+      isRevocationStale ||
+      isRevocationExpired ||
+      revokedProfileIds.contains(profileId);
 
   String? get writeDisabledReason {
     if (packRevoked) return 'Library pack is revoked.';
+    if (isRevocationExpired) return 'Revocation list expired';
     if (isRevocationStale) return 'revocation data stale';
     return null;
   }
@@ -150,13 +240,15 @@ class InstalledLibrary {
     String profileId, [
     DeviceCapability capability = DeviceCapability.writeParameter,
   ]) {
-    if (packRevoked || isRevocationStale) return false;
-    if (revokedProfileIds.contains(profileId)) return false;
+    if (blocksWritesFor(profileId)) return false;
     return registry.profileCanWrite(profileId, capability);
   }
 
   bool get showRevokedBanner =>
-      packRevoked || revokedProfileIds.isNotEmpty || isRevocationStale;
+      packRevoked ||
+      revokedProfileIds.isNotEmpty ||
+      isRevocationStale ||
+      isRevocationExpired;
 }
 
 class LibrarySync {
@@ -166,7 +258,8 @@ class LibrarySync {
     required this.store,
     this.maxRevocationAge = const Duration(days: 14),
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now;
+  }) : _clock = clock ?? DateTime.now,
+       _revocationState = store.loadHighestRevocationSequence();
 
   final Ed25519TrustVerifier verifier;
   final int appVersion;
@@ -175,26 +268,47 @@ class LibrarySync {
   final DateTime Function() _clock;
   InstalledLibrary? _installed;
   int _highestRevocationSequence = 0;
+  final Future<int> _revocationState;
 
   InstalledLibrary? get installed => _installed;
   LibraryPack? get lastKnownGood => _installed?.pack;
   int get highestRevocationSequence => _highestRevocationSequence;
 
-  void recordRevocationSequence(int sequence) {
+  /// Loads the persisted anti-rollback floor before any asynchronous library
+  /// operation.  The previous fire-and-forget initialization allowed a pack
+  /// to be evaluated before that floor had arrived from storage.
+  Future<void> _ensureRevocationState() async {
+    final persisted = await _revocationState;
+    if (persisted > _highestRevocationSequence) {
+      _highestRevocationSequence = persisted;
+    }
+  }
+
+  Future<void> recordRevocationSequence(int sequence) async {
     if (_highestRevocationSequence > 0 &&
-        sequence <= _highestRevocationSequence) {
+        sequence < _highestRevocationSequence) {
       throw StateError(
-        'Revocation list sequence rollback: $sequence <= $_highestRevocationSequence',
+        'Revocation list sequence rollback: $sequence < $_highestRevocationSequence',
       );
     }
     _highestRevocationSequence = sequence;
+    await store.saveHighestRevocationSequence(sequence);
   }
 
   Future<bool> apply(
     LibraryPack pack, {
     required DateTime now,
     required RevocationList revocations,
+  }) =>
+      _apply(pack, now: now, revocations: revocations, allowRevokedPack: false);
+
+  Future<bool> _apply(
+    LibraryPack pack, {
+    required DateTime now,
+    required RevocationList revocations,
+    required bool allowRevokedPack,
   }) async {
+    await _ensureRevocationState();
     if (!await verifier.verifyPayload(
           revocations.payload,
           revocations.signature,
@@ -203,12 +317,13 @@ class LibrarySync {
       return false;
     }
     if (_highestRevocationSequence > 0 &&
-        revocations.sequence <= _highestRevocationSequence) {
+        revocations.sequence < _highestRevocationSequence) {
       return false;
     }
     final hashKeys = pack.profileHashes.keys.toSet();
     final profileKeys = pack.profiles.keys.toSet();
-    if (revocations.revokedPackIds.contains(pack.id) ||
+    final packRevoked = revocations.revokedPackIds.contains(pack.id);
+    if ((packRevoked && !allowRevokedPack) ||
         pack.expiresAt.isBefore(now) ||
         pack.minAppVersion > appVersion ||
         (_installed != null && pack.version <= _installed!.pack.version) ||
@@ -228,13 +343,15 @@ class LibrarySync {
       verifier: verifier,
       technicianMode: true,
     );
+    await store.saveRevocations(revocations);
     await store.save(pack);
     _highestRevocationSequence = revocations.sequence;
+    await store.saveHighestRevocationSequence(_highestRevocationSequence);
     _installed = InstalledLibrary(
       pack: pack,
       registry: registry,
       revokedProfileIds: Set.unmodifiable(revocations.revokedProfileIds),
-      packRevoked: false,
+      packRevoked: packRevoked,
       revocations: revocations,
       maxRevocationAge: maxRevocationAge,
       clock: _clock,
@@ -244,26 +361,48 @@ class LibrarySync {
 
   Future<bool> restoreOffline({
     required DateTime now,
-    required RevocationList revocations,
+    RevocationList? revocations,
   }) async {
+    await _ensureRevocationState();
     final pack = await store.load();
-    if (pack == null) return false;
+    final persistedRevocations = revocations ?? await store.loadRevocations();
+    if (pack == null || persistedRevocations == null) return false;
     _installed = null;
-    return apply(pack, now: now, revocations: revocations);
+    return _apply(
+      pack,
+      now: now,
+      revocations: persistedRevocations,
+      allowRevokedPack: true,
+    );
   }
 
   Future<bool> refreshRevocations(RevocationList revocations) async {
+    await _ensureRevocationState();
     if (!await verifier.verifyPayload(
       revocations.payload,
       revocations.signature,
     )) {
       return false;
     }
-    if (revocations.sequence <= _highestRevocationSequence) {
+    if (revocations.sequence < _highestRevocationSequence) {
       return false;
     }
-    _highestRevocationSequence = revocations.sequence;
     final current = _installed;
+    if (revocations.sequence == _highestRevocationSequence) {
+      // Replaying the exact list is harmless and must not turn a transient
+      // refresh retry into a failure.  A different payload at the same
+      // sequence is rejected to avoid equivocation.
+      if (current == null ||
+          jsonEncode(current.revocations.payload) !=
+              jsonEncode(revocations.payload) ||
+          current.revocations.signature != revocations.signature) {
+        return false;
+      }
+      return true;
+    }
+    _highestRevocationSequence = revocations.sequence;
+    await store.saveHighestRevocationSequence(_highestRevocationSequence);
+    await store.saveRevocations(revocations);
     if (current == null) return true;
     _installed = InstalledLibrary(
       pack: current.pack,

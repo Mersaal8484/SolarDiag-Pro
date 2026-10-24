@@ -244,6 +244,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editParameter => 'Edit simulated parameter';
 
   @override
+  String get technicianAuthentication => 'Technician Authentication';
+
+  @override
+  String get technicianPin => 'Technician PIN';
+
+  @override
+  String get pinAuthorizationHint => 'Enter PIN to authorize write operations';
+
+  @override
+  String get authenticateAction => 'Authenticate';
+
+  @override
   String get reviewChanges => 'Review changes';
 
   @override
@@ -267,6 +279,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get writeRejected => 'The write was rejected by the safety pipeline.';
+
+  @override
+  String get auditKeyUnavailable =>
+      'Audit key unavailable. Write operations are locked.';
 
   @override
   String get writeFailedVerify =>
@@ -603,6 +619,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get cellOvervoltageDetail =>
       'The BMS raw alarm map reports cell overvoltage.';
+
+  @override
+  String get cellVoltagesUnavailable => 'Cell voltages unavailable';
+
+  @override
+  String get cellVoltagesUnavailableDetail =>
+      'No usable cell voltages were reported; cell balance cannot be assessed.';
+
+  @override
+  String get cellCountMismatch => 'Cell count does not match profile';
+
+  @override
+  String get cellCountMismatchDetail =>
+      'The number of reported cell voltages differs from the active profile topology.';
 
   @override
   String get history => 'History';

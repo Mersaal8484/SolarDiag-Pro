@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'package:flutter/services.dart';
 import '../core/battery_models.dart';
+import '../simulator/simulated_profile_document.dart';
 import '../trust/profile_integrity.dart';
 import 'capabilities.dart';
 import 'device_profile.dart';
@@ -24,14 +24,19 @@ class ProfileRegistry {
     DeviceCapability capability = DeviceCapability.writeParameter,
   ]) => _writeCapabilities[id]?.contains(capability) ?? false;
 
-  void registerExternalProfile(DeviceProfile profile) {
-    _profiles[profile.id] = profile;
-  }
-
   static ProfileRegistry fromJsonDocuments(
     Iterable<String> documents, {
     required bool technicianMode,
-    bool isBundled = false,
+  }) => _fromJsonDocuments(
+    documents,
+    technicianMode: technicianMode,
+    isBundled: false,
+  );
+
+  static ProfileRegistry _fromJsonDocuments(
+    Iterable<String> documents, {
+    required bool technicianMode,
+    required bool isBundled,
   }) {
     final profiles = <String, DeviceProfile>{};
     for (final document in documents) {
@@ -104,7 +109,7 @@ class ProfileRegistry {
       }
       accepted.add(signed.document);
     }
-    final registry = fromJsonDocuments(
+    final registry = _fromJsonDocuments(
       accepted,
       technicianMode: false,
       isBundled: true,
@@ -116,12 +121,8 @@ class ProfileRegistry {
   }
 
   static Future<ProfileRegistry> loadBundledSimulator() async =>
-      fromJsonDocuments(
-        [
-          await rootBundle.loadString(
-            'device_profiles/batteries/_simulated/solardiag_sim.json',
-          ),
-        ],
+      _fromJsonDocuments(
+        [simulatedProfileDocument],
         technicianMode: true,
         isBundled: true,
       );

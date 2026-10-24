@@ -48,12 +48,119 @@ void main() {
       );
       final stream = ModbusRtuStreamDecoder();
       expect(stream.add([99, 88, ...bytes.take(3)]), isEmpty);
-      expect(stream.add(bytes.skip(3).toList()).single.data, [2, 0, 42]);
+      final result = stream.add(bytes.skip(3).toList()).single;
+      expect(result, isA<SuccessFrameResult>());
+      expect((result as SuccessFrameResult).frame.data, [2, 0, 42]);
       expect(
         ModbusRtuCodec.interFrameDelay(9600).inMicroseconds,
         greaterThanOrEqualTo(4000),
       );
       expect(ModbusRtuCodec.interFrameDelay(38400).inMicroseconds, 1750);
+    });
+
+    test('RTU stream consumes a split exception exactly once', () {
+      final body = [1, 0x83, 2];
+      final crc = ModbusCrc16.calculate(body);
+      final bytes = [...body, crc & 0xff, crc >> 8];
+      final stream = ModbusRtuStreamDecoder();
+
+      expect(stream.add(bytes.take(3).toList()), isEmpty);
+      final result = stream.add(bytes.skip(3).toList()).single;
+      expect(result, isA<ExceptionFrameResult>());
+      expect((result as ExceptionFrameResult).exception.exceptionCode, 2);
+      expect(stream.add(const []), isEmpty);
+    });
+
+    test('RTU stream recovers after an oversized frame', () {
+      const codec = ModbusRtuCodec();
+      final stream = ModbusRtuStreamDecoder(maximumFrameLength: 7);
+      final oversized = codec.encode(
+        const ModbusRtuFrame(address: 1, functionCode: 3, data: [1, 2, 3, 4]),
+      );
+      final valid = codec.encode(
+        const ModbusRtuFrame(address: 1, functionCode: 3, data: [1]),
+      );
+
+      expect(oversized.length, greaterThan(stream.maximumFrameLength));
+      expect(stream.add(oversized), isEmpty);
+      final result = stream.add(valid).single as SuccessFrameResult;
+      expect(result.frame.data, [1]);
+    });
+
+    test('RTU stream skips an unsupported CRC-valid five-byte window', () {
+      final unsupportedBody = [1, 0x7f, 0];
+      final crc = ModbusCrc16.calculate(unsupportedBody);
+      final spurious = [...unsupportedBody, crc & 0xff, crc >> 8];
+      final valid = const ModbusRtuCodec().encode(
+        const ModbusRtuFrame(address: 1, functionCode: 3, data: [1]),
+      );
+      final stream = ModbusRtuStreamDecoder();
+
+      expect(ModbusCrc16.valid(spurious), isTrue);
+      final results = stream.add([...spurious, ...valid]);
+      expect(results, hasLength(1));
+      expect((results.single as SuccessFrameResult).frame.data, [1]);
+    });
+
+    test(
+      'RTU stream decodes exception followed by normal frame in one chunk',
+      () {
+        final exBody = [1, 0x83, 2];
+        final exCrc = ModbusCrc16.calculate(exBody);
+        final exBytes = [...exBody, exCrc & 0xff, exCrc >> 8];
+
+        final normalBytes = const ModbusRtuCodec().encode(
+          const ModbusRtuFrame(address: 1, functionCode: 3, data: [2, 0, 99]),
+        );
+
+        final stream = ModbusRtuStreamDecoder();
+        final results = stream.add([...exBytes, ...normalBytes]);
+        expect(results, hasLength(2));
+        expect(results[0], isA<ExceptionFrameResult>());
+        expect((results[0] as ExceptionFrameResult).exception.exceptionCode, 2);
+        expect(results[1], isA<SuccessFrameResult>());
+        expect((results[1] as SuccessFrameResult).frame.data, [2, 0, 99]);
+        // Buffer must be empty; subsequent add must not re-emit
+        expect(stream.add(const []), isEmpty);
+      },
+    );
+
+    test(
+      'RTU stream consumes buffer on exception and prevents re-emission',
+      () {
+        final exBody = [1, 0x83, 4];
+        final exCrc = ModbusCrc16.calculate(exBody);
+        final exBytes = [...exBody, exCrc & 0xff, exCrc >> 8];
+
+        final stream = ModbusRtuStreamDecoder();
+        final res1 = stream.add(exBytes);
+        expect(res1, hasLength(1));
+        expect(res1.single, isA<ExceptionFrameResult>());
+        expect(
+          (res1.single as ExceptionFrameResult).exception.exceptionCode,
+          4,
+        );
+
+        // Verify no re-emission on next chunk
+        expect(stream.add(const []), isEmpty);
+        expect(stream.add(const [0x00]), isEmpty);
+      },
+    );
+
+    test('RTU stream decodes two back-to-back normal frames in one chunk', () {
+      final f1 = const ModbusRtuCodec().encode(
+        const ModbusRtuFrame(address: 1, functionCode: 3, data: [2, 0, 10]),
+      );
+      final f2 = const ModbusRtuCodec().encode(
+        const ModbusRtuFrame(address: 1, functionCode: 3, data: [2, 0, 20]),
+      );
+
+      final stream = ModbusRtuStreamDecoder();
+      final results = stream.add([...f1, ...f2]);
+      expect(results, hasLength(2));
+      expect((results[0] as SuccessFrameResult).frame.data, [2, 0, 10]);
+      expect((results[1] as SuccessFrameResult).frame.data, [2, 0, 20]);
+      expect(stream.add(const []), isEmpty);
     });
 
     test('RTU surfaces protocol exception and timeout', () async {
@@ -90,7 +197,7 @@ void main() {
   });
 
   test(
-    'guard requires ranges, pipeline authorization, and hardware verification',
+    'guard requires allowed functions, ranges, and hardware verification',
     () {
       const guarded = ModbusGuard(
         allowedFunctions: {
@@ -106,16 +213,14 @@ void main() {
           function: ModbusFunction.readHoldingRegisters,
           address: 10,
           count: 2,
-          pipelineAuthorized: false,
         ),
         isTrue,
       );
       expect(
         guarded.allows(
           function: ModbusFunction.writeSingleRegister,
-          address: 30,
+          address: 31,
           count: 1,
-          pipelineAuthorized: false,
         ),
         isFalse,
       );
@@ -124,7 +229,6 @@ void main() {
           function: ModbusFunction.writeSingleRegister,
           address: 30,
           count: 1,
-          pipelineAuthorized: true,
         ),
         isTrue,
       );

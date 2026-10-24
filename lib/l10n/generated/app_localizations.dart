@@ -536,6 +536,30 @@ abstract class AppLocalizations {
   /// **'Edit simulated parameter'**
   String get editParameter;
 
+  /// No description provided for @technicianAuthentication.
+  ///
+  /// In en, this message translates to:
+  /// **'Technician Authentication'**
+  String get technicianAuthentication;
+
+  /// No description provided for @technicianPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Technician PIN'**
+  String get technicianPin;
+
+  /// No description provided for @pinAuthorizationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter PIN to authorize write operations'**
+  String get pinAuthorizationHint;
+
+  /// No description provided for @authenticateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticate'**
+  String get authenticateAction;
+
   /// No description provided for @reviewChanges.
   ///
   /// In en, this message translates to:
@@ -577,6 +601,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The write was rejected by the safety pipeline.'**
   String get writeRejected;
+
+  /// No description provided for @auditKeyUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit key unavailable. Write operations are locked.'**
+  String get auditKeyUnavailable;
 
   /// No description provided for @writeFailedVerify.
   ///
@@ -1153,6 +1183,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The BMS raw alarm map reports cell overvoltage.'**
   String get cellOvervoltageDetail;
+
+  /// No description provided for @cellVoltagesUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Cell voltages unavailable'**
+  String get cellVoltagesUnavailable;
+
+  /// No description provided for @cellVoltagesUnavailableDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'No usable cell voltages were reported; cell balance cannot be assessed.'**
+  String get cellVoltagesUnavailableDetail;
+
+  /// No description provided for @cellCountMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Cell count does not match profile'**
+  String get cellCountMismatch;
+
+  /// No description provided for @cellCountMismatchDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The number of reported cell voltages differs from the active profile topology.'**
+  String get cellCountMismatchDetail;
 
   /// No description provided for @history.
   ///

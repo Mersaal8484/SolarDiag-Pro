@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../app/theme.dart';
+import '../auth/confirmation_factory.dart';
 import '../design/solar_icon.dart';
 import '../design/solar_icons.g.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -175,32 +176,26 @@ class _ParametersScreenState extends State<ParametersScreen> {
     );
     if (confirmed != true || !mounted) return;
     if (!session.auth.isUnlocked) {
-      final unlocked = await session.auth.unlock(
-        tier: AuthorizationTier.technician,
-        credentials: 'technician-authenticated',
-      );
+      final unlocked = await _ensureUnlocked(session);
       if (!unlocked || !mounted) return;
     }
     final authorization = session.auth.current;
     if (authorization == null) return;
     final contextObj = session.createWriteContext();
-    final tokens = <ConfirmationToken>[];
-    for (final change in plan.changes) {
+    final tokens = plan.changes.map((change) {
       final before = session.parameters[change.definition.id] ?? 0;
       final diffHash = VerifiedWritePipeline.previewHash(
         change,
         before,
         contextObj,
       );
-      tokens.add(
-        ConfirmationToken(
-          diffHash: diffHash,
-          deviceId: contextObj.deviceId,
-          sessionId: contextObj.sessionId,
-          expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
-        ),
+      return mintShownPlanConfirmation(
+        shownPlanHash: diffHash,
+        deviceId: contextObj.deviceId,
+        sessionId: contextObj.sessionId,
+        expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
       );
-    }
+    }).toList();
     final results = await session.restoreParameterBackup(
       plan: plan,
       authorization: authorization,
@@ -220,6 +215,26 @@ class _ParametersScreenState extends State<ParametersScreen> {
               : s.backupRestoreFailed,
         ),
       ),
+    );
+  }
+
+  Future<bool> _ensureUnlocked(DeviceSession session) async {
+    if (session.auth.isUnlocked) return true;
+    final s = AppLocalizations.of(context);
+    final pin = await showDialog<String>(
+      context: context,
+      builder: (_) => _PinDialog(
+        title: s.technicianAuthentication,
+        label: s.technicianPin,
+        hint: s.pinAuthorizationHint,
+        cancelLabel: s.cancel,
+        authenticateLabel: s.authenticateAction,
+      ),
+    );
+    if (pin == null || pin.isEmpty) return false;
+    return session.auth.unlock(
+      tier: AuthorizationTier.technician,
+      credentials: pin,
     );
   }
 
@@ -347,10 +362,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     );
     if (confirmed == null || !mounted) return;
     if (!session.auth.isUnlocked) {
-      final unlocked = await session.auth.unlock(
-        tier: AuthorizationTier.technician,
-        credentials: 'technician-authenticated',
-      );
+      final unlocked = await _ensureUnlocked(session);
       if (!unlocked || !mounted) return;
     }
     final authorization = session.auth.current;
@@ -365,8 +377,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
       before,
       contextObj,
     );
-    final token = ConfirmationToken(
-      diffHash: diffHash,
+    final token = mintShownPlanConfirmation(
+      shownPlanHash: diffHash,
       deviceId: contextObj.deviceId,
       sessionId: contextObj.sessionId,
       expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
@@ -379,11 +391,15 @@ class _ParametersScreenState extends State<ParametersScreen> {
       safetyAcknowledged: acknowledged,
     );
     if (!mounted) return;
+    final auditUnavailable = result.validation.issues.any(
+      (issue) => issue.code == ValidationCode.auditKeyUnavailable,
+    );
     final message = switch (result.outcome) {
       WriteOutcome.applied => s.writeAppliedWithReadback(
         _value(id, result.readback!),
       ),
-      WriteOutcome.rejected => s.writeRejected,
+      WriteOutcome.rejected =>
+        auditUnavailable ? s.auditKeyUnavailable : s.writeRejected,
       WriteOutcome.failed => s.writeFailedVerify,
     };
     ScaffoldMessenger.of(
@@ -411,6 +427,68 @@ class _ParametersScreenState extends State<ParametersScreen> {
         '${unit.isEmpty ? '' : ' $unit'} · ${definition.step}'
         '${unit.isEmpty ? '' : ' $unit'}';
   }
+}
+
+class _PinDialog extends StatefulWidget {
+  const _PinDialog({
+    required this.title,
+    required this.label,
+    required this.hint,
+    required this.cancelLabel,
+    required this.authenticateLabel,
+  });
+
+  final String title;
+  final String label;
+  final String hint;
+  final String cancelLabel;
+  final String authenticateLabel;
+
+  @override
+  State<_PinDialog> createState() => _PinDialogState();
+}
+
+class _PinDialogState extends State<_PinDialog> {
+  late final TextEditingController _pinController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pinController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final pin = _pinController.text;
+    _pinController.clear();
+    Navigator.pop(context, pin);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: TextField(
+      controller: _pinController,
+      obscureText: true,
+      decoration: InputDecoration(
+        labelText: widget.label,
+        hintText: widget.hint,
+      ),
+      autofocus: true,
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: Text(widget.cancelLabel),
+      ),
+      FilledButton(onPressed: _submit, child: Text(widget.authenticateLabel)),
+    ],
+  );
 }
 
 class _ParameterTile extends StatelessWidget {

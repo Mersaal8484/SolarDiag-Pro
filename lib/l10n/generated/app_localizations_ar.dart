@@ -246,6 +246,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editParameter => 'تعديل معامل محاكى';
 
   @override
+  String get technicianAuthentication => 'مصادقة الفني';
+
+  @override
+  String get technicianPin => 'رمز PIN للفني';
+
+  @override
+  String get pinAuthorizationHint => 'أدخل رمز PIN لتفويض عمليات الكتابة';
+
+  @override
+  String get authenticateAction => 'مصادقة';
+
+  @override
   String get reviewChanges => 'مراجعة التغييرات';
 
   @override
@@ -267,6 +279,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get writeRejected => 'رفض خط الأمان عملية الكتابة.';
+
+  @override
+  String get auditKeyUnavailable =>
+      'مفتاح سجل التدقيق غير متاح. عمليات الكتابة مقفلة.';
 
   @override
   String get writeFailedVerify =>
@@ -600,6 +616,20 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get cellOvervoltageDetail =>
       'خريطة إنذارات نظام إدارة البطارية الخام تبلغ عن ارتفاع جهد خلية.';
+
+  @override
+  String get cellVoltagesUnavailable => 'جهود الخلايا غير متاحة';
+
+  @override
+  String get cellVoltagesUnavailableDetail =>
+      'لم تُبلّغ جهود خلايا صالحة؛ لذلك يتعذر تقييم توازنها.';
+
+  @override
+  String get cellCountMismatch => 'عدد الخلايا لا يطابق الملف';
+
+  @override
+  String get cellCountMismatchDetail =>
+      'يختلف عدد جهود الخلايا المبلّغ عنها عن طوبولوجيا الملف النشط.';
 
   @override
   String get history => 'السجل';

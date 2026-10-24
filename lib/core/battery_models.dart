@@ -3,6 +3,7 @@ enum DataAbsenceReason { notSupported, notReported, readFailed, stale }
 enum MeasurementQuality { good, uncertain, stale, unavailable }
 
 enum VerificationStatus {
+  unsupported,
   verifiedHardware,
   verifiedDocument,
   communitySourced,
@@ -12,6 +13,13 @@ enum VerificationStatus {
 }
 
 enum TemperatureSensorKind { cell, mosfet, ambient, terminal }
+
+abstract interface class ModuleStatus {
+  int get address;
+  String get role;
+  double get soc;
+  double get current;
+}
 
 class Measurement {
   const Measurement.value(

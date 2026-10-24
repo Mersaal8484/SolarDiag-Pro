@@ -9,7 +9,7 @@ enum ParameterRiskTier { standard, advanced, safetyCritical }
 
 enum TransportKind { simulator, physical }
 
-enum DeviceWriteState { known, unknownVerify }
+enum DeviceWriteState { known, unknownVerify, identityMismatch }
 
 class AuthorizationSession {
   const AuthorizationSession({required this.tier, required this.expiresAt});
@@ -116,13 +116,16 @@ class DeviceWriteContext {
   final String sessionId;
   final String profileModel;
   final String profileFirmware;
-  final String connectedModel;
-  final String connectedFirmware;
+  final String? connectedModel;
+  final String? connectedFirmware;
   final bool linkHealthy;
   final bool writeLocked;
   final DeviceWriteState state;
   bool get exactIdentityMatch =>
-      profileModel == connectedModel && profileFirmware == connectedFirmware;
+      connectedModel != null &&
+      connectedFirmware != null &&
+      profileModel == connectedModel &&
+      profileFirmware == connectedFirmware;
 }
 
 class DiffReview {
@@ -188,6 +191,7 @@ enum ValidationCode {
   writeLocked,
   unknownDeviceState,
   invalidConfirmation,
+  auditKeyUnavailable,
 }
 
 class ValidationIssue {

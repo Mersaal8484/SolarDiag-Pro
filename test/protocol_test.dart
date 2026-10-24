@@ -17,10 +17,8 @@ void main() {
     ).readAsStringSync(),
   );
 
-  test('simulator profile validates and registers', () {
-    final registry = ProfileRegistry.fromJsonDocuments([
-      simulatorProfile,
-    ], technicianMode: true);
+  test('simulator profile validates and registers', () async {
+    final registry = await ProfileRegistry.loadBundledSimulator();
     final profile = registry.byId('solardiag.simulated.lfp16.v2');
     expect(profile, isNotNull);
     expect(profile!.simulated, isTrue);
@@ -37,16 +35,18 @@ void main() {
     expect(() => DeviceProfile.fromJson(json), throwsFormatException);
   });
 
-  test(
-    'duplicate profile identifiers are rejected',
-    () => expect(
+  test('duplicate profile identifiers are rejected', () {
+    final physical = jsonDecode(simulatorProfile) as Map<String, Object?>
+      ..['simulated'] = false;
+    final document = jsonEncode(physical);
+    expect(
       () => ProfileRegistry.fromJsonDocuments([
-        simulatorProfile,
-        simulatorProfile,
-      ], technicianMode: true),
+        document,
+        document,
+      ], technicianMode: false),
       throwsFormatException,
-    ),
-  );
+    );
+  });
 
   test('technician mode rejects unsigned physical profiles', () {
     final json = jsonDecode(simulatorProfile) as Map<String, Object?>

@@ -1,9 +1,12 @@
 import '../core/inverter_models.dart';
+import '../core/simulation_clock.dart';
 import '../parameters/write_pipeline.dart';
 import 'bms_adapter.dart';
 import 'capabilities.dart';
 
 abstract interface class InverterAdapter {
+  DeviceProfileIdentity get profileIdentity;
+  SimulationClock? get simulationClock;
   Future<IdentificationResult> identify();
   Future<InverterTelemetrySnapshot> readTelemetry();
   Future<Set<String>> readAlarms();

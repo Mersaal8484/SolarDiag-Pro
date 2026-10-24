@@ -13,7 +13,7 @@ class CapabilitySet {
     : _values = Map.unmodifiable(values);
   final Map<DeviceCapability, VerificationStatus> _values;
   VerificationStatus statusOf(DeviceCapability capability) =>
-      _values[capability] ?? VerificationStatus.researchTarget;
+      _values[capability] ?? VerificationStatus.unsupported;
   bool canRead(DeviceCapability capability, {bool expertOptIn = false}) {
     final status = statusOf(capability);
     return status == VerificationStatus.verifiedHardware ||

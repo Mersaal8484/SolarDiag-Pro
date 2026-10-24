@@ -1,20 +1,30 @@
 import 'profile_integrity.dart';
 
+enum TrustAnchorPurpose { development, production, placeholder }
+
 class TrustAnchorKey {
   const TrustAnchorKey({
     required this.keyId,
     required this.publicKeyBytes,
     required this.notBefore,
     required this.notAfter,
+    this.purpose = TrustAnchorPurpose.production,
   });
 
   final String keyId;
   final List<int> publicKeyBytes;
   final DateTime notBefore;
   final DateTime notAfter;
+  final TrustAnchorPurpose purpose;
 
-  bool isValidAt(DateTime now) =>
-      !now.isBefore(notBefore) && !now.isAfter(notAfter);
+  bool isValidAt(DateTime now) {
+    if (purpose == TrustAnchorPurpose.placeholder) return false;
+    if (purpose == TrustAnchorPurpose.development &&
+        !const bool.fromEnvironment('ALLOW_DEV_TRUST', defaultValue: false)) {
+      return false;
+    }
+    return !now.isBefore(notBefore) && !now.isAfter(notAfter);
+  }
 
   Ed25519TrustVerifier createVerifier() => Ed25519TrustVerifier(publicKeyBytes);
 }
@@ -25,8 +35,10 @@ class TrustAnchorRegistry {
 
   final List<TrustAnchorKey> keys;
 
-  /// Default production trust anchors embedded at compile-time.
-  /// No private key is ever stored or shipped in this repository.
+  /// Bootstrap placeholders only.  They are intentionally invalid for
+  /// verification until a release process installs documented production
+  /// anchors.  This prevents arbitrary bytes from being represented as real
+  /// production trust roots.
   static final List<TrustAnchorKey> defaultAnchors = [
     TrustAnchorKey(
       keyId: 'solardiag-root-2026-v1',
@@ -66,6 +78,7 @@ class TrustAnchorRegistry {
       ],
       notBefore: DateTime.utc(2026, 1, 1),
       notAfter: DateTime.utc(2028, 1, 1),
+      purpose: TrustAnchorPurpose.placeholder,
     ),
     TrustAnchorKey(
       keyId: 'solardiag-root-2026-v2',
@@ -105,6 +118,7 @@ class TrustAnchorRegistry {
       ],
       notBefore: DateTime.utc(2026, 6, 1),
       notAfter: DateTime.utc(2029, 1, 1),
+      purpose: TrustAnchorPurpose.placeholder,
     ),
   ];
 

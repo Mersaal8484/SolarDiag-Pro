@@ -16,12 +16,10 @@ class ModbusGuard {
     required ModbusFunction function,
     required int address,
     required int count,
-    required bool pipelineAuthorized,
   }) {
     if (!allowedFunctions.contains(function)) return false;
     if (function.isWrite) {
-      return pipelineAuthorized &&
-          writeVerifiedOnHardware &&
+      return writeVerifiedOnHardware &&
           writeRanges.any((range) => range.contains(address, count));
     }
     return readRanges.any((range) => range.contains(address, count));

@@ -1,17 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solardiag_pro/app/solardiag_app.dart';
+import 'package:solardiag_pro/audit/audit_chain.dart';
+import 'package:solardiag_pro/auth/authorization_controller.dart';
+import 'package:solardiag_pro/gateway/gateway_contract.dart';
+import 'package:solardiag_pro/parameters/parameter_models.dart';
+import 'package:solardiag_pro/parameters/write_pipeline.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
 import 'package:solardiag_pro/persistence/local_database.dart';
+import 'package:solardiag_pro/transport/safe_frame_transport.dart';
+import 'support/test_secret_store.dart';
 
 void main() {
+  testWidgets('missing audit key preserves reads and shows a warning', (
+    tester,
+  ) async {
+    final session = DeviceSession(
+      scenario: SimulationScenario.healthy,
+      autoStart: false,
+    );
+    addTearDown(session.dispose);
+    await session.refresh();
+    await session.refreshParameters();
+
+    await tester.pumpWidget(
+      SolarDiagApp(session: session, initialRoute: '/parameters'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(session.parameters['charge_limit'], 55.2);
+    expect(session.auditAvailability, AuditAvailability.keyUnavailable);
+    expect(
+      find.text('Audit key unavailable. Write operations are locked.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('three-step onboarding persists completion locally', (
     tester,
   ) async {
     final database = LocalDatabase.inMemory();
     await tester.pumpWidget(
-      SolarDiagApp(database: database, showOnboarding: true),
+      SolarDiagApp(
+        database: database,
+        auditSecretStore: TestSecretStore(),
+        showOnboarding: true,
+      ),
     );
 
     expect(find.text('Diagnose energy systems with evidence'), findsOneWidget);
@@ -34,6 +69,7 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      auditSecretStore: TestSecretStore(),
     );
     addTearDown(session.dispose);
     await session.refresh();
@@ -50,7 +86,7 @@ void main() {
   testWidgets('shows simulator, read-only mode, and honest missing data', (
     tester,
   ) async {
-    await tester.pumpWidget(const SolarDiagApp());
+    await tester.pumpWidget(SolarDiagApp(auditSecretStore: TestSecretStore()));
     expect(find.byKey(const Key('connection-capsule')), findsOneWidget);
     expect(find.text('SIMULATED'), findsOneWidget);
     expect(find.text('READ-ONLY'), findsOneWidget);
@@ -67,15 +103,15 @@ void main() {
   });
 
   testWidgets('switches to Arabic RTL and dark theme', (tester) async {
-    await tester.pumpWidget(const SolarDiagApp());
-    await tester.tap(find.byIcon(Icons.language));
+    await tester.pumpWidget(SolarDiagApp(auditSecretStore: TestSecretStore()));
+    await tester.tap(find.byKey(const Key('toggle-locale')));
     await tester.pumpAndSettle();
     expect(find.text('الطاقة، بوضوح كامل.'), findsOneWidget);
     expect(
       Directionality.of(tester.element(find.text('الطاقة، بوضوح كامل.'))),
       TextDirection.rtl,
     );
-    await tester.tap(find.byIcon(Icons.contrast));
+    await tester.tap(find.byKey(const Key('toggle-theme')));
     await tester.pumpAndSettle();
     expect(
       Theme.of(tester.element(find.text('الطاقة، بوضوح كامل.'))).brightness,
@@ -84,7 +120,7 @@ void main() {
   });
 
   testWidgets('opens evidence-based advanced diagnostics', (tester) async {
-    await tester.pumpWidget(const SolarDiagApp());
+    await tester.pumpWidget(SolarDiagApp(auditSecretStore: TestSecretStore()));
     final dashboardScroll = find.descendant(
       of: find.byType(CustomScrollView).first,
       matching: find.byType(Scrollable),
@@ -107,7 +143,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const SolarDiagApp());
+    await tester.pumpWidget(SolarDiagApp(auditSecretStore: TestSecretStore()));
     await tester.tap(find.byKey(const ValueKey('workspace-nav-library')));
     await tester.pumpAndSettle();
     expect(find.text('Device library'), findsOneWidget);
@@ -125,6 +161,7 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      auditSecretStore: TestSecretStore(),
     );
     addTearDown(session.dispose);
     await session.refresh();
@@ -159,6 +196,7 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.electricalEvents,
       autoStart: false,
+      auditSecretStore: TestSecretStore(),
     );
     addTearDown(session.dispose);
     await session.refresh();
@@ -203,19 +241,64 @@ void main() {
   testWidgets('gateway status comes from the live read-only session', (
     tester,
   ) async {
-    await tester.pumpWidget(const SolarDiagApp());
+    await tester.pumpWidget(SolarDiagApp(auditSecretStore: TestSecretStore()));
     await tester.tap(find.text('Gateway'));
     await tester.pumpAndSettle();
 
     expect(find.text('Transmission guard'), findsOneWidget);
-    expect(find.text('Transmission blocked in read-only mode'), findsOneWidget);
+    expect(find.text('No transmission attempted'), findsOneWidget);
+    expect(find.text('Passive session accepted'), findsOneWidget);
     expect(find.text('ENFORCED'), findsNothing);
+  });
+
+  testWidgets('gateway shows a real blocked decision and counters', (
+    tester,
+  ) async {
+    final transport = LoopbackGatewayTransport(
+      mode: GatewayOperatingMode.activeRead,
+      guard: const TransmissionGuard(
+        activeSession: true,
+        profileVerifiedForHardware: false,
+        allowedReadIdentifiers: {0x100},
+      ),
+      maxFramesPerSecond: 5,
+      busLoadCap: 0.2,
+      audit: AuditChain(),
+      negotiationState: GatewayNegotiationState.activeReadAccepted,
+    );
+    final session = DeviceSession(
+      gatewayTransport: transport,
+      autoStart: false,
+      auditSecretStore: TestSecretStore(),
+    );
+    addTearDown(session.dispose);
+
+    await expectLater(
+      transport.send(
+        const BusFrame(identifier: 0x200, payload: [1]),
+        TransmissionPurpose.documentedRead,
+      ),
+      throwsStateError,
+    );
+    await tester.pumpWidget(
+      SolarDiagApp(session: session, initialRoute: '/gateway'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Blocked'), findsOneWidget);
+    expect(find.text('1'), findsNWidgets(2));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('gateway-last-decision-reason')),
+      250,
+    );
+    expect(find.text('Frame is not in the read allow-list.'), findsOneWidget);
+    expect(find.text('Active-read session accepted'), findsOneWidget);
   });
 
   testWidgets('parameters are read from adapter and backup is functional', (
     tester,
   ) async {
-    await tester.pumpWidget(const SolarDiagApp());
+    await tester.pumpWidget(SolarDiagApp(auditSecretStore: TestSecretStore()));
     await tester.pump();
     await tester.tap(find.text('Parameters'));
     await tester.pumpAndSettle();
@@ -246,6 +329,11 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      auditSecretStore: TestSecretStore(),
+      authenticator: const DemoConfiguration(
+        isDemoMode: true,
+        demoPin: 'pin',
+      ).createAuthenticator(),
     );
     addTearDown(session.dispose);
     await session.refresh();
@@ -265,6 +353,10 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const Key('confirm-parameter-write')));
     await tester.pumpAndSettle();
+    expect(find.text('Technician Authentication'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'pin');
+    await tester.tap(find.text('Authenticate'));
+    await tester.pumpAndSettle();
 
     expect(
       find.textContaining('Applied and verified by readback:'),
@@ -279,16 +371,43 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      auditSecretStore: TestSecretStore(),
+      authenticator: const DemoConfiguration(
+        isDemoMode: true,
+        demoPin: 'pin',
+      ).createAuthenticator(),
     );
     addTearDown(session.dispose);
     await session.refresh();
     await session.refreshParameters();
     session.createParameterBackup();
+    await session.auth.unlock(
+      tier: AuthorizationTier.technician,
+      credentials: 'pin',
+    );
+    final before = session.parameters['charge_limit']!;
+    final context = session.createWriteContext();
+    final diffHash = VerifiedWritePipeline.previewHash(
+      ParameterChange(
+        definition: DeviceSession.parameterDefinitions['charge_limit']!,
+        requestedValue: 54.8,
+      ),
+      before,
+      context,
+    );
     await session.applySimulatedParameterChange(
       parameterId: 'charge_limit',
       requestedValue: 54.8,
+      authorization: session.auth.current!,
+      confirmation: ConfirmationToken(
+        diffHash: diffHash,
+        deviceId: context.deviceId,
+        sessionId: context.sessionId,
+        expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+      ),
       safetyAcknowledged: true,
     );
+    session.auth.lock();
     await tester.pumpWidget(SolarDiagApp(session: session));
     await tester.tap(find.text('Parameters'));
     await tester.pumpAndSettle();
@@ -318,7 +437,13 @@ void main() {
     await tester.tap(find.byKey(const Key('restore-latest-backup')));
     await tester.pumpAndSettle();
     expect(find.text('Restore configuration backup'), findsOneWidget);
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('confirm-backup-restore')));
+    await tester.pumpAndSettle();
+    expect(find.text('Technician Authentication'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'pin');
+    await tester.tap(find.text('Authenticate'));
     await tester.pumpAndSettle();
 
     expect(session.parameters['charge_limit'], closeTo(55.2, 1e-9));
@@ -334,7 +459,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await tester.pumpWidget(const SolarDiagApp());
+    await tester.pumpWidget(SolarDiagApp(auditSecretStore: TestSecretStore()));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Energy, made legible.'), findsOneWidget);
@@ -346,7 +471,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const SolarDiagApp());
+    await tester.pumpWidget(SolarDiagApp(auditSecretStore: TestSecretStore()));
     await tester.pumpAndSettle();
     final dashboardScroll = find.descendant(
       of: find.byType(CustomScrollView).first,
@@ -370,6 +495,7 @@ void main() {
     final session = DeviceSession(
       scenario: SimulationScenario.healthy,
       autoStart: false,
+      auditSecretStore: TestSecretStore(),
     );
     addTearDown(session.dispose);
     await tester.pumpWidget(SolarDiagApp(session: session));
@@ -395,6 +521,7 @@ void main() {
       scenario: SimulationScenario.healthy,
       autoStart: false,
       database: database,
+      auditSecretStore: TestSecretStore(),
     );
     addTearDown(session.dispose);
     addTearDown(database.close);

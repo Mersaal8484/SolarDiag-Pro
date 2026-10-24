@@ -1,6 +1,8 @@
 import '../core/battery_models.dart';
+import '../core/simulation_clock.dart';
 import 'capabilities.dart';
 import '../parameters/write_pipeline.dart';
+import 'device_profile.dart';
 
 class IdentificationResult {
   const IdentificationResult({
@@ -30,7 +32,24 @@ class LinkHealth {
   final int crcFailures;
 }
 
+class DeviceProfileIdentity {
+  const DeviceProfileIdentity({
+    required this.profileId,
+    required this.model,
+    required this.firmware,
+    required this.deviceId,
+  });
+
+  final String profileId;
+  final String model;
+  final String firmware;
+  final String deviceId;
+}
+
 abstract interface class BmsAdapter {
+  DeviceProfileIdentity get profileIdentity;
+  DeviceProfile? get activeProfile;
+  SimulationClock? get simulationClock;
   Future<IdentificationResult> identify();
   Future<TelemetrySnapshot> readTelemetry();
   Future<List<Measurement>> readCellVoltages();
