@@ -578,20 +578,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cellImbalanceDetected => 'Cell imbalance detected';
 
   @override
-  String get cellVoltagesUnavailable => 'Cell voltages unavailable';
-
-  @override
-  String get cellVoltagesUnavailableDetail =>
-      'No usable cell voltages were reported; cell balance cannot be assessed.';
-
-  @override
-  String get cellCountMismatch => 'Cell count does not match profile';
-
-  @override
-  String get cellCountMismatchDetail =>
-      'The number of reported cell voltages differs from the active profile topology.';
-
-  @override
   String get temperatureUnavailable => 'Temperature unavailable';
 
   @override
@@ -633,6 +619,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get cellOvervoltageDetail =>
       'The BMS raw alarm map reports cell overvoltage.';
+
+  @override
+  String get cellVoltagesUnavailable => 'Cell voltages unavailable';
+
+  @override
+  String get cellVoltagesUnavailableDetail =>
+      'No usable cell voltages were reported; cell balance cannot be assessed.';
+
+  @override
+  String get cellCountMismatch => 'Cell count does not match profile';
+
+  @override
+  String get cellCountMismatchDetail =>
+      'The number of reported cell voltages differs from the active profile topology.';
 
   @override
   String get history => 'History';

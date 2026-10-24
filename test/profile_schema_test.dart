@@ -5,9 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import '../tool/profile_schema_validator.dart';
 
 void main() {
-  final schema = jsonDecode(
-    File('device_profiles/profile.schema.json').readAsStringSync(),
-  ) as Map<String, Object?>;
+  final schema =
+      jsonDecode(File('device_profiles/profile.schema.json').readAsStringSync())
+          as Map<String, Object?>;
   const validator = ProfileSchemaValidator();
 
   test('every bundled profile satisfies the JSON schema', () {
@@ -21,19 +21,14 @@ void main() {
         );
     for (final file in profiles) {
       final document = jsonDecode(file.readAsStringSync());
-      expect(
-        validator.validate(document, schema),
-        isEmpty,
-        reason: file.path,
-      );
+      expect(validator.validate(document, schema), isEmpty, reason: file.path);
     }
   });
 
   test('invalid profile fixtures each violate the declared schema', () {
-    final fixtures = Directory('test/fixtures/profiles_invalid')
-        .listSync()
-        .whereType<File>()
-        .where((file) => file.path.endsWith('.json'));
+    final fixtures = Directory(
+      'test/fixtures/profiles_invalid',
+    ).listSync().whereType<File>().where((file) => file.path.endsWith('.json'));
     expect(fixtures, hasLength(4));
 
     for (final file in fixtures) {

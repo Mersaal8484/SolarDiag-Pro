@@ -133,6 +133,7 @@ class DeviceSession extends ChangeNotifier {
     final count = _adapter.activeProfile?.topology['series_cells'];
     return count is int && count > 0 ? count : null;
   }
+
   bool get libraryWritesBlocked => _libraryWritesBlocked;
 
   void setLibraryWriteBlocked(bool blocked) {
@@ -169,48 +170,54 @@ class DeviceSession extends ChangeNotifier {
   };
 
   CompatibilityAssessment get compatibilityAssessment {
-    final battery = batteryIntegrationProfile ?? BatteryIntegrationProfile(
-      chargeVoltageWindow: _snapshot.chargeVoltageLimit.value == null
-          ? const SourcedValue.unavailable('not_reported')
-          : SourcedValue.reported(
-              VoltageWindow(
-                minimum: _snapshot.voltage.value ?? 0,
-                maximum: _snapshot.chargeVoltageLimit.value!,
-              ),
-              EvidenceSource.deviceReported,
-            ),
-      dischargeVoltageWindow: const SourcedValue.unavailable('not_reported'),
-      maximumChargeCurrent: _snapshot.chargeCurrentLimit.value == null
-          ? const SourcedValue.unavailable('not_reported')
-          : SourcedValue.reported(
-              _snapshot.chargeCurrentLimit.value!,
-              EvidenceSource.deviceReported,
-            ),
-      maximumDischargeCurrent: _snapshot.dischargeCurrentLimit.value == null
-          ? const SourcedValue.unavailable('not_reported')
-          : SourcedValue.reported(
-              _snapshot.dischargeCurrentLimit.value!,
-              EvidenceSource.deviceReported,
-            ),
-      chemistry: const SourcedValue.unavailable('profile_required'),
-      spokenProtocols: const {},
-    );
-    final inverter = inverterIntegrationProfile ?? const InverterIntegrationProfile(
-      configuredChargeVoltage: SourcedValue.unavailable(
-        'inverter_not_connected',
-      ),
-      configuredLowVoltageCutoff: SourcedValue.unavailable(
-        'inverter_not_connected',
-      ),
-      configuredChargeCurrent: SourcedValue.unavailable(
-        'inverter_not_connected',
-      ),
-      configuredDischargeCurrent: SourcedValue.unavailable(
-        'inverter_not_connected',
-      ),
-      supportedChemistries: {},
-      supportedBatteryProtocols: {},
-    );
+    final battery =
+        batteryIntegrationProfile ??
+        BatteryIntegrationProfile(
+          chargeVoltageWindow: _snapshot.chargeVoltageLimit.value == null
+              ? const SourcedValue.unavailable('not_reported')
+              : SourcedValue.reported(
+                  VoltageWindow(
+                    minimum: _snapshot.voltage.value ?? 0,
+                    maximum: _snapshot.chargeVoltageLimit.value!,
+                  ),
+                  EvidenceSource.deviceReported,
+                ),
+          dischargeVoltageWindow: const SourcedValue.unavailable(
+            'not_reported',
+          ),
+          maximumChargeCurrent: _snapshot.chargeCurrentLimit.value == null
+              ? const SourcedValue.unavailable('not_reported')
+              : SourcedValue.reported(
+                  _snapshot.chargeCurrentLimit.value!,
+                  EvidenceSource.deviceReported,
+                ),
+          maximumDischargeCurrent: _snapshot.dischargeCurrentLimit.value == null
+              ? const SourcedValue.unavailable('not_reported')
+              : SourcedValue.reported(
+                  _snapshot.dischargeCurrentLimit.value!,
+                  EvidenceSource.deviceReported,
+                ),
+          chemistry: const SourcedValue.unavailable('profile_required'),
+          spokenProtocols: const {},
+        );
+    final inverter =
+        inverterIntegrationProfile ??
+        const InverterIntegrationProfile(
+          configuredChargeVoltage: SourcedValue.unavailable(
+            'inverter_not_connected',
+          ),
+          configuredLowVoltageCutoff: SourcedValue.unavailable(
+            'inverter_not_connected',
+          ),
+          configuredChargeCurrent: SourcedValue.unavailable(
+            'inverter_not_connected',
+          ),
+          configuredDischargeCurrent: SourcedValue.unavailable(
+            'inverter_not_connected',
+          ),
+          supportedChemistries: {},
+          supportedBatteryProtocols: {},
+        );
     return const CompatibilityEngine().assess(
       battery: battery,
       inverter: inverter,
@@ -219,13 +226,14 @@ class DeviceSession extends ChangeNotifier {
 
   LinkDiagnosticResult get linkDiagnostics {
     final countersAvailable = _linkHealth != null;
-    final expectedMessages = countersAvailable && pollInterval.inMilliseconds > 0
+    final expectedMessages =
+        countersAvailable && pollInterval.inMilliseconds > 0
         ? (const Duration(seconds: 1).inMilliseconds ~/
                   pollInterval.inMilliseconds) *
               2
         : 0;
-    final receivedMessages = countersAvailable &&
-            _linkState == DeviceSessionLinkState.online
+    final receivedMessages =
+        countersAvailable && _linkState == DeviceSessionLinkState.online
         ? (expectedMessages * (1 - _linkHealth!.errorRate)).round()
         : 0;
     final batterySoc = _snapshot.soc.value == null
@@ -445,8 +453,7 @@ class DeviceSession extends ChangeNotifier {
     try {
       _lastIdentification ??= await _adapter.identify();
       final next = await _adapter.readTelemetry();
-      final health =
-          linkHealthReader?.call() ?? await _adapter.health();
+      final health = linkHealthReader?.call() ?? await _adapter.health();
       final alarms = await _adapter.readAlarms();
       _inverterSnapshot = await _inverterAdapter.readTelemetry();
       _inverterAdapter.simulationClock?.advance();

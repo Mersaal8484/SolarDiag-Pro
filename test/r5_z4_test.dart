@@ -77,9 +77,7 @@ void main() {
   });
 
   test('inverter peer limits-restricted case flows through DeviceSession', () {
-    final session = _session(
-      inverter: _inverterProfile(chargeCurrent: 98),
-    );
+    final session = _session(inverter: _inverterProfile(chargeCurrent: 98));
     addTearDown(session.dispose);
 
     expect(
@@ -88,17 +86,20 @@ void main() {
     );
   });
 
-  test('inverter peer incompatible-protocol case flows through DeviceSession', () {
-    final session = _session(
-      inverter: _inverterProfile(protocols: const {'OTHER'}),
-    );
-    addTearDown(session.dispose);
+  test(
+    'inverter peer incompatible-protocol case flows through DeviceSession',
+    () {
+      final session = _session(
+        inverter: _inverterProfile(protocols: const {'OTHER'}),
+      );
+      addTearDown(session.dispose);
 
-    expect(
-      session.compatibilityAssessment.overall,
-      CompatibilityState.incompatible,
-    );
-  });
+      expect(
+        session.compatibilityAssessment.overall,
+        CompatibilityState.incompatible,
+      );
+    },
+  );
 
   test('user-provided compatibility evidence is capped at attention', () {
     final session = _session(
@@ -111,14 +112,12 @@ void main() {
     final finding = session.compatibilityAssessment.findings.singleWhere(
       (item) => item.code == 'CHARGE_VOLTAGE',
     );
-    expect(finding.state, CompatibilityState.attention); 
+    expect(finding.state, CompatibilityState.attention);
     expect(finding.evidenceQuality, EvidenceQuality.userProvided);
   });
 
   test('compatibility near-limit margin is reported through DeviceSession', () {
-    final session = _session(
-      inverter: _inverterProfile(chargeVoltage: 50.2),
-    );
+    final session = _session(inverter: _inverterProfile(chargeVoltage: 50.2));
     addTearDown(session.dispose);
 
     final finding = session.compatibilityAssessment.findings.singleWhere(

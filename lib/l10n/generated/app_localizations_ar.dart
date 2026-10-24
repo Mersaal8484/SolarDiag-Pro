@@ -576,20 +576,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cellImbalanceDetected => 'اكتُشف عدم توازن الخلايا';
 
   @override
-  String get cellVoltagesUnavailable => 'جهود الخلايا غير متاحة';
-
-  @override
-  String get cellVoltagesUnavailableDetail =>
-      'لم تُبلّغ جهود خلايا صالحة؛ لذلك يتعذر تقييم توازنها.';
-
-  @override
-  String get cellCountMismatch => 'عدد الخلايا لا يطابق الملف';
-
-  @override
-  String get cellCountMismatchDetail =>
-      'يختلف عدد جهود الخلايا المبلّغ عنها عن طوبولوجيا الملف النشط.';
-
-  @override
   String get temperatureUnavailable => 'درجة الحرارة غير متاحة';
 
   @override
@@ -630,6 +616,20 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get cellOvervoltageDetail =>
       'خريطة إنذارات نظام إدارة البطارية الخام تبلغ عن ارتفاع جهد خلية.';
+
+  @override
+  String get cellVoltagesUnavailable => 'جهود الخلايا غير متاحة';
+
+  @override
+  String get cellVoltagesUnavailableDetail =>
+      'لم تُبلّغ جهود خلايا صالحة؛ لذلك يتعذر تقييم توازنها.';
+
+  @override
+  String get cellCountMismatch => 'عدد الخلايا لا يطابق الملف';
+
+  @override
+  String get cellCountMismatchDetail =>
+      'يختلف عدد جهود الخلايا المبلّغ عنها عن طوبولوجيا الملف النشط.';
 
   @override
   String get history => 'السجل';

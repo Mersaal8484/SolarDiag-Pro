@@ -36,10 +36,7 @@ void main() {
   test('absent state of health preserves the device absence reason', () {
     final snapshot = _withSoh(
       ScenarioFactory.create(SimulationScenario.healthy).snapshot,
-      const Measurement.absent(
-        DataAbsenceReason.readFailed,
-        unit: '%',
-      ),
+      const Measurement.absent(DataAbsenceReason.readFailed, unit: '%'),
     );
 
     final assessment = diagnostics.analyze(snapshot);
@@ -141,10 +138,11 @@ void main() {
       Directory('lib/diagnostics'),
       Directory('lib/integration'),
     ]) {
-      for (final file in directory
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((file) => file.path.endsWith('.dart'))) {
+      for (final file
+          in directory
+              .listSync(recursive: true)
+              .whereType<File>()
+              .where((file) => file.path.endsWith('.dart'))) {
         expect(
           forbiddenImport.hasMatch(file.readAsStringSync()),
           isFalse,
