@@ -2,6 +2,7 @@ import '../core/battery_models.dart';
 import '../core/simulation_clock.dart';
 import 'capabilities.dart';
 import '../parameters/write_pipeline.dart';
+import 'device_profile.dart';
 
 class IdentificationResult {
   const IdentificationResult({
@@ -47,6 +48,7 @@ class DeviceProfileIdentity {
 
 abstract interface class BmsAdapter {
   DeviceProfileIdentity get profileIdentity;
+  DeviceProfile? get activeProfile;
   SimulationClock? get simulationClock;
   Future<IdentificationResult> identify();
   Future<TelemetrySnapshot> readTelemetry();

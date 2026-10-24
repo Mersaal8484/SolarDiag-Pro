@@ -129,6 +129,10 @@ class DeviceSession extends ChangeNotifier {
   String auditHeadFor(String sessionId) =>
       database?.loadAuditHead(sessionId) ?? 'GENESIS';
   String get activeProfileId => _adapter.profileIdentity.profileId;
+  int? get expectedCellCount {
+    final count = _adapter.activeProfile?.topology['series_cells'];
+    return count is int && count > 0 ? count : null;
+  }
   bool get libraryWritesBlocked => _libraryWritesBlocked;
 
   void setLibraryWriteBlocked(bool blocked) {

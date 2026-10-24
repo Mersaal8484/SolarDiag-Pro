@@ -1112,6 +1112,18 @@ abstract class AppLocalizations {
   /// **'Cell imbalance detected'**
   String get cellImbalanceDetected;
 
+  /// No description provided for @cellVoltagesUnavailable.
+  String get cellVoltagesUnavailable;
+
+  /// No description provided for @cellVoltagesUnavailableDetail.
+  String get cellVoltagesUnavailableDetail;
+
+  /// No description provided for @cellCountMismatch.
+  String get cellCountMismatch;
+
+  /// No description provided for @cellCountMismatchDetail.
+  String get cellCountMismatchDetail;
+
   /// No description provided for @temperatureUnavailable.
   ///
   /// In en, this message translates to:

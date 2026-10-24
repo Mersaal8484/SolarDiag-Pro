@@ -62,6 +62,32 @@ void main() {
     expect(finding.confidence, DiagnosticConfidence.high);
     expect(finding.evidence['delta_v'], greaterThan(.05));
   });
+  test('absent cell voltages are explicitly unavailable', () {
+    final snapshot = _withCells(
+      ScenarioFactory.create(SimulationScenario.healthy).snapshot,
+      const [],
+    );
+    final finding = diagnostics
+        .analyze(snapshot, expectedCellCount: 16)
+        .findings
+        .singleWhere((item) => item.code == 'CELL_VOLTAGES_UNAVAILABLE');
+
+    expect(finding.confidence, DiagnosticConfidence.unavailable);
+    expect(finding.evidence['cell_count_expected'], 16);
+    expect(finding.evidence['cell_count_used'], 0);
+  });
+  test('cell count evidence reports topology versus measured values', () {
+    final snapshot = ScenarioFactory.create(
+      SimulationScenario.healthy,
+    ).snapshot;
+    final finding = diagnostics
+        .analyze(snapshot, expectedCellCount: 15)
+        .findings
+        .singleWhere((item) => item.code == 'CELL_COUNT_MISMATCH');
+
+    expect(finding.evidence['cell_count_expected'], 15);
+    expect(finding.evidence['cell_count_used'], snapshot.cellVoltages.length);
+  });
   test('missing temperature remains unavailable', () {
     final assessment = diagnostics.analyze(
       ScenarioFactory.create(
@@ -154,3 +180,31 @@ TelemetrySnapshot _withSoh(TelemetrySnapshot snapshot, Measurement soh) =>
       timestamp: snapshot.timestamp,
       staleAfter: snapshot.staleAfter,
     );
+
+TelemetrySnapshot _withCells(
+  TelemetrySnapshot snapshot,
+  List<Measurement> cellMeasurements,
+) => TelemetrySnapshot(
+  voltage: snapshot.voltage,
+  current: snapshot.current,
+  power: snapshot.power,
+  soc: snapshot.soc,
+  soh: snapshot.soh,
+  remainingCapacity: snapshot.remainingCapacity,
+  fullChargeCapacity: snapshot.fullChargeCapacity,
+  cycleCount: snapshot.cycleCount,
+  cellMeasurements: cellMeasurements,
+  temperatureSensors: snapshot.temperatureSensors,
+  chargeMosfet: snapshot.chargeMosfet,
+  dischargeMosfet: snapshot.dischargeMosfet,
+  contactor: snapshot.contactor,
+  balancingMask: snapshot.balancingMask,
+  chargeCurrentLimit: snapshot.chargeCurrentLimit,
+  dischargeCurrentLimit: snapshot.dischargeCurrentLimit,
+  chargeVoltageLimit: snapshot.chargeVoltageLimit,
+  rawAlarmBits: snapshot.rawAlarmBits,
+  rawProtectionBits: snapshot.rawProtectionBits,
+  linkStatus: snapshot.linkStatus,
+  timestamp: snapshot.timestamp,
+  staleAfter: snapshot.staleAfter,
+);

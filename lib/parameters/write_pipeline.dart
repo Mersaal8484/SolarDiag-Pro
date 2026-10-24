@@ -10,10 +10,12 @@ import 'parameter_models.dart';
 import 'parameter_validator.dart';
 import '../protocol/bms_adapter.dart';
 import '../protocol/capabilities.dart';
+import '../protocol/device_profile.dart';
 import '../protocol/inverter_adapter.dart';
 import '../protocols/modbus/crc16.dart';
 import '../protocols/modbus/modbus_models.dart';
 import '../protocols/modbus/rtu_codec.dart';
+import '../simulator/simulated_profile_document.dart';
 import '../simulator/simulation_scenario.dart';
 
 part '../simulator/simulated_parameter_transport.dart';

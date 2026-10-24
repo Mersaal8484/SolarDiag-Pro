@@ -24,9 +24,10 @@ class BatteryDiagnostics {
     BatterySnapshot snapshot, {
     Set<String> rawAlarmCodes = const {},
     Map<String, FaultDefinition> faultDictionary = const {},
+    int? expectedCellCount,
   }) {
     final findings = <DiagnosticFinding>[
-      _cellBalance(snapshot),
+      ..._cellBalance(snapshot, expectedCellCount),
       _temperature(snapshot),
       ...rawAlarmCodes.map(
         (code) => FaultInterpreter.interpret(code, faultDictionary),
@@ -43,42 +44,71 @@ class BatteryDiagnostics {
     );
   }
 
-  DiagnosticFinding _cellBalance(BatterySnapshot snapshot) {
+  List<DiagnosticFinding> _cellBalance(
+    BatterySnapshot snapshot,
+    int? expectedCellCount,
+  ) {
+    final cells = snapshot.cellVoltages;
+    final countEvidence = <String, Object?>{
+      'cell_count_expected': expectedCellCount,
+      'cell_count_used': cells.length,
+    };
+    final findings = <DiagnosticFinding>[];
     final delta = snapshot.cellDelta;
     if (delta == null) {
-      return const DiagnosticFinding(
-        code: 'CELL_DELTA_UNAVAILABLE',
-        severity: DiagnosticSeverity.info,
-        titleKey: 'cell_data_unavailable',
-        detailKey: 'cell_data_unavailable_detail',
-        evidence: {},
-        confidence: DiagnosticConfidence.unavailable,
+      findings.add(
+        DiagnosticFinding(
+          code: 'CELL_VOLTAGES_UNAVAILABLE',
+          severity: DiagnosticSeverity.info,
+          titleKey: 'cellVoltagesUnavailable',
+          detailKey: 'cellVoltagesUnavailableDetail',
+          evidence: countEvidence,
+          confidence: DiagnosticConfidence.unavailable,
+        ),
+      );
+    } else {
+      final min = cells.reduce((a, b) => a < b ? a : b);
+      final max = cells.reduce((a, b) => a > b ? a : b);
+      final severity = delta >= thresholds.cellWarningVolts
+          ? DiagnosticSeverity.warning
+          : delta >= thresholds.cellAttentionVolts
+          ? DiagnosticSeverity.attention
+          : DiagnosticSeverity.info;
+      findings.add(
+        DiagnosticFinding(
+          code: 'CELL_DELTA',
+          severity: severity,
+          titleKey: severity == DiagnosticSeverity.info
+              ? 'cells_balanced'
+              : 'cell_imbalance',
+          detailKey: severity == DiagnosticSeverity.info
+              ? 'cells_balanced_detail'
+              : 'cell_imbalance_detail',
+          evidence: {
+            ...countEvidence,
+            'delta_v': delta,
+            'min_v': min,
+            'max_v': max,
+          },
+          confidence: DiagnosticConfidence.high,
+        ),
       );
     }
-    final min = snapshot.cellVoltages.reduce((a, b) => a < b ? a : b);
-    final max = snapshot.cellVoltages.reduce((a, b) => a > b ? a : b);
-    final severity = delta >= thresholds.cellWarningVolts
-        ? DiagnosticSeverity.warning
-        : delta >= thresholds.cellAttentionVolts
-        ? DiagnosticSeverity.attention
-        : DiagnosticSeverity.info;
-    return DiagnosticFinding(
-      code: 'CELL_DELTA',
-      severity: severity,
-      titleKey: severity == DiagnosticSeverity.info
-          ? 'cells_balanced'
-          : 'cell_imbalance',
-      detailKey: severity == DiagnosticSeverity.info
-          ? 'cells_balanced_detail'
-          : 'cell_imbalance_detail',
-      evidence: {
-        'delta_v': delta,
-        'min_v': min,
-        'max_v': max,
-        'cell_count': snapshot.cellVoltages.length,
-      },
-      confidence: DiagnosticConfidence.high,
-    );
+    if (expectedCellCount != null &&
+        cells.isNotEmpty &&
+        expectedCellCount != cells.length) {
+      findings.add(
+        DiagnosticFinding(
+          code: 'CELL_COUNT_MISMATCH',
+          severity: DiagnosticSeverity.attention,
+          titleKey: 'cellCountMismatch',
+          detailKey: 'cellCountMismatchDetail',
+          evidence: countEvidence,
+          confidence: DiagnosticConfidence.medium,
+        ),
+      );
+    }
+    return findings;
   }
 
   DiagnosticFinding _temperature(BatterySnapshot snapshot) {
@@ -156,7 +186,7 @@ extension CompletedBatteryDiagnostics on BatteryDiagnostics {
             .map((value) => (value - mean) * (value - mean))
             .reduce((a, b) => a + b) /
         cells.length;
-    return variance <= 0 ? 0 : _sqrt(variance);
+    return variance <= 0 ? 0 : math.sqrt(variance);
   }
 
   Set<int> persistentOutliers(
@@ -309,9 +339,5 @@ extension CompletedBatteryDiagnostics on BatteryDiagnostics {
       delta: available ? after.value! - before.value! : null,
       available: available,
     );
-  }
-
-  double _sqrt(double value) {
-    return math.sqrt(value);
   }
 }

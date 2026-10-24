@@ -18,6 +18,7 @@ class AdvancedDiagnosticsScreen extends StatelessWidget {
     final assessment = const BatteryDiagnostics().analyze(
       session.snapshot,
       rawAlarmCodes: session.alarmCodes,
+      expectedCellCount: session.expectedCellCount,
     );
     return Scaffold(
       appBar: AppBar(title: Text(s.advancedDiagnostics)),
@@ -180,6 +181,8 @@ class _FindingCard extends StatelessWidget {
       ? localizedNumber(context, value)
       : '$value';
   static String _title(AppLocalizations s, String key) => switch (key) {
+    'cellVoltagesUnavailable' => s.cellVoltagesUnavailable,
+    'cellCountMismatch' => s.cellCountMismatch,
     'cells_balanced' => s.cellsBalanced,
     'cell_imbalance' => s.cellImbalanceDetected,
     'temperature_unavailable' => s.temperatureUnavailable,
@@ -190,6 +193,8 @@ class _FindingCard extends StatelessWidget {
     _ => s.unrecognizedAlarm,
   };
   static String _detail(AppLocalizations s, String key) => switch (key) {
+    'cellVoltagesUnavailableDetail' => s.cellVoltagesUnavailableDetail,
+    'cellCountMismatchDetail' => s.cellCountMismatchDetail,
     'cells_balanced_detail' => s.cellsBalancedDetail,
     'cell_imbalance_detail' => s.cellImbalanceDetail,
     'temperature_unavailable_detail' => s.temperatureUnavailableDetail,

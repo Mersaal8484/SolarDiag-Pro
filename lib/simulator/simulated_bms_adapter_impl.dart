@@ -26,6 +26,11 @@ class SimulatedBmsAdapter extends SimulatedParameterBackend
     firmware: 'simulator-v2',
     deviceId: 'SOLARDIAG-SIM-BMS',
   );
+  static final DeviceProfile _activeProfile = DeviceProfile.fromJson(
+    jsonDecode(simulatedProfileDocument) as Map<String, Object?>,
+  );
+  @override
+  DeviceProfile get activeProfile => _activeProfile;
 
   ScenarioFrame get frame => ScenarioFactory.create(scenario, tick: _tick);
   @override

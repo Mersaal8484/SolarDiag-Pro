@@ -19,7 +19,7 @@ class DiagnosticFinding {
   final DiagnosticSeverity severity;
   final String titleKey;
   final String detailKey;
-  final Map<String, Object> evidence;
+  final Map<String, Object?> evidence;
   final DiagnosticConfidence confidence;
 }
 
