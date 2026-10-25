@@ -15,9 +15,12 @@ research bundles include capture documents, findings, references and a separate
 SHA-256 integrity hash. NDA sessions remain local and are rejected from exports.
 
 The import wizard uses the platform file picker, detects supported formats,
-previews metadata and malformed lines before intake, and records clock source
-and accuracy. Supported inputs are `.sdcap`, candump, SLCAN, mapped CSV and
-generic hex text. PCAP/PCAPNG and Vector ASC remain explicitly unsupported.
+previews metadata and line-numbered malformed input before intake, and records
+clock source and accuracy. Supported inputs are `.sdcap`, candump, SLCAN,
+Vector ASC, PEAK TRC, mapped CSV and generic hex text. DBC and KCD CAN signal
+definitions support deterministic import/export. The exact unsupported list is:
+`pcap Modbus TCP`, `pcapng Modbus TCP`, `serial-sniffer binary logs`, and
+`serial-monitor vendor exports`.
 
 The monitor uses a fixed-extent virtual list, pause/resume and jump-to-live
 controls, a selectable hex/ASCII inspector, byte differences, and correlated

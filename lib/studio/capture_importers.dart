@@ -158,6 +158,219 @@ class CandumpImporter implements CaptureImporter {
   }
 }
 
+class SlcanImporter implements CaptureImporter {
+  const SlcanImporter();
+
+  @override
+  String get formatName => 'SLCAN text';
+
+  @override
+  bool supportsFileName(String fileName) =>
+      fileName.toLowerCase().endsWith('.slcan');
+
+  @override
+  CaptureImportResult import(String source, CaptureImportContext context) {
+    final frames = <CapturedFrame>[];
+    final issues = <CaptureImportIssue>[];
+    final lines = const LineSplitter().convert(source);
+    for (var index = 0; index < lines.length; index++) {
+      final line = lines[index].trim();
+      if (line.isEmpty) {
+        continue;
+      }
+      final extended = line.startsWith('T');
+      if (!extended && !line.startsWith('t')) {
+        issues.add(_lineError(index, 'Unsupported or malformed SLCAN line.'));
+        continue;
+      }
+      final identifierWidth = extended ? 8 : 3;
+      final headerLength = 1 + identifierWidth + 1;
+      if (line.length < headerLength) {
+        issues.add(_lineError(index, 'Truncated SLCAN frame header.'));
+        continue;
+      }
+      final identifierText = line.substring(1, 1 + identifierWidth);
+      final lengthText = line.substring(1 + identifierWidth, headerLength);
+      final declaredLength = int.tryParse(lengthText, radix: 16);
+      final identifier = int.tryParse(identifierText, radix: 16);
+      if (declaredLength == null || declaredLength > 8 || identifier == null) {
+        issues.add(_lineError(index, 'Invalid SLCAN identifier or length.'));
+        continue;
+      }
+      final remainder = line.substring(headerLength);
+      final payloadDigits = declaredLength * 2;
+      if (remainder.length != payloadDigits &&
+          remainder.length != payloadDigits + 4) {
+        issues.add(
+          _lineError(index, 'SLCAN payload length does not match DLC.'),
+        );
+        continue;
+      }
+      final payload = payloadDigits == 0
+          ? const <int>[]
+          : _tryDecodeHex(remainder.substring(0, payloadDigits));
+      final timestampText = remainder.length == payloadDigits + 4
+          ? remainder.substring(payloadDigits)
+          : null;
+      final timestamp = timestampText == null
+          ? index * 1000000
+          : int.tryParse(timestampText, radix: 16);
+      if (payload == null || timestamp == null) {
+        issues.add(_lineError(index, 'Invalid SLCAN payload or timestamp.'));
+        continue;
+      }
+      frames.add(
+        CapturedFrame(
+          timestampNanos: timestampText == null
+              ? timestamp
+              : timestamp * 1000000,
+          rawBytes: payload,
+          direction: CaptureDirection.unknown,
+          channel: 'slcan',
+          identifier: identifier,
+          extendedIdentifier: extended,
+          protocolHint: 'CAN',
+        ),
+      );
+    }
+    return CaptureImportResult(
+      session: _session(
+        context,
+        CaptureInterface.can,
+        CaptureSource.slcan,
+        frames,
+      ),
+      issues: List.unmodifiable(issues),
+    );
+  }
+}
+
+class VectorAscImporter implements CaptureImporter {
+  const VectorAscImporter();
+
+  @override
+  String get formatName => 'Vector ASC';
+
+  @override
+  bool supportsFileName(String fileName) =>
+      fileName.toLowerCase().endsWith('.asc');
+
+  @override
+  CaptureImportResult import(String source, CaptureImportContext context) {
+    final frames = <CapturedFrame>[];
+    final issues = <CaptureImportIssue>[];
+    final lines = const LineSplitter().convert(source);
+    final framePattern = RegExp(
+      r'^\s*(\d+(?:\.\d+)?)\s+(\d+)\s+([0-9A-Fa-f]+)(x?)\s+(Rx|Tx)\s+d\s+(\d+)\s*(.*)$',
+      caseSensitive: false,
+    );
+    for (var index = 0; index < lines.length; index++) {
+      final line = lines[index].trim();
+      if (line.isEmpty ||
+          line.startsWith('date ') ||
+          line.startsWith('base ') ||
+          line.startsWith('//')) {
+        continue;
+      }
+      final match = framePattern.firstMatch(line);
+      if (match == null) {
+        issues.add(_lineError(index, 'Malformed Vector ASC frame line.'));
+        continue;
+      }
+      final declaredLength = int.parse(match.group(6)!);
+      final payload = _tryDecodeHex(match.group(7)!);
+      if (payload == null || payload.length != declaredLength) {
+        issues.add(
+          _lineError(index, 'Vector ASC payload length does not match DLC.'),
+        );
+        continue;
+      }
+      frames.add(
+        CapturedFrame(
+          timestampNanos: (double.parse(match.group(1)!) * 1000000000).round(),
+          rawBytes: payload,
+          direction: _direction(match.group(5)),
+          channel: match.group(2)!,
+          identifier: int.parse(match.group(3)!, radix: 16),
+          extendedIdentifier: match.group(4)!.isNotEmpty,
+          protocolHint: 'CAN',
+        ),
+      );
+    }
+    return CaptureImportResult(
+      session: _session(
+        context,
+        CaptureInterface.can,
+        CaptureSource.vectorAsc,
+        frames,
+      ),
+      issues: List.unmodifiable(issues),
+    );
+  }
+}
+
+class PeakTrcImporter implements CaptureImporter {
+  const PeakTrcImporter();
+
+  @override
+  String get formatName => 'PEAK TRC';
+
+  @override
+  bool supportsFileName(String fileName) =>
+      fileName.toLowerCase().endsWith('.trc');
+
+  @override
+  CaptureImportResult import(String source, CaptureImportContext context) {
+    final frames = <CapturedFrame>[];
+    final issues = <CaptureImportIssue>[];
+    final lines = const LineSplitter().convert(source);
+    final framePattern = RegExp(
+      r'^\s*\d+\)\s+(\d+(?:\.\d+)?)\s+(Rx|Tx)\s+([0-9A-Fa-f]{1,8})\s+(\d+)\s*(.*)$',
+      caseSensitive: false,
+    );
+    for (var index = 0; index < lines.length; index++) {
+      final line = lines[index].trim();
+      if (line.isEmpty || line.startsWith(';')) {
+        continue;
+      }
+      final match = framePattern.firstMatch(line);
+      if (match == null) {
+        issues.add(_lineError(index, 'Malformed PEAK TRC frame line.'));
+        continue;
+      }
+      final declaredLength = int.parse(match.group(4)!);
+      final payload = _tryDecodeHex(match.group(5)!);
+      if (payload == null || payload.length != declaredLength) {
+        issues.add(
+          _lineError(index, 'PEAK TRC payload length does not match DLC.'),
+        );
+        continue;
+      }
+      final identifierText = match.group(3)!;
+      frames.add(
+        CapturedFrame(
+          timestampNanos: (double.parse(match.group(1)!) * 1000000).round(),
+          rawBytes: payload,
+          direction: _direction(match.group(2)),
+          channel: 'peak-trc',
+          identifier: int.parse(identifierText, radix: 16),
+          extendedIdentifier: identifierText.length > 3,
+          protocolHint: 'CAN',
+        ),
+      );
+    }
+    return CaptureImportResult(
+      session: _session(
+        context,
+        CaptureInterface.can,
+        CaptureSource.peakTrc,
+        frames,
+      ),
+      issues: List.unmodifiable(issues),
+    );
+  }
+}
+
 class CsvColumnMapping {
   const CsvColumnMapping({
     required this.timestamp,
@@ -385,13 +598,17 @@ class GenericHexImporter implements CaptureImporter {
 class CaptureImporterRegistry {
   const CaptureImporterRegistry();
   static const unsupportedFormats = [
-    'SLCAN',
-    'pcap/pcapng Modbus TCP',
-    'Vector ASC',
+    'pcap Modbus TCP',
+    'pcapng Modbus TCP',
+    'serial-sniffer binary logs',
+    'serial-monitor vendor exports',
   ];
   List<CaptureImporter> defaults({CsvColumnMapping? csvMapping}) => [
     const SdcapImporter(),
     const CandumpImporter(),
+    const SlcanImporter(),
+    const VectorAscImporter(),
+    const PeakTrcImporter(),
     if (csvMapping != null) CsvCaptureImporter(csvMapping),
   ];
 }

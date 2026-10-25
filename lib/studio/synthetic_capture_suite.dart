@@ -5,6 +5,8 @@ abstract final class SyntheticCaptureSuite {
     canCounter,
     modbusPolling,
     noisySerial,
+    textEncodings,
+    lengthField,
   ];
 
   static final canCounter = CaptureSession(
@@ -99,6 +101,76 @@ abstract final class SyntheticCaptureSuite {
     containsNdaMaterial: false,
     notes: 'Malformed and valid serial frames for tolerant analysis.',
     serialConfiguration: {'baud_rate': 115200, 'format': '8N1'},
+    clockSource: 'synthetic-monotonic',
+    clockAccuracyNanos: 1,
+  );
+
+  static final textEncodings = CaptureSession(
+    id: 'synthetic-text-encodings',
+    interfaceType: CaptureInterface.uart,
+    source: CaptureSource.synthetic,
+    startedAt: DateTime.utc(2026, 1, 4),
+    frames: const [
+      CapturedFrame(
+        timestampNanos: 0,
+        rawBytes: [0x48, 0x45, 0x4c, 0x4c, 0x4f],
+        direction: CaptureDirection.rx,
+        channel: 'uart-text',
+        protocolHint: 'Synthetic ASCII',
+      ),
+      CapturedFrame(
+        timestampNanos: 1000000,
+        rawBytes: [0x12, 0x34, 0x56],
+        direction: CaptureDirection.rx,
+        channel: 'uart-text',
+        protocolHint: 'Synthetic BCD',
+      ),
+      CapturedFrame(
+        timestampNanos: 2000000,
+        rawBytes: [0x34, 0x31, 0x34, 0x32],
+        direction: CaptureDirection.rx,
+        channel: 'uart-text',
+        protocolHint: 'Synthetic hex-ASCII',
+      ),
+    ],
+    synthetic: true,
+    containsNdaMaterial: false,
+    notes: 'Deterministic synthetic ASCII, BCD and hex-ASCII fixture.',
+    clockSource: 'synthetic-monotonic',
+    clockAccuracyNanos: 1,
+  );
+
+  static final lengthField = CaptureSession(
+    id: 'synthetic-length-field',
+    interfaceType: CaptureInterface.uart,
+    source: CaptureSource.synthetic,
+    startedAt: DateTime.utc(2026, 1, 5),
+    frames: const [
+      CapturedFrame(
+        timestampNanos: 0,
+        rawBytes: [3, 0x10, 0x20],
+        direction: CaptureDirection.rx,
+        channel: 'uart-length',
+        protocolHint: 'Synthetic length prefix',
+      ),
+      CapturedFrame(
+        timestampNanos: 1000000,
+        rawBytes: [4, 0x10, 0x20, 0x30],
+        direction: CaptureDirection.rx,
+        channel: 'uart-length',
+        protocolHint: 'Synthetic length prefix',
+      ),
+      CapturedFrame(
+        timestampNanos: 2000000,
+        rawBytes: [5, 0x10, 0x20, 0x30, 0x40],
+        direction: CaptureDirection.rx,
+        channel: 'uart-length',
+        protocolHint: 'Synthetic length prefix',
+      ),
+    ],
+    synthetic: true,
+    containsNdaMaterial: false,
+    notes: 'Deterministic synthetic payload-length fixture.',
     clockSource: 'synthetic-monotonic',
     clockAccuracyNanos: 1,
   );

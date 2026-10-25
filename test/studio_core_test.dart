@@ -11,6 +11,14 @@ import 'package:solardiag_pro/studio/replay_lock.dart';
 import 'package:solardiag_pro/studio/research_repository.dart';
 import 'package:solardiag_pro/studio/sdcap_codec.dart';
 
+class _RecordingHardwareTransport {
+  final writes = <List<int>>[];
+
+  Future<void> write(List<int> bytes) async {
+    writes.add(List.unmodifiable(bytes));
+  }
+}
+
 void main() {
   const codec = SdcapCodec();
   final session = CaptureSession(
@@ -192,6 +200,47 @@ void main() {
     );
   });
   test(
+    'Replay Lock rejects before a recording hardware transport is called',
+    () async {
+      const frame = CaptureFrame(
+        timestampMicros: 0,
+        identifier: 1,
+        payload: [1, 2, 3],
+        received: true,
+      );
+      final transport = _RecordingHardwareTransport();
+
+      await expectLater(
+        const ReplayLock().blockHardwareTransmission(
+          frame: frame,
+          wireWriter: transport.write,
+        ),
+        throwsA(isA<ReplayProhibitedException>()),
+      );
+      expect(transport.writes, isEmpty);
+    },
+  );
+  test('Studio domain has no hardware transport or gateway send path', () {
+    final sources = Directory(
+      'lib/studio',
+    ).listSync().whereType<File>().where((file) => file.path.endsWith('.dart'));
+
+    for (final file in sources) {
+      final source = file.readAsStringSync();
+      expect(
+        source,
+        isNot(contains("import '../transport/")),
+        reason: file.path,
+      );
+      expect(source, isNot(contains("import '../gateway/")), reason: file.path);
+      expect(
+        RegExp(r'\bwireWriter\s*\(').hasMatch(source),
+        isFalse,
+        reason: file.path,
+      );
+    }
+  });
+  test(
     'finding cannot jump states or become verified without hardware evidence',
     () {
       final audit = AuditChain(clock: () => DateTime.utc(2026));
@@ -348,6 +397,42 @@ void main() {
     expect(
       registry.thirdPartyNotices(),
       contains('LicenseRef-FRECON-Proprietary'),
+    );
+    expect(registry.validateReuseCompliance, returnsNormally);
+  });
+  test('reused-code references require SPDX license and generated notice', () {
+    const source = '''
+{
+  "references": [
+    {
+      "id": "reused-code",
+      "title": "Fixture",
+      "type": "open-source-research",
+      "url": "https://example.invalid/repository",
+      "retrieved_on": "2026-10-25",
+      "exact_version": "0123456789012345678901234567890123456789",
+      "license": "MIT",
+      "obligations": ["Preserve copyright notice"],
+      "scope": "Synthetic test fixture",
+      "used_for": ["test"],
+      "derived_artifacts": ["test/studio_core_test.dart"],
+      "profile_document_ids": ["SYNTHETIC-REUSED-CODE"],
+      "verification_status": "synthetic-test-only",
+      "legal_review": true,
+      "notice_required": false,
+      "nda_restricted": false
+    }
+  ]
+}
+''';
+    final registry = ReferenceRegistry.fromJson(source);
+
+    expect(registry.validateReuseCompliance, throwsFormatException);
+    expect(
+      () => ReferenceRegistry.fromJson(
+        source.replaceFirst('"license": "MIT"', '"license": ""'),
+      ),
+      throwsFormatException,
     );
   });
   test('reference registry reports malformed fields as format errors', () {

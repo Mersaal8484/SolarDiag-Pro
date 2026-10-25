@@ -6,6 +6,11 @@ class ReplayLock {
       throw const ReplayProhibitedException();
   Never deriveHardwareTransmission(CaptureFrame frame) =>
       throw const ReplayProhibitedException();
+
+  Future<Never> blockHardwareTransmission({
+    required CaptureFrame frame,
+    required Future<void> Function(List<int>) wireWriter,
+  }) => Future<Never>.error(const ReplayProhibitedException());
 }
 
 class ReplayProhibitedException implements Exception {

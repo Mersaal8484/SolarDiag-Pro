@@ -194,7 +194,20 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).protocolStudio),
-        actions: [const _ReplayLockBadge(), const SizedBox(width: 14)],
+        actions: [
+          if (!wide)
+            PopupMenuButton<StudioSection>(
+              tooltip: 'All Studio sections',
+              icon: const SolarIcon(SolarIcons.grid),
+              onSelected: (value) => setState(() => section = value),
+              itemBuilder: (context) => [
+                for (final item in StudioSection.values)
+                  PopupMenuItem(value: item, child: Text(_label(item))),
+              ],
+            ),
+          const _ReplayLockBadge(),
+          const SizedBox(width: 14),
+        ],
       ),
       body: Row(
         children: [
@@ -612,6 +625,9 @@ class _CaptureSourcesView extends StatelessWidget {
                 children: [
                   Chip(label: Text(_StudioCopy.sdcap)),
                   Chip(label: Text(_StudioCopy.candump)),
+                  Chip(label: Text(_StudioCopy.slcan)),
+                  Chip(label: Text(_StudioCopy.vectorAsc)),
+                  Chip(label: Text(_StudioCopy.peakTrc)),
                   Chip(label: Text(_StudioCopy.csvMapping)),
                   Chip(label: Text(_StudioCopy.genericHex)),
                 ],
@@ -666,6 +682,18 @@ class _CaptureSourcesView extends StatelessWidget {
                         child: Text(_StudioCopy.sdcapOption),
                       ),
                       DropdownMenuItem(
+                        value: 'slcan',
+                        child: Text(_StudioCopy.slcanOption),
+                      ),
+                      DropdownMenuItem(
+                        value: 'asc',
+                        child: Text(_StudioCopy.vectorAscOption),
+                      ),
+                      DropdownMenuItem(
+                        value: 'trc',
+                        child: Text(_StudioCopy.peakTrcOption),
+                      ),
+                      DropdownMenuItem(
                         value: 'generic',
                         child: Text(_StudioCopy.genericHexOption),
                       ),
@@ -708,6 +736,9 @@ class _CaptureSourcesView extends StatelessWidget {
                 final importer = switch (selectedFormat) {
                   'sdcap' => const SdcapImporter(),
                   'candump' => const CandumpImporter(),
+                  'slcan' => const SlcanImporter(),
+                  'asc' => const VectorAscImporter(),
+                  'trc' => const PeakTrcImporter(),
                   _ => const GenericHexImporter(GenericHexRules()),
                 };
                 final importContext = CaptureImportContext(
@@ -1286,10 +1317,14 @@ abstract final class _StudioCopy {
   static const importFormats = 'Import formats';
   static const sdcap = '.sdcap v1/v2';
   static const candump = 'candump';
+  static const slcan = 'SLCAN';
+  static const vectorAsc = 'Vector ASC';
+  static const peakTrc = 'PEAK TRC';
   static const csvMapping = 'CSV mapping';
   static const genericHex = 'Generic HEX';
   static const unsupportedFormats =
-      'Not implemented: SLCAN, PCAP/PCAPNG Modbus TCP, Vector ASC';
+      'Not implemented: pcap Modbus TCP, pcapng Modbus TCP, '
+      'serial-sniffer binary logs, serial-monitor vendor exports';
   static const protocolEvidence = 'Protocol evidence';
   static const aba = 'A/B/A';
   static const ab = 'A/B';
@@ -1298,6 +1333,9 @@ abstract final class _StudioCopy {
   static const selectFormat = 'Select format:';
   static const candumpOption = 'Linux candump (.log)';
   static const sdcapOption = 'SolarDiag Capture (.sdcap)';
+  static const slcanOption = 'SLCAN text (.slcan)';
+  static const vectorAscOption = 'Vector ASC (.asc)';
+  static const peakTrcOption = 'PEAK TRC (.trc)';
   static const genericHexOption = 'Generic HEX text';
   static const containsNda = 'Contains NDA material';
   static const ndaSubtitle = 'Blocks export and contribution';

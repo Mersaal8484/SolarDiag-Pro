@@ -108,6 +108,36 @@ class ReferenceRegistry {
     }
   }
 
+  void validateReuseCompliance() {
+    final notices = thirdPartyNotices();
+    for (final reference in references.values.where(
+      (item) => item.type == 'open-source-research',
+    )) {
+      if (!reference.noticeRequired) {
+        throw FormatException(
+          '${reference.id} reuses external code/research without a required notice.',
+        );
+      }
+      if (reference.license.startsWith('LicenseRef-')) {
+        throw FormatException(
+          '${reference.id} reused-code entry requires an SPDX license.',
+        );
+      }
+      if (!reference.legalReview) {
+        throw FormatException(
+          '${reference.id} reused-code entry requires recorded legal review.',
+        );
+      }
+      if (!notices.contains('`${reference.id}`') ||
+          !notices.contains('- License: ${reference.license}') ||
+          !notices.contains(reference.obligations.first)) {
+        throw FormatException(
+          '${reference.id} is absent or incomplete in THIRD_PARTY_NOTICES.',
+        );
+      }
+    }
+  }
+
   String thirdPartyNotices() {
     final external = references.values.where(
       (reference) => reference.type != 'internal',

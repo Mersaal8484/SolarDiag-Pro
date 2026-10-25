@@ -9,8 +9,8 @@ void main() {
   test('synthetic suite is deterministic and export-safe', () {
     final sessions = SyntheticCaptureSuite.all;
 
-    expect(sessions, hasLength(3));
-    expect(sessions.map((item) => item.id).toSet(), hasLength(3));
+    expect(sessions, hasLength(5));
+    expect(sessions.map((item) => item.id).toSet(), hasLength(5));
     expect(sessions.every((item) => item.synthetic), isTrue);
     expect(sessions.every((item) => !item.containsNdaMaterial), isTrue);
     expect(sessions.every((item) => item.frames.isNotEmpty), isTrue);
@@ -37,7 +37,7 @@ void main() {
     );
     final restored = codec.decode(encoded);
 
-    expect(restored.sessions, hasLength(3));
+    expect(restored.sessions, hasLength(5));
     expect(restored.findings, isNotEmpty);
     expect(restored.referenceIds, ['solardiag-simulator-spec-001']);
     expect(restored.payloadHash, hasLength(64));

@@ -15,6 +15,7 @@ void main(List<String> arguments) {
     final registry = ReferenceRegistry.fromJson(
       registryFile.readAsStringSync(),
     );
+    registry.validateReuseCompliance();
     _validateReferences(registry);
     _validateProfileProvenance(registry);
     final notices = registry.thirdPartyNotices();

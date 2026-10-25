@@ -7,6 +7,7 @@ enum CaptureSource {
   candump,
   csv,
   slcan,
+  peakTrc,
   pcap,
   vectorAsc,
   synthetic,
