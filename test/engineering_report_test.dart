@@ -252,7 +252,7 @@ String _extractUncompressedPdfText(List<int> bytes) {
     dotAll: true,
   ).allMatches(source)) {
     final chunks = <String>[
-      if (operator.group(1) case final text?) text,
+      ?operator.group(1),
       if (operator.group(2) case final array?)
         for (final item in RegExp(
           r'<([0-9A-Fa-f]+)>',

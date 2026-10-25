@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solardiag_pro/app/theme.dart';
@@ -618,13 +619,15 @@ void main() {
     expect(
       tester
           .getSemantics(find.byType(StatusPill))
-          .hasFlag(SemanticsFlag.isLiveRegion),
+          .flagsCollection
+          .contains(SemanticsFlag.isLiveRegion),
       isTrue,
     );
     expect(
       tester
           .getSemantics(find.byType(AlarmCard))
-          .hasFlag(SemanticsFlag.isLiveRegion),
+          .flagsCollection
+          .contains(SemanticsFlag.isLiveRegion),
       isTrue,
     );
   });

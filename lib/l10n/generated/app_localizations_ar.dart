@@ -130,39 +130,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get voltageUnit => 'فولت';
 
   @override
-  String get unitAmpere => 'أمبير';
-
-  @override
-  String get unitWatt => 'واط';
-
-  @override
-  String get unitPercent => '%';
-
-  @override
-  String get unitCelsius => '°م';
-
-  @override
-  String get unitMillivolt => 'ملي فولت';
-
-  @override
-  String get unitMillisecond => 'مللي ثانية';
-
-  @override
-  String get unitSecond => 'ث';
-
-  @override
-  String get unitHertz => 'هرتز';
-
-  @override
-  String get unitCycle => 'دورة';
-
-  @override
-  String get unitFrame => 'إطار';
-
-  @override
-  String get unitSample => 'عينة';
-
-  @override
   String get pipelineValidate => 'التحقق من المدخلات';
 
   @override
@@ -337,6 +304,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get updatedNow => 'حُدّث الآن';
 
   @override
+  String get measurementStale => 'قياس قديم';
+
+  @override
+  String measurementCapturedAt(String timestamp) {
+    return 'التُقط في $timestamp';
+  }
+
+  @override
   String get packVoltage => 'جهد الحزمة';
 
   @override
@@ -433,12 +408,90 @@ class AppLocalizationsAr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       reportedCount,
       locale: localeName,
-      other: 'لا عينات مبلغ عنها من أصل $formattedTotal',
+      other: '$formattedReported من أصل $formattedTotal عينة',
       many: '$formattedReported من أصل $formattedTotal عينة',
       few: '$formattedReported من أصل $formattedTotal عينات',
       two: '$formattedReported من أصل $formattedTotal عينتين',
       one: '$formattedReported من أصل $formattedTotal عينة',
       zero: 'لا عينات مبلغ عنها من أصل $formattedTotal',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get unitAmpere => 'أمبير';
+
+  @override
+  String get unitWatt => 'واط';
+
+  @override
+  String get unitPercent => '%';
+
+  @override
+  String get unitCelsius => '°م';
+
+  @override
+  String get unitMillivolt => 'ملي فولت';
+
+  @override
+  String get unitMillisecond => 'مللي ثانية';
+
+  @override
+  String get unitSecond => 'ث';
+
+  @override
+  String get unitHertz => 'هرتز';
+
+  @override
+  String get unitCycle => 'دورة';
+
+  @override
+  String get unitFrame => 'إطار';
+
+  @override
+  String get unitSample => 'عينة';
+
+  @override
+  String timestampedFrameValue(int count, String formattedCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formattedCount إطار مؤقت',
+      many: '$formattedCount إطارًا مؤقتًا',
+      few: '$formattedCount إطارات مؤقتة',
+      two: 'إطاران مؤقتان',
+      one: 'إطار مؤقت واحد',
+      zero: 'لا إطارات مؤقتة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String framesLoaded(int count, String formattedCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'حُمّل $formattedCount إطار بنجاح',
+      many: 'حُمّل $formattedCount إطارًا بنجاح',
+      few: 'حُمّلت $formattedCount إطارات بنجاح',
+      two: 'حُمّل إطاران بنجاح',
+      one: 'حُمّل إطار واحد بنجاح',
+      zero: 'لم تُحمّل إطارات',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String frameReferences(int count, String formattedCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formattedCount مرجع إطار',
+      many: '$formattedCount مرجع إطار',
+      few: '$formattedCount مراجع إطارات',
+      two: 'مرجعا إطار',
+      one: 'مرجع إطار واحد',
+      zero: 'لا مراجع إطارات',
     );
     return '$_temp0';
   }

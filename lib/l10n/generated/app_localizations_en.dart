@@ -131,39 +131,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voltageUnit => 'V';
 
   @override
-  String get unitAmpere => 'A';
-
-  @override
-  String get unitWatt => 'W';
-
-  @override
-  String get unitPercent => '%';
-
-  @override
-  String get unitCelsius => '°C';
-
-  @override
-  String get unitMillivolt => 'mV';
-
-  @override
-  String get unitMillisecond => 'ms';
-
-  @override
-  String get unitSecond => 's';
-
-  @override
-  String get unitHertz => 'Hz';
-
-  @override
-  String get unitCycle => 'cycle';
-
-  @override
-  String get unitFrame => 'frame';
-
-  @override
-  String get unitSample => 'sample';
-
-  @override
   String get pipelineValidate => 'Validate';
 
   @override
@@ -337,6 +304,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get updatedNow => 'Updated now';
 
   @override
+  String get measurementStale => 'Stale measurement';
+
+  @override
+  String measurementCapturedAt(String timestamp) {
+    return 'Captured at $timestamp';
+  }
+
+  @override
   String get packVoltage => 'Pack voltage';
 
   @override
@@ -439,6 +414,84 @@ class AppLocalizationsEn extends AppLocalizations {
       two: '$formattedReported of $formattedTotal samples',
       one: '$formattedReported of $formattedTotal sample',
       zero: 'No reported samples out of $formattedTotal',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get unitAmpere => 'A';
+
+  @override
+  String get unitWatt => 'W';
+
+  @override
+  String get unitPercent => '%';
+
+  @override
+  String get unitCelsius => '°C';
+
+  @override
+  String get unitMillivolt => 'mV';
+
+  @override
+  String get unitMillisecond => 'ms';
+
+  @override
+  String get unitSecond => 's';
+
+  @override
+  String get unitHertz => 'Hz';
+
+  @override
+  String get unitCycle => 'cycle';
+
+  @override
+  String get unitFrame => 'frame';
+
+  @override
+  String get unitSample => 'sample';
+
+  @override
+  String timestampedFrameValue(int count, String formattedCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formattedCount timestamped frames',
+      many: '$formattedCount timestamped frames',
+      few: '$formattedCount timestamped frames',
+      two: '$formattedCount timestamped frames',
+      one: '$formattedCount timestamped frame',
+      zero: 'No timestamped frames',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String framesLoaded(int count, String formattedCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formattedCount frames loaded successfully',
+      many: '$formattedCount frames loaded successfully',
+      few: '$formattedCount frames loaded successfully',
+      two: '$formattedCount frames loaded successfully',
+      one: '$formattedCount frame loaded successfully',
+      zero: 'No frames loaded',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String frameReferences(int count, String formattedCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formattedCount frame references',
+      many: '$formattedCount frame references',
+      few: '$formattedCount frame references',
+      two: '$formattedCount frame references',
+      one: '$formattedCount frame reference',
+      zero: 'No frame references',
     );
     return '$_temp0';
   }

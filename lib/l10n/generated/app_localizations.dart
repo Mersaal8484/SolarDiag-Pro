@@ -332,28 +332,6 @@ abstract class AppLocalizations {
   /// **'V'**
   String get voltageUnit;
 
-  String get unitAmpere;
-
-  String get unitWatt;
-
-  String get unitPercent;
-
-  String get unitCelsius;
-
-  String get unitMillivolt;
-
-  String get unitMillisecond;
-
-  String get unitSecond;
-
-  String get unitHertz;
-
-  String get unitCycle;
-
-  String get unitFrame;
-
-  String get unitSample;
-
   /// No description provided for @pipelineValidate.
   ///
   /// In en, this message translates to:
@@ -666,6 +644,18 @@ abstract class AppLocalizations {
   /// **'Updated now'**
   String get updatedNow;
 
+  /// No description provided for @measurementStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Stale measurement'**
+  String get measurementStale;
+
+  /// No description provided for @measurementCapturedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Captured at {timestamp}'**
+  String measurementCapturedAt(String timestamp);
+
   /// No description provided for @packVoltage.
   ///
   /// In en, this message translates to:
@@ -726,17 +716,117 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{No cells} =1{1 cell} =2{2 cells} few{{count} cells} many{{count} cells} other{{count} cells}}'**
   String cellCount(int count);
 
+  /// No description provided for @cycleValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{{formattedCount} cycles} =1{{formattedCount} cycle} =2{{formattedCount} cycles} few{{formattedCount} cycles} many{{formattedCount} cycles} other{{formattedCount} cycles}}'**
   String cycleValue(int count, String formattedCount);
 
+  /// No description provided for @frameValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{{formattedCount} frames} =1{{formattedCount} frame} =2{{formattedCount} frames} few{{formattedCount} frames} many{{formattedCount} frames} other{{formattedCount} frames}}'**
   String frameValue(int count, String formattedCount);
 
+  /// No description provided for @sampleValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{{formattedCount} samples} =1{{formattedCount} sample} =2{{formattedCount} samples} few{{formattedCount} samples} many{{formattedCount} samples} other{{formattedCount} samples}}'**
   String sampleValue(int count, String formattedCount);
 
+  /// No description provided for @sampleCoverage.
+  ///
+  /// In en, this message translates to:
+  /// **'{reportedCount, plural, =0{No reported samples out of {formattedTotal}} =1{{formattedReported} of {formattedTotal} sample} =2{{formattedReported} of {formattedTotal} samples} few{{formattedReported} of {formattedTotal} samples} many{{formattedReported} of {formattedTotal} samples} other{{formattedReported} of {formattedTotal} samples}}'**
   String sampleCoverage(
     int reportedCount,
     String formattedReported,
     String formattedTotal,
   );
+
+  /// No description provided for @unitAmpere.
+  ///
+  /// In en, this message translates to:
+  /// **'A'**
+  String get unitAmpere;
+
+  /// No description provided for @unitWatt.
+  ///
+  /// In en, this message translates to:
+  /// **'W'**
+  String get unitWatt;
+
+  /// No description provided for @unitPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'%'**
+  String get unitPercent;
+
+  /// No description provided for @unitCelsius.
+  ///
+  /// In en, this message translates to:
+  /// **'°C'**
+  String get unitCelsius;
+
+  /// No description provided for @unitMillivolt.
+  ///
+  /// In en, this message translates to:
+  /// **'mV'**
+  String get unitMillivolt;
+
+  /// No description provided for @unitMillisecond.
+  ///
+  /// In en, this message translates to:
+  /// **'ms'**
+  String get unitMillisecond;
+
+  /// No description provided for @unitSecond.
+  ///
+  /// In en, this message translates to:
+  /// **'s'**
+  String get unitSecond;
+
+  /// No description provided for @unitHertz.
+  ///
+  /// In en, this message translates to:
+  /// **'Hz'**
+  String get unitHertz;
+
+  /// No description provided for @unitCycle.
+  ///
+  /// In en, this message translates to:
+  /// **'cycle'**
+  String get unitCycle;
+
+  /// No description provided for @unitFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'frame'**
+  String get unitFrame;
+
+  /// No description provided for @unitSample.
+  ///
+  /// In en, this message translates to:
+  /// **'sample'**
+  String get unitSample;
+
+  /// No description provided for @timestampedFrameValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No timestamped frames} =1{{formattedCount} timestamped frame} =2{{formattedCount} timestamped frames} few{{formattedCount} timestamped frames} many{{formattedCount} timestamped frames} other{{formattedCount} timestamped frames}}'**
+  String timestampedFrameValue(int count, String formattedCount);
+
+  /// No description provided for @framesLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No frames loaded} =1{{formattedCount} frame loaded successfully} =2{{formattedCount} frames loaded successfully} few{{formattedCount} frames loaded successfully} many{{formattedCount} frames loaded successfully} other{{formattedCount} frames loaded successfully}}'**
+  String framesLoaded(int count, String formattedCount);
+
+  /// No description provided for @frameReferences.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No frame references} =1{{formattedCount} frame reference} =2{{formattedCount} frame references} few{{formattedCount} frame references} many{{formattedCount} frame references} other{{formattedCount} frame references}}'**
+  String frameReferences(int count, String formattedCount);
 
   /// No description provided for @continueAction.
   ///

@@ -452,6 +452,7 @@ class _Hero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(

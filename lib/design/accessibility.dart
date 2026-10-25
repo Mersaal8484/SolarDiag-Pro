@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/generated/app_localizations.dart';
 import 'value_unit_formatter.dart';
 
 enum DigitPreference { western, arabicIndic }

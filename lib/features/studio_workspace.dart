@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../design/components.dart';
 import '../design/precision_ui.dart';
 import '../app/theme.dart';
 import '../persistence/local_database.dart';
