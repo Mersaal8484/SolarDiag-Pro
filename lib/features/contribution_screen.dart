@@ -29,7 +29,7 @@ class _ContributionScreenState extends State<ContributionScreen> {
         PrecisionPageHeading(
           title: l10n.contributeSafely,
           subtitle: l10n.contributionPrivacy,
-          icon: Icons.shield_outlined,
+          icon: SolarIcons.contribute,
         ),
         const SizedBox(height: 24),
         Stepper(

@@ -22,7 +22,7 @@ class InverterDiagnosticsScreen extends StatelessWidget {
           PrecisionPageHeading(
             title: s.inverterDiagnostics,
             subtitle: s.inverterDiagnosticsDescription,
-            icon: Icons.bolt_outlined,
+            icon: SolarIcons.inverter,
           ),
           const SizedBox(height: 20),
           PrecisionCard(
@@ -80,14 +80,30 @@ class _ReadingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
     final valueLabel = reading.value == null
-        ? AppLocalizations.of(context).notReportedByDevice
-        : '${localizedNumber(context, reading.value!, fractionDigits: 1)} ${reading.unit}';
-    return Semantics(
-      label: '$label, $valueLabel',
-      child: SizedBox(
-        width: 220,
-        child: PrecisionReading(label: label, value: valueLabel),
+        ? s.notReportedByDevice
+        : localizedMeasurement(
+            context,
+            reading.value!,
+            reading.unit,
+            fractionDigits: 1,
+          );
+    final freshness = reading.value == null
+        ? s.telemetryUnavailable
+        : reading.quality == MeasurementQuality.stale
+        ? s.measurementStale
+        : reading.timestamp == null
+        ? s.updatedNow
+        : s.measurementCapturedAt(
+            reading.timestamp!.toUtc().toIso8601String(),
+          );
+    return SizedBox(
+      width: 220,
+      child: PrecisionReading(
+        label: label,
+        value: valueLabel,
+        freshness: freshness,
       ),
     );
   }

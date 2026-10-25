@@ -19,22 +19,25 @@ class LinkScreen extends StatelessWidget {
     final link = session.linkDiagnostics;
     final recommendations = session.integrationRecommendations;
     final delivery = link.messageDeliveryRatio;
+    final deliveryLabel = delivery == null
+        ? s.deliveryUnavailable
+        : localizedMeasurement(context, delivery * 100, '%');
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 64),
       children: [
         PrecisionPageHeading(
           title: s.inverterBatteryLink,
           subtitle: s.linkDescription,
-          icon: Icons.cable_outlined,
+          icon: SolarIcons.linkDiagnostics,
         ),
         const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1E3A5B), Color(0xFF0C1C33)],
+            gradient: LinearGradient(
+              colors: [palette.surfaceRaised, palette.surface],
             ),
-            border: Border.all(color: const Color(0xFF375477)),
+            border: Border.all(color: palette.separator),
             borderRadius: BorderRadius.circular(26),
           ),
           child: Row(
@@ -55,16 +58,22 @@ class LinkScreen extends StatelessWidget {
                         _verdictLabel(s, assessment.verdict),
                       ].join(' · '),
                       style: TextStyle(
-                        color: const Color(0xFFF3F7FF),
+                        color: palette.labelPrimary,
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
                       ),
                     ),
-                    Text(
-                      delivery == null
-                          ? s.deliveryUnavailable
-                          : '${localizedNumber(context, delivery * 100)}% ${s.messageDelivery}',
-                      style: TextStyle(color: const Color(0xFFBDCEE2)),
+                    Semantics(
+                      label:
+                          '${s.messageDelivery}, $deliveryLabel, ${s.updatedNow}',
+                      child: ExcludeSemantics(
+                        child: Text(
+                          delivery == null
+                              ? deliveryLabel
+                              : '$deliveryLabel ${s.messageDelivery}',
+                          style: TextStyle(color: palette.labelSecondary),
+                        ),
+                      ),
                     ),
                   ],
                 ),

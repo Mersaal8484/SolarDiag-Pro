@@ -30,7 +30,7 @@ class AdvancedDiagnosticsScreen extends StatelessWidget {
             PrecisionPageHeading(
               title: s.evidenceBeforeConclusions,
               subtitle: s.diagnosticEvidenceNote,
-              icon: Icons.biotech_outlined,
+              icon: SolarIcons.research,
             ),
             const SizedBox(height: 24),
             _SohCard(assessment: assessment),
@@ -60,15 +60,19 @@ class _SohCard extends StatelessWidget {
         ? assessment.reason == DataAbsenceReason.notReported
               ? s.sohUnavailableReason
               : s.diagnosticEvidenceNote
-        : '${localizedNumber(context, value, fractionDigits: 1)}'
-              '${measurement.unit == null ? '' : ' ${measurement.unit}'}';
+        : localizedMeasurement(
+            context,
+            value,
+            measurement.unit,
+            fractionDigits: 1,
+          );
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF203D5C), Color(0xFF0C1C33)],
+        gradient: LinearGradient(
+          colors: [palette.surfaceRaised, palette.surface],
         ),
-        border: Border.all(color: const Color(0xFF375477)),
+        border: Border.all(color: palette.separator),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
@@ -82,7 +86,7 @@ class _SohCard extends StatelessWidget {
                 Text(
                   value == null ? s.sohUnavailable : s.stateOfHealth,
                   style: TextStyle(
-                    color: const Color(0xFFF3F7FF),
+                    color: palette.labelPrimary,
                     fontWeight: FontWeight.w800,
                     fontSize: 17,
                   ),
@@ -90,7 +94,7 @@ class _SohCard extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   description,
-                  style: TextStyle(color: const Color(0xFFBDCEE2)),
+                  style: TextStyle(color: palette.labelSecondary),
                 ),
               ],
             ),

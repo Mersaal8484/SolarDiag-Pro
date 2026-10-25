@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solardiag_pro/app/solardiag_app.dart';
 import 'package:solardiag_pro/config/feature_flags.dart';
+import 'package:solardiag_pro/design/components.dart';
 import 'package:solardiag_pro/persistence/local_database.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/studio/capture_models.dart';
@@ -123,7 +124,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Import Capture Data'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.tap(find.byType(SolarSelect<String>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('SolarDiag Capture (.sdcap)').last);
     await tester.pumpAndSettle();

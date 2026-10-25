@@ -130,6 +130,39 @@ class AppLocalizationsAr extends AppLocalizations {
   String get voltageUnit => 'فولت';
 
   @override
+  String get unitAmpere => 'أمبير';
+
+  @override
+  String get unitWatt => 'واط';
+
+  @override
+  String get unitPercent => '%';
+
+  @override
+  String get unitCelsius => '°م';
+
+  @override
+  String get unitMillivolt => 'ملي فولت';
+
+  @override
+  String get unitMillisecond => 'مللي ثانية';
+
+  @override
+  String get unitSecond => 'ث';
+
+  @override
+  String get unitHertz => 'هرتز';
+
+  @override
+  String get unitCycle => 'دورة';
+
+  @override
+  String get unitFrame => 'إطار';
+
+  @override
+  String get unitSample => 'عينة';
+
+  @override
   String get pipelineValidate => 'التحقق من المدخلات';
 
   @override
@@ -342,6 +375,70 @@ class AppLocalizationsAr extends AppLocalizations {
       two: 'خليتان',
       one: 'خلية واحدة',
       zero: 'لا خلايا',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cycleValue(int count, String formattedCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formattedCount دورة',
+      many: '$formattedCount دورة',
+      few: '$formattedCount دورات',
+      two: 'دورتان',
+      one: 'دورة واحدة',
+      zero: 'لا دورات',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String frameValue(int count, String formattedCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formattedCount إطار',
+      many: '$formattedCount إطارًا',
+      few: '$formattedCount إطارات',
+      two: 'إطاران',
+      one: 'إطار واحد',
+      zero: 'لا إطارات',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sampleValue(int count, String formattedCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formattedCount عينة',
+      many: '$formattedCount عينة',
+      few: '$formattedCount عينات',
+      two: 'عينتان',
+      one: 'عينة واحدة',
+      zero: 'لا عينات',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sampleCoverage(
+    int reportedCount,
+    String formattedReported,
+    String formattedTotal,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      reportedCount,
+      locale: localeName,
+      other: 'لا عينات مبلغ عنها من أصل $formattedTotal',
+      many: '$formattedReported من أصل $formattedTotal عينة',
+      few: '$formattedReported من أصل $formattedTotal عينات',
+      two: '$formattedReported من أصل $formattedTotal عينتين',
+      one: '$formattedReported من أصل $formattedTotal عينة',
+      zero: 'لا عينات مبلغ عنها من أصل $formattedTotal',
     );
     return '$_temp0';
   }

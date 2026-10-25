@@ -8,12 +8,14 @@ import 'package:solardiag_pro/app/theme.dart';
 import 'package:solardiag_pro/design/accessibility.dart';
 import 'package:solardiag_pro/design/components.dart';
 import 'package:solardiag_pro/design/solar_icons.g.dart';
+import 'package:solardiag_pro/design/value_unit_formatter.dart';
 import 'package:solardiag_pro/features/battery_workspace.dart';
 import 'package:solardiag_pro/features/device_library.dart';
 import 'package:solardiag_pro/features/parameters_screen.dart';
 import 'package:solardiag_pro/features/settings_screen.dart';
 import 'package:solardiag_pro/features/studio_workspace.dart';
 import 'package:solardiag_pro/l10n/generated/app_localizations.dart';
+import 'package:solardiag_pro/l10n/generated/app_localizations_ar.dart';
 import 'package:solardiag_pro/persistence/local_database.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/trust/library_write_reason.dart';
@@ -28,7 +30,23 @@ void main() {
   });
 
   test('symbol inventory is complete and every SVG source exists', () {
-    expect(SolarIcons.all.length, greaterThanOrEqualTo(70));
+    const required = {
+      'home', 'inverter', 'battery', 'link-diagnostics', 'library', 'history',
+      'gateway', 'can-bus', 'rs485', 'rs232', 'uart', 'ble', 'usb', 'wifi',
+      'cell', 'cell-grid', 'soc-ring', 'soh', 'cycle', 'balancing', 'mosfet',
+      'contactor', 'temperature', 'thermal-map', 'current-flow',
+      'parallel-bank', 'master-slave', 'healthy', 'warning', 'critical',
+      'stale', 'offline', 'locked', 'unlocked-verified', 'simulated',
+      'verified-hardware', 'verified-document', 'research', 'read-only',
+      'configure', 'calibrate', 'factory', 'backup', 'restore', 'compare',
+      'report', 'export', 'share', 'search', 'filter', 'record', 'solar',
+      'grid', 'load', 'battery-charge', 'battery-discharge', 'capture-record',
+      'passive-tap', 'hex-inspector', 'frame', 'request-response', 'diff',
+      'hypothesis', 'evidence', 'confirmed-check', 'profile-builder',
+      'register-map', 'replay-lock', 'contribute', 'redact', 'review-queue',
+      'signed-profile', 'revoked', 'library-sync', 'reward-points', 'role',
+    };
+    expect(SolarIcons.all.map((icon) => icon.name).toSet(), required);
     for (final icon in SolarIcons.all) {
       expect(File(icon.asset).existsSync(), isTrue, reason: icon.name);
     }
@@ -92,6 +110,21 @@ void main() {
         if (RegExp(r'(?<!Solar)Icons\.|\bIcon\(').hasMatch(source)) {
           offenders.add(file.path);
         }
+      }
+    }
+    expect(offenders, isEmpty);
+  });
+
+  test('J2 feature controls do not use Material dropdown widgets', () {
+    final offenders = <String>[];
+    final materialDropdown = RegExp(r'\bDropdownButton(?:FormField)?\b');
+    for (final file
+        in Directory('lib/features')
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((file) => file.path.endsWith('.dart'))) {
+      if (materialDropdown.hasMatch(file.readAsStringSync())) {
+        offenders.add(file.path);
       }
     }
     expect(offenders, isEmpty);
@@ -262,8 +295,11 @@ void main() {
           ),
         );
         expect(tester.takeException(), isNull);
-        expect(find.text('٢١٤ cycles'), findsOneWidget);
-        expect(find.text('٢١٤.٠ cycles'), findsNothing);
+        final expectedCycleLabel = locale.languageCode == 'ar'
+            ? '٢١٤ دورة'
+            : '٢١٤ cycles';
+        expect(find.textContaining(expectedCycleLabel), findsOneWidget);
+        expect(find.textContaining('٢١٤.٠'), findsNothing);
       },
     );
 
@@ -290,9 +326,12 @@ void main() {
             .widgetList<TechnicalText>(find.byType(TechnicalText))
             .map((widget) => widget.data)
             .toList();
+        final expectedFrameLabel = locale.languageCode == 'ar'
+            ? '٣ إطارات'
+            : '٣ frames';
         expect(technicalLabels, contains('0x351'));
         expect(
-          technicalLabels.any((label) => label.contains('٣ frames')),
+          technicalLabels.any((label) => label.contains(expectedFrameLabel)),
           isTrue,
         );
         expect(
@@ -348,6 +387,62 @@ void main() {
   test('digit preferences and technical isolation are deterministic', () {
     expect(localizedDigits('51.2', DigitPreference.western), '51.2');
     expect(localizedDigits('51.2', DigitPreference.arabicIndic), '٥١.٢');
+  });
+
+  test('value and unit formatter applies precision, digits, and isolation', () {
+    const western = ValueUnitFormatter();
+    const arabic = ValueUnitFormatter(
+      useArabicIndicDigits: true,
+    );
+
+    expect(western.number(214.0), '214');
+    expect(
+      western.format(51.2, unit: EngineeringUnit.volts, isolate: true),
+      '\u206651.20 V\u2069',
+    );
+    expect(
+      arabic.format(
+        214,
+        unit: EngineeringUnit.volts,
+        unitLabel: 'فولت',
+      ),
+      '٢١٤.٠٠ فولت',
+    );
+  });
+
+  test('Arabic engineering quantities use ICU plural categories', () {
+    final arabic = AppLocalizationsAr();
+    expect(
+      localizedUnitLabel(arabic, EngineeringUnit.volts),
+      'فولت',
+    );
+    expect(
+      localizedUnitLabel(arabic, EngineeringUnit.millivolts),
+      'ملي فولت',
+    );
+    expect(arabic.cycleValue(0, '٠'), 'لا دورات');
+    expect(arabic.cycleValue(1, '١'), 'دورة واحدة');
+    expect(arabic.cycleValue(2, '٢'), 'دورتان');
+    expect(arabic.cycleValue(7, '٧'), '٧ دورات');
+    expect(arabic.cycleValue(15, '١٥'), '١٥ دورة');
+    expect(arabic.sampleValue(0, '٠'), 'لا عينات');
+    expect(arabic.sampleValue(1, '١'), 'عينة واحدة');
+    expect(arabic.sampleValue(2, '٢'), 'عينتان');
+    expect(arabic.sampleValue(7, '٧'), '٧ عينات');
+    expect(arabic.sampleValue(15, '١٥'), '١٥ عينة');
+    expect(arabic.frameValue(0, '٠'), 'لا إطارات');
+    expect(arabic.frameValue(1, '١'), 'إطار واحد');
+    expect(arabic.frameValue(2, '٢'), 'إطاران');
+    expect(arabic.frameValue(7, '٧'), '٧ إطارات');
+    expect(arabic.frameValue(15, '١٥'), '١٥ إطارًا');
+    expect(
+      arabic.sampleCoverage(0, '٠', '١٠'),
+      'لا عينات مبلغ عنها من أصل ١٠',
+    );
+    expect(arabic.sampleCoverage(1, '١', '١٠'), '١ من أصل ١٠ عينة');
+    expect(arabic.sampleCoverage(2, '٢', '١٠'), '٢ من أصل ١٠ عينتين');
+    expect(arabic.sampleCoverage(7, '٧', '١٠'), '٧ من أصل ١٠ عينات');
+    expect(arabic.sampleCoverage(15, '١٥', '١٠'), '١٥ من أصل ١٠ عينة');
   });
 
   test('feature code has no direct colors or literal Text widgets', () {
@@ -409,6 +504,11 @@ void main() {
 
     expect(find.text('Digit preference'), findsOneWidget);
     expect(find.text('Workshop mode'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Outdoor high contrast'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Outdoor high contrast'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Time axis left to right'),
@@ -483,11 +583,49 @@ void main() {
 
     final metric = find.byType(MetricTile);
     final value = find.descendant(of: metric, matching: find.text('51.24'));
-    final unit = find.descendant(of: metric, matching: find.text('V'));
+    final unit = find.descendant(of: metric, matching: find.text('فولت'));
     expect(tester.getCenter(value).dx, lessThan(tester.getCenter(unit).dx));
     expect(
       tester.getCenter(find.text('1')).dx,
       lessThan(tester.getCenter(find.text('2')).dx),
+    );
+  });
+
+  testWidgets('mode and alarm state changes are live semantics', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    addTearDown(semantics.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: solarTheme(brightness: Brightness.light),
+        home: const Scaffold(
+          body: Column(
+            children: [
+              ModeBadge(label: 'READ-ONLY', status: SolarStatus.info),
+              AlarmCard(
+                title: 'Overvoltage',
+                message: 'Raw alarm code: CELL_OVERVOLTAGE',
+                status: SolarStatus.critical,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .getSemantics(find.byType(StatusPill))
+          .hasFlag(SemanticsFlag.isLiveRegion),
+      isTrue,
+    );
+    expect(
+      tester
+          .getSemantics(find.byType(AlarmCard))
+          .hasFlag(SemanticsFlag.isLiveRegion),
+      isTrue,
     );
   });
 

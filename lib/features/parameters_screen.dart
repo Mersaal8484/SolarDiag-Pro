@@ -5,6 +5,8 @@ import '../design/precision_ui.dart';
 
 import '../app/theme.dart';
 import '../auth/confirmation_factory.dart';
+import '../design/accessibility.dart';
+import '../design/components.dart';
 import '../design/solar_icon.dart';
 import '../design/solar_icons.g.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -22,6 +24,7 @@ class ParametersScreen extends StatefulWidget {
 
 class _ParametersScreenState extends State<ParametersScreen> {
   bool _requested = false;
+  String? _selectedParameterId;
 
   @override
   void didChangeDependencies() {
@@ -38,22 +41,27 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final session = DeviceSessionScope.of(context);
     final entries = session.parameters.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
-    return ListView(
+    final selectedId = entries.any(
+      (entry) => entry.key == _selectedParameterId,
+    )
+        ? _selectedParameterId
+        : entries.firstOrNull?.key;
+    final list = ListView(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 64),
       children: [
         PrecisionPageHeading(
           title: s.parameters,
           subtitle: s.simulatorValuesNotice,
-          icon: Icons.tune_rounded,
+          icon: SolarIcons.configure,
         ),
         const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF203D5C), Color(0xFF0C1C33)],
+            gradient: LinearGradient(
+              colors: [palette.surfaceRaised, palette.surface],
             ),
-            border: Border.all(color: const Color(0xFF375477)),
+            border: Border.all(color: palette.separator),
             borderRadius: BorderRadius.circular(22),
           ),
           child: Row(
@@ -64,7 +72,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                 child: Text(
                   s.simulatedWritePipeline,
                   style: TextStyle(
-                    color: const Color(0xFFF3F7FF),
+                    color: palette.labelPrimary,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -89,8 +97,12 @@ class _ParametersScreenState extends State<ParametersScreen> {
           for (final entry in entries)
             _ParameterTile(
               title: _label(s, entry.key),
-              value: _value(entry.key, entry.value),
-              range: _range(entry.key),
+              value: _value(context, entry.key, entry.value),
+              range: _range(context, entry.key),
+              selected: selectedId == entry.key,
+              onSelect: () => setState(
+                () => _selectedParameterId = entry.key,
+              ),
               onEdit: entry.key == 'charge_limit'
                   ? () => _editParameter(
                       session: session,
@@ -142,6 +154,38 @@ class _ParametersScreenState extends State<ParametersScreen> {
           ],
         ),
       ],
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 760) return list;
+        final selected = selectedId == null
+            ? null
+            : entries.firstWhere((entry) => entry.key == selectedId);
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(flex: 2, child: list),
+            SizedBox(
+              width: 340,
+              child: _ParameterInspector(
+                title: selected == null ? s.noParametersReported : _label(s, selected.key),
+                value: selected == null
+                    ? s.notAvailable
+                    : _value(context, selected.key, selected.value),
+                range: selected == null
+                    ? s.notAvailable
+                    : _range(context, selected.key),
+                writeStatus: session.libraryWriteDisabledReason == null
+                    ? s.readOnly
+                    : localizedLibraryWriteReason(
+                        context,
+                        session.libraryWriteDisabledReason!,
+                      ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -281,11 +325,13 @@ class _ParametersScreenState extends State<ParametersScreen> {
                 subtitle: Text(
                   s.backupComparisonValues(
                     _optionalValue(
+                      context,
                       s,
                       difference.parameterId,
                       difference.backupValue,
                     ),
                     _optionalValue(
+                      context,
                       s,
                       difference.parameterId,
                       difference.currentValue,
@@ -307,8 +353,12 @@ class _ParametersScreenState extends State<ParametersScreen> {
     );
   }
 
-  static String _optionalValue(AppLocalizations s, String id, num? value) =>
-      value == null ? s.notAvailable : _value(id, value);
+  static String _optionalValue(
+    BuildContext context,
+    AppLocalizations s,
+    String id,
+    num? value,
+  ) => value == null ? s.notAvailable : _value(context, id, value);
 
   Future<void> _editParameter({
     required DeviceSession session,
@@ -332,7 +382,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
                 Text(_label(s, id)),
                 const SizedBox(height: 8),
                 Text(
-                  '${_value(id, before)} → ${_value(id, requested)}',
+                  '${_value(context, id, before)} → '
+                  '${_value(context, id, requested)}',
                   key: const Key('parameter-diff'),
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
@@ -345,10 +396,9 @@ class _ParametersScreenState extends State<ParametersScreen> {
                       ((definition.maximum - definition.minimum) /
                               definition.step)
                           .round(),
-                  label: _value(id, requested),
-                  onChanged: (value) => setDialogState(
-                    () => requested = double.parse(value.toStringAsFixed(1)),
-                  ),
+                  label: _value(context, id, requested),
+                  onChanged: (value) =>
+                      setDialogState(() => requested = (value * 10).round() / 10),
                 ),
                 Text(s.parameterRiskAdvanced),
                 CheckboxListTile(
@@ -413,7 +463,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     );
     final message = switch (result.outcome) {
       WriteOutcome.applied => s.writeAppliedWithReadback(
-        _value(id, result.readback!),
+        _value(context, id, result.readback!),
       ),
       WriteOutcome.rejected =>
         auditUnavailable ? s.auditKeyUnavailable : s.writeRejected,
@@ -430,20 +480,89 @@ class _ParametersScreenState extends State<ParametersScreen> {
     _ => id.replaceAll('_', ' '),
   };
 
-  static String _value(String id, num value) {
+  static String _value(BuildContext context, String id, num value) {
     final definition = DeviceSession.parameterDefinitions[id];
-    final unit = definition?.unit ?? '';
-    return [value, if (unit.isNotEmpty) unit].join(' ');
+    return localizedMeasurement(
+      context,
+      value,
+      definition?.unit,
+      fractionDigits: definition == null
+          ? null
+          : _fractionDigits(definition.step),
+    );
   }
 
-  static String _range(String id) {
+  static String _range(BuildContext context, String id) {
     final definition = DeviceSession.parameterDefinitions[id];
     if (definition == null) return id;
-    final unit = definition.unit;
-    return '${definition.minimum}–${definition.maximum}'
-        '${unit.isEmpty ? '' : ' $unit'} · ${definition.step}'
-        '${unit.isEmpty ? '' : ' $unit'}';
+    final minimum = localizedMeasurement(
+      context,
+      definition.minimum,
+      definition.unit,
+      fractionDigits: _fractionDigits(definition.step),
+    );
+    final maximum = localizedMeasurement(
+      context,
+      definition.maximum,
+      definition.unit,
+      fractionDigits: _fractionDigits(definition.step),
+    );
+    final step = localizedMeasurement(
+      context,
+      definition.step,
+      definition.unit,
+      fractionDigits: _fractionDigits(definition.step),
+    );
+    return '$minimum–$maximum · $step';
   }
+
+  static int _fractionDigits(num step) {
+    final text = step.toString();
+    if (!text.contains('.')) return 0;
+    return text.split('.').last.replaceFirst(RegExp(r'0+$'), '').length;
+  }
+}
+
+class _ParameterInspector extends StatelessWidget {
+  const _ParameterInspector({
+    required this.title,
+    required this.value,
+    required this.range,
+    required this.writeStatus,
+  });
+
+  final String title;
+  final String value;
+  final String range;
+  final String writeStatus;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.fromSTEB(0, 22, 20, 64),
+    child: PrecisionCard(
+      key: const Key('parameter-inspector'),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            PrecisionSectionHeading(
+              label: AppLocalizations.of(context).parameters,
+              icon: SolarIcons.configure,
+            ),
+            const SizedBox(height: 24),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 10),
+            TechnicalText(value, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 10),
+            TechnicalText(range),
+            const Spacer(),
+            StatusPill(label: writeStatus, status: SolarStatus.info),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _PinDialog extends StatefulWidget {
@@ -513,22 +632,35 @@ class _ParameterTile extends StatelessWidget {
     required this.title,
     required this.value,
     required this.range,
+    required this.selected,
+    required this.onSelect,
     this.onEdit,
   });
   final String title;
   final String value;
   final String range;
+  final bool selected;
+  final VoidCallback onSelect;
   final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: PrecisionCard(
+    final freshness = AppLocalizations.of(context).updatedNow;
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: '$title, $value, $freshness',
+      child: ExcludeSemantics(
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: PrecisionCard(
+            child: InkWell(
+              onTap: onSelect,
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
@@ -589,6 +721,9 @@ class _ParameterTile extends StatelessWidget {
                 ),
               ],
             ],
+                ),
+              ),
+            ),
           ),
         ),
       ),

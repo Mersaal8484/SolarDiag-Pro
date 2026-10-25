@@ -27,7 +27,7 @@ class SessionHistoryScreen extends StatelessWidget {
           PrecisionPageHeading(
             title: s.diagnosticHistory,
             subtitle: s.historyDescription,
-            icon: Icons.history_outlined,
+            icon: SolarIcons.history,
           ),
           const SizedBox(height: 24),
           if (records.isEmpty)

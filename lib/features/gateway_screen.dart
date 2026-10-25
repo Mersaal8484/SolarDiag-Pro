@@ -26,7 +26,7 @@ class GatewayScreen extends StatelessWidget {
         PrecisionPageHeading(
           title: s.diagnosticGateway,
           subtitle: s.gatewayDescription,
-          icon: Icons.hub_outlined,
+          icon: SolarIcons.gateway,
         ),
         const SizedBox(height: 24),
         PrecisionCard(
@@ -94,7 +94,12 @@ class GatewayScreen extends StatelessWidget {
                   icon: SolarIcons.currentFlow,
                   label: s.observedBusLoad,
                   value:
-                      '${localizedNumber(context, gateway.observedBusLoad * 100, fractionDigits: 1)}%',
+                      localizedMeasurement(
+                        context,
+                        gateway.observedBusLoad * 100,
+                        '%',
+                        fractionDigits: 1,
+                      ),
                 ),
                 _Status(
                   icon: SolarIcons.linkDiagnostics,
@@ -116,7 +121,7 @@ class GatewayScreen extends StatelessWidget {
         if (gateway.lastDecision case final decision?) ...[
           PrecisionSectionHeading(
             label: s.lastGuardDecision,
-            icon: Icons.verified_user_outlined,
+            icon: SolarIcons.verifiedHardware,
           ),
           const SizedBox(height: 8),
           Text(decision.reason, key: const Key('gateway-last-decision-reason')),
@@ -124,7 +129,7 @@ class GatewayScreen extends StatelessWidget {
         ],
         PrecisionSectionHeading(
           label: s.connectionChecklist,
-          icon: Icons.fact_check_outlined,
+          icon: SolarIcons.confirmedCheck,
         ),
         const SizedBox(height: 10),
         for (final item in [
@@ -171,9 +176,13 @@ class _Status extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
-    return SizedBox(
-      width: 215,
-      child: PrecisionCard(
+    final freshness = AppLocalizations.of(context).updatedNow;
+    return Semantics(
+      label: '$label, $value, $freshness',
+      child: ExcludeSemantics(
+        child: SizedBox(
+          width: 215,
+          child: PrecisionCard(
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -208,6 +217,8 @@ class _Status extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
           ),
         ),
       ),

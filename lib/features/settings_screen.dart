@@ -3,6 +3,7 @@ import '../design/precision_ui.dart';
 
 import '../design/accessibility.dart';
 import '../design/components.dart';
+import '../design/solar_icons.g.dart';
 import '../l10n/generated/app_localizations.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -33,7 +34,7 @@ class SettingsScreen extends StatelessWidget {
           children: [
             PrecisionPageHeading(
               title: s.settings,
-              icon: Icons.settings_outlined,
+              icon: SolarIcons.configure,
             ),
             const SizedBox(height: 20),
             SolarLabeledPanel(

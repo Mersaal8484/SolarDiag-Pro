@@ -10,8 +10,60 @@ import 'accessibility.dart';
 import 'solar_icon.dart';
 import 'solar_icons.g.dart';
 import 'tokens.g.dart';
+import 'value_unit_formatter.dart';
 
 enum SolarStatus { ok, warning, critical, info, stale, simulated }
+
+class SolarSelectOption<T> {
+  const SolarSelectOption({required this.value, required this.label});
+
+  final T value;
+  final String label;
+}
+
+/// Design-system selection control used instead of Material dropdowns.
+class SolarSelect<T> extends StatelessWidget {
+  const SolarSelect({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    super.key,
+    this.label,
+  });
+
+  final T value;
+  final List<SolarSelectOption<T>> options;
+  final ValueChanged<T> onChanged;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
+    final selected = options.firstWhere((option) => option.value == value);
+    return Semantics(
+      button: true,
+      label: label,
+      value: selected.label,
+      child: PopupMenuButton<T>(
+        tooltip: label ?? selected.label,
+        onSelected: onChanged,
+        itemBuilder: (context) => [
+          for (final option in options)
+            PopupMenuItem<T>(value: option.value, child: Text(option.label)),
+        ],
+        child: InputDecorator(
+          decoration: InputDecoration(labelText: label),
+          child: Row(
+            children: [
+              Expanded(child: Text(selected.label)),
+              SolarIcon(SolarIcons.configure, color: palette.tint, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 Color _statusColor(BuildContext context, SolarStatus status) {
   final p = Theme.of(context).extension<SolarTokens>()!.palette;
@@ -22,6 +74,22 @@ Color _statusColor(BuildContext context, SolarStatus status) {
     SolarStatus.info || SolarStatus.stale => p.info,
     SolarStatus.simulated => p.simulated,
   };
+}
+
+String _measurementFreshness(
+  BuildContext context,
+  Measurement measurement,
+) {
+  final localizations = AppLocalizations.of(context);
+  if (!measurement.isReported) return localizations.telemetryUnavailable;
+  if (measurement.quality == MeasurementQuality.stale) {
+    return localizations.measurementStale;
+  }
+  final timestamp = measurement.timestamp;
+  if (timestamp == null) return localizations.updatedNow;
+  return localizations.measurementCapturedAt(
+    timestamp.toUtc().toIso8601String(),
+  );
 }
 
 class SolarSurface extends StatelessWidget {
@@ -79,64 +147,78 @@ class MetricTile extends StatelessWidget {
   final String label, value, unit, updatedLabel;
   final bool simulated;
   @override
-  Widget build(BuildContext context) => Semantics(
-    label: '$label, $value $unit, $updatedLabel',
-    child: SolarSurface(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelSmall,
+  Widget build(BuildContext context) {
+    final parsedUnit = ValueUnitFormatter.fromSymbol(unit);
+    final unitLabel = parsedUnit == EngineeringUnit.none
+        ? unit
+        : localizedUnitLabel(AppLocalizations.of(context), parsedUnit);
+    final digits = DesignPreferenceScope.maybeOf(context)?.digits;
+    final localizedValue = localizedDigits(
+      value,
+      digits ?? DigitPreference.western,
+    );
+    return Semantics(
+      label: '$label, $localizedValue $unitLabel, $updatedLabel',
+      child: SolarSurface(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ),
-              ),
-              if (simulated) const SimulatedBadge(label: 'SIMULATED'),
-            ],
-          ),
-          const SizedBox(height: SolarSpace.sm),
-          ExcludeSemantics(
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: Directionality(
-                textDirection: TextDirection.ltr,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        value,
-                        softWrap: true,
-                        style: Theme.of(context).textTheme.displaySmall
-                            ?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).extension<SolarTokens>()!.palette.tint,
-                              fontWeight: FontWeight.w800,
-                              fontFeatures: const [
-                                FontFeature.tabularFigures(),
-                              ],
-                            ),
+                if (simulated) const SimulatedBadge(label: 'SIMULATED'),
+              ],
+            ),
+            const SizedBox(height: SolarSpace.sm),
+            ExcludeSemantics(
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          localizedValue,
+                          softWrap: true,
+                          style: Theme.of(context).textTheme.displaySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).extension<SolarTokens>()!.palette.tint,
+                                fontWeight: FontWeight.w800,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: SolarSpace.xs),
-                    Text(unit, style: Theme.of(context).textTheme.bodySmall),
-                  ],
+                      const SizedBox(width: SolarSpace.xs),
+                      Text(
+                        unitLabel,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: SolarSpace.xs),
-          Text(updatedLabel, style: Theme.of(context).textTheme.bodySmall),
-        ],
+            const SizedBox(height: SolarSpace.xs),
+            Text(updatedLabel, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class RingGauge extends StatelessWidget {
@@ -145,16 +227,25 @@ class RingGauge extends StatelessWidget {
     required this.label,
     super.key,
     this.size = 148,
+    this.freshness,
   });
   final double value, size;
   final String label;
+  final String? freshness;
   @override
   Widget build(BuildContext context) {
     final reduce = MediaQuery.disableAnimationsOf(context);
+    final percent = localizedValueWithUnit(
+      context,
+      value * 100,
+      unit: EngineeringUnit.percent,
+    );
     return Semantics(
-      value: '${(value * 100).round()} percent',
-      label: label,
-      child: TweenAnimationBuilder<double>(
+      label:
+          '$label, $percent, '
+          '${freshness ?? AppLocalizations.of(context).updatedNow}',
+      child: ExcludeSemantics(
+        child: TweenAnimationBuilder<double>(
         duration: reduce ? Duration.zero : SolarMotion.slow,
         tween: Tween(end: value.clamp(0, 1)),
         builder: (context, progress, _) => SizedBox.square(
@@ -166,11 +257,16 @@ class RingGauge extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                '${(progress * 100).round()}%',
+                localizedValueWithUnit(
+                  context,
+                  progress * 100,
+                  unit: EngineeringUnit.percent,
+                ),
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
             ),
           ),
+        ),
         ),
       ),
     );
@@ -288,6 +384,7 @@ class ConnectionCapsule extends StatelessWidget {
   final String gateway, interfaceName, device, profile, mode;
   @override
   Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
     label: '$gateway, $interfaceName, $device, $profile, $mode',
     child: SolarSurface(
       padding: const EdgeInsetsDirectional.symmetric(
@@ -331,53 +428,61 @@ class CellTile extends StatelessWidget {
     required this.voltage,
     super.key,
     this.highlight = false,
+    this.freshness,
   });
   final int index;
   final double voltage;
   final bool highlight;
+  final String? freshness;
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final value = localizedNumber(context, voltage, fractionDigits: 3);
     return Semantics(
-      label: l10n.cellVoltageValue(index, value),
-      child: Container(
-        padding: const EdgeInsets.all(SolarSpace.md),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(SolarRadius.control),
-          border: Border.all(
-            color: highlight
-                ? Theme.of(context).extension<SolarTokens>()!.palette.warning
-                : Theme.of(context).extension<SolarTokens>()!.palette.separator,
-            width: highlight ? 2 : .5,
-          ),
-        ),
-        child: Column(
-          children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Directionality(
-                textDirection: TextDirection.ltr,
-                child: Text(
-                  localizedNumber(context, index, fractionDigits: 0),
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ),
+      label:
+          '${l10n.cellVoltageValue(index, value)}, '
+          '${freshness ?? l10n.updatedNow}',
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.all(SolarSpace.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(SolarRadius.control),
+            border: Border.all(
+              color: highlight
+                  ? Theme.of(context).extension<SolarTokens>()!.palette.warning
+                  : Theme.of(
+                      context,
+                    ).extension<SolarTokens>()!.palette.separator,
+              width: highlight ? 2 : .5,
             ),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Directionality(
-                textDirection: TextDirection.ltr,
-                child: Text(
-                  value,
-                  style: const TextStyle(
-                    fontFeatures: [FontFeature.tabularFigures()],
+          ),
+          child: Column(
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(
+                    localizedNumber(context, index, fractionDigits: 0),
+                    style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ),
               ),
-            ),
-            FittedBox(fit: BoxFit.scaleDown, child: Text(l10n.voltageUnit)),
-          ],
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(
+                    value,
+                    style: const TextStyle(
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+              ),
+              FittedBox(fit: BoxFit.scaleDown, child: Text(l10n.voltageUnit)),
+            ],
+          ),
         ),
       ),
     );
@@ -680,7 +785,9 @@ class DeltaBar extends StatelessWidget {
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     final color = normalized >= warningThreshold ? palette.warning : palette.ok;
     return Semantics(
-      label: '$label, ${valueLabel ?? normalized.toStringAsFixed(2)}',
+      label: '$label, '
+          '${valueLabel ?? localizedNumber(context, normalized, fractionDigits: 2)}, '
+          '${AppLocalizations.of(context).updatedNow}',
       child: SolarLabeledPanel(
         title: label,
         child: Column(
@@ -732,20 +839,38 @@ class Sparkline extends StatelessWidget {
             reported.map((item) => item.value!).reduce(math.min),
             reported.map((item) => item.value!).reduce(math.max),
           );
+    final unit = reported
+        .map((item) => item.unit)
+        .whereType<String>()
+        .firstOrNull;
+    final l10n = AppLocalizations.of(context);
+    final valueRange = range == null
+        ? l10n.telemetryUnavailable
+        : '${localizedMeasurement(context, range.$1, unit, fractionDigits: 1)} – '
+              '${localizedMeasurement(context, range.$2, unit, fractionDigits: 1)}';
+    final freshness = reported.isEmpty
+        ? l10n.telemetryUnavailable
+        : _measurementFreshness(context, reported.last);
     return Semantics(
-      label: '$label, ${reported.length} of ${measurements.length} samples',
-      child: SolarLabeledPanel(
-        title: label,
-        child: SizedBox(
-          height: 56,
-          width: double.infinity,
-          child: CustomPaint(
-            painter: _SparkPainter(
-              points: measurements.map((item) => item.value).toList(),
-              min: range?.$1,
-              max: range?.$2,
-              color: color ?? palette.tint,
-              reverseTime: reverseTime,
+      label: '$label, $valueRange, ${l10n.sampleCoverage(
+        reported.length,
+        localizedNumber(context, reported.length),
+        localizedNumber(context, measurements.length),
+      )}, $freshness',
+      child: ExcludeSemantics(
+        child: SolarLabeledPanel(
+          title: label,
+          child: SizedBox(
+            height: 56,
+            width: double.infinity,
+            child: CustomPaint(
+              painter: _SparkPainter(
+                points: measurements.map((item) => item.value).toList(),
+                min: range?.$1,
+                max: range?.$2,
+                color: color ?? palette.tint,
+                reverseTime: reverseTime,
+              ),
             ),
           ),
         ),
@@ -818,6 +943,7 @@ class TrendChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
     final values = measurements
         .where((item) => item.isReported)
         .map((item) => item.value!)
@@ -828,29 +954,53 @@ class TrendChart extends StatelessWidget {
         .firstOrNull;
     final minimum = values.isEmpty ? null : values.reduce(math.min);
     final maximum = values.isEmpty ? null : values.reduce(math.max);
-    return SolarLabeledPanel(
-      title: label,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Sparkline(label: label, measurements: measurements),
-          const SizedBox(height: SolarSpace.sm),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final range = minimum == null || maximum == null
+        ? localizations.telemetryUnavailable
+        : '${localizedMeasurement(context, minimum, unit, fractionDigits: 1)} – '
+              '${localizedMeasurement(context, maximum, unit, fractionDigits: 1)}';
+    final freshness = measurements
+        .where((measurement) => measurement.isReported)
+        .map((measurement) => _measurementFreshness(context, measurement))
+        .lastOrNull;
+    return Semantics(
+      label:
+          '$label, $range, ${freshness ?? localizations.telemetryUnavailable}',
+      child: ExcludeSemantics(
+        child: SolarLabeledPanel(
+          title: label,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                minimum == null
-                    ? '—'
-                    : '${minimum.toStringAsFixed(1)} ${unit ?? ''}',
-              ),
-              Text(
-                maximum == null
-                    ? '—'
-                    : '${maximum.toStringAsFixed(1)} ${unit ?? ''}',
+              Sparkline(label: label, measurements: measurements),
+              const SizedBox(height: SolarSpace.sm),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    minimum == null
+                        ? '—'
+                        : localizedMeasurement(
+                            context,
+                            minimum,
+                            unit,
+                            fractionDigits: 1,
+                          ),
+                  ),
+                  Text(
+                    maximum == null
+                        ? '—'
+                        : localizedMeasurement(
+                            context,
+                            maximum,
+                            unit,
+                            fractionDigits: 1,
+                          ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -870,6 +1020,7 @@ class ThermalMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     final values = readings
         .where((item) => item.measurement.isReported)
@@ -901,22 +1052,41 @@ class ThermalMap extends StatelessWidget {
               : value == maximum
               ? 'MAX'
               : null;
+          final formattedValue = value == null
+              ? null
+              : localizedValueWithUnit(
+                  context,
+                  value,
+                  unit: ValueUnitFormatter.fromSymbol(
+                    reading.measurement.unit ?? '°C',
+                  ),
+                  fractionDigits: 1,
+                );
+          final freshness = _measurementFreshness(
+            context,
+            reading.measurement,
+          );
           return Semantics(
             label: value == null
-                ? '${reading.label}, absent'
-                : '${reading.label}, ${value.toStringAsFixed(1)} ${reading.measurement.unit ?? ''}${marker == null ? '' : ', $marker'}',
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: tileColor.withValues(alpha: .18),
-                border: Border.all(color: tileColor),
-                borderRadius: BorderRadius.circular(SolarRadius.control),
-              ),
-              child: Center(
-                child: Text(
-                  value == null
-                      ? '${reading.label}\n—'
-                      : '${reading.label}\n${value.toStringAsFixed(1)}°${marker == null ? '' : '\n$marker'}',
-                  textAlign: TextAlign.center,
+                ? '${reading.label}, ${localizations.notReportedByDevice}, '
+                      '$freshness'
+                : '${reading.label}, $formattedValue, $freshness'
+                      '${marker == null ? '' : ', $marker'}',
+            child: ExcludeSemantics(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: tileColor.withValues(alpha: .18),
+                  border: Border.all(color: tileColor),
+                  borderRadius: BorderRadius.circular(SolarRadius.control),
+                ),
+                child: Center(
+                  child: Text(
+                    value == null
+                        ? '${reading.label}\n—'
+                        : '${reading.label}\n$formattedValue'
+                              '${marker == null ? '' : '\n$marker'}',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
             ),
@@ -943,35 +1113,38 @@ class AlarmCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _statusColor(context, status);
     return Semantics(
+      container: true,
       liveRegion: true,
       label: '$title, $message',
-      child: SolarSurface(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              margin: const EdgeInsets.only(top: 5),
-              decoration: BoxDecoration(
-                color: color,
-                shape: status == SolarStatus.critical
-                    ? BoxShape.rectangle
-                    : BoxShape.circle,
+      child: ExcludeSemantics(
+        child: SolarSurface(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                margin: const EdgeInsets.only(top: 5),
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: status == SolarStatus.critical
+                      ? BoxShape.rectangle
+                      : BoxShape.circle,
+                ),
               ),
-            ),
-            const SizedBox(width: SolarSpace.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: SolarSpace.xs),
-                  Text(message),
-                ],
+              const SizedBox(width: SolarSpace.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: SolarSpace.xs),
+                    Text(message),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1047,6 +1220,7 @@ class ParameterRow extends StatelessWidget {
     this.editable = false,
     this.editableLabel,
     this.enabled = true,
+    this.freshness,
     this.onTap,
   }) : assert(!editable || editableLabel != null);
 
@@ -1056,11 +1230,13 @@ class ParameterRow extends StatelessWidget {
   final bool editable;
   final String? editableLabel;
   final bool enabled;
+  final String? freshness;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: '$title, $detail ${unit ?? ''}',
+    label:
+        '$title, $detail ${unit ?? ''}, ${freshness ?? AppLocalizations.of(context).updatedNow}',
     enabled: enabled,
     button: editable,
     child: ListTile(

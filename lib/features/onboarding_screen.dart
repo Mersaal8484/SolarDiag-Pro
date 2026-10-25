@@ -115,6 +115,7 @@ class _OnboardingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Center(
@@ -127,18 +128,18 @@ class _OnboardingPage extends StatelessWidget {
                 width: 96,
                 height: 96,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF24618A), Color(0xFF10233E)],
+                    colors: [palette.tint, palette.surfaceRaised],
                   ),
-                  border: Border.all(color: const Color(0xFF4179A1)),
+                  border: Border.all(color: palette.separator),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: SolarIcon(
                   icon,
                   size: 46,
-                  color: const Color(0xFF00D5FF),
+                  color: palette.labelPrimary,
                 ),
               ),
               const SizedBox(height: 30),

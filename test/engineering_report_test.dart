@@ -96,6 +96,21 @@ void main() {
     expect(bytes.length, greaterThan(1000));
   });
 
+  test('Arabic PDF extraction preserves logical label then value order', () async {
+    final bytes = await const EngineeringReportService().buildPdf(
+      data([record()]),
+      language: ReportLanguage.arabic,
+    );
+    final extracted = _extractUncompressedPdfText(bytes);
+    final section = extracted.indexOf('التعريف');
+    final label = extracted.indexOf('الجهاز');
+    final value = extracted.indexOf('SOLARDIAG-SIM-BMS');
+
+    expect(section, greaterThanOrEqualTo(0), reason: extracted);
+    expect(label, greaterThan(section), reason: extracted);
+    expect(value, greaterThan(label), reason: extracted);
+  });
+
   test('JSON report includes ALL sessions (multi-session)', () {
     final snapshot2 = '{"soc":{"value":65,"unit":"%","quality":"fair"}}';
     final session1 = record();
@@ -198,3 +213,64 @@ void main() {
     },
   );
 }
+
+String _extractUncompressedPdfText(List<int> bytes) {
+  final source = latin1.decode(bytes, allowInvalid: true);
+  final unicodeByCid = <int, String>{};
+
+  for (final block in RegExp(
+    r'beginbfchar(.*?)endbfchar',
+    dotAll: true,
+  ).allMatches(source)) {
+    for (final mapping in RegExp(
+      r'<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>',
+    ).allMatches(block.group(1)!)) {
+      unicodeByCid[int.parse(mapping.group(1)!, radix: 16)] =
+          _decodeUtf16Hex(mapping.group(2)!);
+    }
+  }
+
+  for (final block in RegExp(
+    r'beginbfrange(.*?)endbfrange',
+    dotAll: true,
+  ).allMatches(source)) {
+    for (final mapping in RegExp(
+      r'<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>',
+    ).allMatches(block.group(1)!)) {
+      final first = int.parse(mapping.group(1)!, radix: 16);
+      final last = int.parse(mapping.group(2)!, radix: 16);
+      final destination = int.parse(mapping.group(3)!, radix: 16);
+      for (var cid = first; cid <= last; cid++) {
+        unicodeByCid[cid] = String.fromCharCode(destination + cid - first);
+      }
+    }
+  }
+
+  final output = StringBuffer();
+  for (final operator in RegExp(
+    r'(?:<([0-9A-Fa-f]+)>\s*Tj)|(?:\[(.*?)\]\s*TJ)',
+    dotAll: true,
+  ).allMatches(source)) {
+    final chunks = <String>[
+      if (operator.group(1) case final text?) text,
+      if (operator.group(2) case final array?)
+        for (final item in RegExp(
+          r'<([0-9A-Fa-f]+)>',
+        ).allMatches(array))
+          item.group(1)!,
+    ];
+    for (final chunk in chunks) {
+      for (var offset = 0; offset + 4 <= chunk.length; offset += 4) {
+        final cid = int.parse(chunk.substring(offset, offset + 4), radix: 16);
+        output.write(unicodeByCid[cid] ?? '');
+      }
+    }
+    output.writeln();
+  }
+  return output.toString();
+}
+
+String _decodeUtf16Hex(String value) => String.fromCharCodes([
+  for (var offset = 0; offset + 4 <= value.length; offset += 4)
+    int.parse(value.substring(offset, offset + 4), radix: 16),
+]);

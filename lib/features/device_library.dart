@@ -56,7 +56,7 @@ class DeviceLibraryScreen extends StatelessWidget {
         const SizedBox(height: 18),
         PrecisionSectionHeading(
           label: s.researchTargets,
-          icon: Icons.science_outlined,
+          icon: SolarIcons.research,
         ),
         const SizedBox(height: 10),
         ...researchTargets.map(
@@ -118,7 +118,7 @@ class _Page extends StatelessWidget {
       PrecisionPageHeading(
         title: title,
         subtitle: subtitle,
-        icon: Icons.inventory_2_outlined,
+        icon: SolarIcons.library,
       ),
       const SizedBox(height: 24),
       ...children,

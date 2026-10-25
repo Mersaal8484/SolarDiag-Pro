@@ -42,7 +42,7 @@ class DesignLab extends StatelessWidget {
                       PrecisionPageHeading(
                         title: l10n.designLab,
                         subtitle: l10n.designLabIntro,
-                        icon: Icons.palette_outlined,
+                        icon: SolarIcons.configure,
                       ),
                     ],
                   ),

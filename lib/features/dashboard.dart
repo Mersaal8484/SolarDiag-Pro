@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../design/precision_ui.dart';
 import '../app/theme.dart';
 import '../design/accessibility.dart';
+import '../design/components.dart';
 import '../design/solar_icon.dart';
 import '../design/solar_icons.g.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -59,25 +60,18 @@ class Dashboard extends StatelessWidget {
                           onOpenSettings: onOpenSettings,
                         ),
                         const SizedBox(height: 32),
-                        DropdownButtonFormField<SimulationScenario>(
+                        SolarSelect<SimulationScenario>(
                           key: const Key('scenario-selector'),
-                          initialValue: session.scenario,
-                          isExpanded: true,
-                          decoration: InputDecoration(
-                            labelText: s.simulatedScenario,
-                          ),
-                          items: [
+                          value: session.scenario,
+                          label: s.simulatedScenario,
+                          options: [
                             for (final item in SimulationScenario.values)
-                              DropdownMenuItem(
+                              SolarSelectOption(
                                 value: item,
-                                child: Text(item.name),
+                                label: item.name,
                               ),
                           ],
-                          onChanged: (value) {
-                            if (value != null) {
-                              session.selectScenario(value);
-                            }
-                          },
+                          onChanged: session.selectScenario,
                         ),
                         const SizedBox(height: 16),
                         _Hero(snapshot: snapshot, linkState: session.linkState),
@@ -251,8 +245,8 @@ class _DestinationGrid extends StatelessWidget {
                               ],
                             ),
                           ),
-                          Icon(
-                            Icons.arrow_forward_ios_rounded,
+                          SolarIcon(
+                            SolarIcons.currentFlow,
                             size: 15,
                             color: Theme.of(
                               context,
@@ -285,7 +279,7 @@ class _RecentSessions extends StatelessWidget {
       children: [
         PrecisionSectionHeading(
           label: s.recentSessions,
-          icon: Icons.history_toggle_off_outlined,
+          icon: SolarIcons.history,
         ),
         const SizedBox(height: 10),
         if (recent.isEmpty)
@@ -297,7 +291,7 @@ class _RecentSessions extends StatelessWidget {
           )
         else
           SizedBox(
-            height: 148,
+            height: 160,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: recent.length,
@@ -311,9 +305,10 @@ class _RecentSessions extends StatelessWidget {
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(s.scenarioValue(record.scenario)),
-                          const Spacer(),
+                          const SizedBox(height: 18),
                           Text(
                             s.integrityHashValue(
                               record.dataHash.substring(0, 12),
@@ -443,7 +438,7 @@ class _Header extends StatelessWidget {
         const SizedBox(height: 7),
         PrecisionPageHeading(
           title: s.tagline,
-          icon: Icons.solar_power_outlined,
+          icon: SolarIcons.solar,
         ),
       ],
     );
@@ -460,12 +455,12 @@ class _Hero extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: AlignmentDirectional.topStart,
           end: AlignmentDirectional.bottomEnd,
-          colors: [Color(0xFF1D3C60), Color(0xFF0E213A), Color(0xFF0A162A)],
+          colors: [palette.surfaceRaised, palette.surface, palette.background],
         ),
-        border: Border.all(color: const Color(0xFF365477)),
+        border: Border.all(color: palette.separator),
         borderRadius: BorderRadius.circular(27),
       ),
       child: Wrap(
@@ -483,7 +478,7 @@ class _Hero extends StatelessWidget {
                 Text(
                   s.bank,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: const Color(0xFFF3F7FF),
+                    color: palette.labelPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -494,7 +489,7 @@ class _Hero extends StatelessWidget {
                     DeviceSessionLinkState.unavailable => s.linkUnavailable,
                   },
                   style: TextStyle(
-                    color: const Color(0xFFF3F7FF).withValues(alpha: .62),
+                    color: palette.labelSecondary,
                   ),
                 ),
               ],
@@ -518,12 +513,28 @@ class _BigMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
+    final s = AppLocalizations.of(context);
     final valueLabel = value.isReported
-        ? '${localizedNumber(context, value.value!, fractionDigits: value.unit == '%' ? 0 : 2)} ${value.unit}'
-        : AppLocalizations.of(context).notReportedByDevice;
+        ? localizedMeasurement(
+            context,
+            value.value!,
+            value.unit,
+            fractionDigits: value.unit == '%' ? 0 : 2,
+          )
+        : s.notReportedByDevice;
+    final freshness = value.isReported
+        ? value.quality == MeasurementQuality.stale
+              ? s.measurementStale
+              : value.timestamp == null
+              ? s.updatedNow
+              : s.measurementCapturedAt(
+                  value.timestamp!.toUtc().toIso8601String(),
+                )
+        : s.telemetryUnavailable;
     return Semantics(
-      label: '$label, $valueLabel',
-      child: SizedBox(
+      label: '$label, $valueLabel, $freshness',
+      child: ExcludeSemantics(
+        child: SizedBox(
         width: 180,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -542,7 +553,7 @@ class _BigMetric extends StatelessWidget {
               child: Text(
                 valueLabel,
                 style: TextStyle(
-                  color: const Color(0xFFF3F7FF),
+                  color: palette.labelPrimary,
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
                   fontFeatures: [FontFeature.tabularFigures()],
@@ -550,6 +561,7 @@ class _BigMetric extends StatelessWidget {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -599,12 +611,28 @@ class _MetricCard extends StatelessWidget {
   final SolarIconData icon;
   @override
   Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
     final valueLabel = value.isReported
-        ? '${localizedNumber(context, value.value!, fractionDigits: 1)} ${value.unit}'
-        : AppLocalizations.of(context).notReportedByDevice;
+        ? localizedMeasurement(
+            context,
+            value.value!,
+            value.unit,
+            fractionDigits: 1,
+          )
+        : s.notReportedByDevice;
+    final freshness = value.isReported
+        ? value.quality == MeasurementQuality.stale
+              ? s.measurementStale
+              : value.timestamp == null
+              ? s.updatedNow
+              : s.measurementCapturedAt(
+                  value.timestamp!.toUtc().toIso8601String(),
+                )
+        : s.telemetryUnavailable;
     return Semantics(
-      label: '$title, $valueLabel',
-      child: SizedBox(
+      label: '$title, $valueLabel, $freshness',
+      child: ExcludeSemantics(
+        child: SizedBox(
         width: 230,
         child: PrecisionCard(
           child: Padding(
@@ -653,6 +681,7 @@ class _MetricCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

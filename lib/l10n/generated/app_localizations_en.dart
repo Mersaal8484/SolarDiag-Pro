@@ -131,6 +131,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voltageUnit => 'V';
 
   @override
+  String get unitAmpere => 'A';
+
+  @override
+  String get unitWatt => 'W';
+
+  @override
+  String get unitPercent => '%';
+
+  @override
+  String get unitCelsius => '°C';
+
+  @override
+  String get unitMillivolt => 'mV';
+
+  @override
+  String get unitMillisecond => 'ms';
+
+  @override
+  String get unitSecond => 's';
+
+  @override
+  String get unitHertz => 'Hz';
+
+  @override
+  String get unitCycle => 'cycle';
+
+  @override
+  String get unitFrame => 'frame';
+
+  @override
+  String get unitSample => 'sample';
+
+  @override
   String get pipelineValidate => 'Validate';
 
   @override
@@ -342,6 +375,70 @@ class AppLocalizationsEn extends AppLocalizations {
       two: '2 cells',
       one: '1 cell',
       zero: 'No cells',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cycleValue(int count, String formattedCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formattedCount cycles',
+      many: '$formattedCount cycles',
+      few: '$formattedCount cycles',
+      two: '$formattedCount cycles',
+      one: '$formattedCount cycle',
+      zero: '$formattedCount cycles',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String frameValue(int count, String formattedCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formattedCount frames',
+      many: '$formattedCount frames',
+      few: '$formattedCount frames',
+      two: '$formattedCount frames',
+      one: '$formattedCount frame',
+      zero: '$formattedCount frames',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sampleValue(int count, String formattedCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formattedCount samples',
+      many: '$formattedCount samples',
+      few: '$formattedCount samples',
+      two: '$formattedCount samples',
+      one: '$formattedCount sample',
+      zero: '$formattedCount samples',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sampleCoverage(
+    int reportedCount,
+    String formattedReported,
+    String formattedTotal,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      reportedCount,
+      locale: localeName,
+      other: '$formattedReported of $formattedTotal samples',
+      many: '$formattedReported of $formattedTotal samples',
+      few: '$formattedReported of $formattedTotal samples',
+      two: '$formattedReported of $formattedTotal samples',
+      one: '$formattedReported of $formattedTotal sample',
+      zero: 'No reported samples out of $formattedTotal',
     );
     return '$_temp0';
   }

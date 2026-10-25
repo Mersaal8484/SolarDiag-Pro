@@ -457,18 +457,17 @@ class EngineeringReportService {
           headerCount: 0,
           data: [
             for (final entry in values.entries)
-              language == ReportLanguage.arabic
-                  ? [entry.value, entry.key]
-                  : [entry.key, entry.value],
+              [entry.key, entry.value],
           ],
-          tableDirection: pw.TextDirection.ltr,
-          columnWidths: language == ReportLanguage.arabic
-              ? const {0: pw.FlexColumnWidth(3), 1: pw.FlexColumnWidth(1)}
-              : const {0: pw.FlexColumnWidth(1), 1: pw.FlexColumnWidth(3)},
+          tableDirection: language == ReportLanguage.arabic
+              ? pw.TextDirection.rtl
+              : pw.TextDirection.ltr,
+          columnWidths: const {
+            0: pw.FlexColumnWidth(1),
+            1: pw.FlexColumnWidth(3),
+          },
           cellBuilder: (index, data, row) {
-            final labelColumn = language == ReportLanguage.arabic
-                ? index == 1
-                : index == 0;
+            final labelColumn = index == 0;
             final text = '$data';
             return pw.Align(
               alignment: labelColumn && language == ReportLanguage.arabic

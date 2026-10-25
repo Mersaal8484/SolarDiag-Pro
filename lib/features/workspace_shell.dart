@@ -50,6 +50,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     final session = DeviceSessionScope.of(context);
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final pages = <Widget>[
       Dashboard(
@@ -90,8 +91,10 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
     const mobileDestinationIndices = [0, 2, 5, 6, 7];
     final mobileSelectedIndex = mobileDestinationIndices.indexOf(index);
     return Scaffold(
-      body: SafeArea(
-        child: Row(
+      body: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: SafeArea(
+          child: Row(
           children: [
             if (wide)
               Container(
@@ -115,12 +118,12 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
+                        gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [Color(0xFF17537E), Color(0xFF102B47)],
+                          colors: [palette.tint, palette.surfaceRaised],
                         ),
-                        border: Border.all(color: const Color(0xFF397A9C)),
+                        border: Border.all(color: palette.separator),
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: SolarIcon(
@@ -136,42 +139,53 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         children: [
                           for (var i = 0; i < destinations.length; i++)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 3,
-                                horizontal: 10,
-                              ),
-                              child: _RailButton(
-                                key: ValueKey(
-                                  'workspace-nav-${destinations[i].$1}',
+                            FocusTraversalOrder(
+                              order: NumericFocusOrder(i.toDouble()),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 3,
+                                  horizontal: 10,
                                 ),
-                                icon: destinations[i].$2,
-                                label: destinations[i].$3,
-                                selected: index == i,
-                                onTap: () => setState(() => index = i),
+                                child: _RailButton(
+                                  key: ValueKey(
+                                    'workspace-nav-${destinations[i].$1}',
+                                  ),
+                                  icon: destinations[i].$2,
+                                  label: destinations[i].$3,
+                                  selected: index == i,
+                                  onTap: () => setState(() => index = i),
+                                ),
                               ),
                             ),
                         ],
                       ),
                     ),
-                    IconButton(
-                      onPressed: widget.onOpenDesignLab,
-                      tooltip: s.designLab,
-                      icon: SolarIcon(
-                        SolarIcons.research,
-                        color: Theme.of(
-                          context,
-                        ).extension<SolarTokens>()!.palette.tint,
+                    FocusTraversalOrder(
+                      order: NumericFocusOrder(destinations.length.toDouble()),
+                      child: IconButton(
+                        onPressed: widget.onOpenDesignLab,
+                        tooltip: s.designLab,
+                        icon: SolarIcon(
+                          SolarIcons.research,
+                          color: Theme.of(
+                            context,
+                          ).extension<SolarTokens>()!.palette.tint,
+                        ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: widget.onOpenSettings,
-                      tooltip: s.settings,
-                      icon: SolarIcon(
-                        SolarIcons.configure,
-                        color: Theme.of(
-                          context,
-                        ).extension<SolarTokens>()!.palette.tint,
+                    FocusTraversalOrder(
+                      order: NumericFocusOrder(
+                        destinations.length.toDouble() + 1,
+                      ),
+                      child: IconButton(
+                        onPressed: widget.onOpenSettings,
+                        tooltip: s.settings,
+                        icon: SolarIcon(
+                          SolarIcons.configure,
+                          color: Theme.of(
+                            context,
+                          ).extension<SolarTokens>()!.palette.tint,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -179,8 +193,10 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                 ),
               ),
             Expanded(
-              child: Column(
-                children: [
+              child: FocusTraversalOrder(
+                order: const NumericFocusOrder(100),
+                child: Column(
+                  children: [
                   Padding(
                     padding: const EdgeInsetsDirectional.fromSTEB(
                       16,
@@ -203,10 +219,12 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                       child: IndexedStack(index: index, children: pages),
                     ),
                   ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
+        ),
         ),
       ),
       bottomNavigationBar: !wide
@@ -257,7 +275,7 @@ class _RailButton extends StatelessWidget {
       child: Material(
         color: selected
             ? palette.tint.withValues(alpha: .15)
-            : Colors.transparent,
+            : palette.surface.withValues(alpha: 0),
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,

@@ -90,3 +90,9 @@ builds or CI jobs were run.
 ## Primary risks
 
 Hardware electrical safety, protocol provenance, firmware-specific behavior, write rollback behavior on real devices, key management, privacy false negatives, localization completeness and UI behavior across the Android device matrix.
+
+## Round 7 Batch J open input
+
+- The supplied Round 7 text references the required icon inventory in §11.4
+  but does not include that inventory. The current 76 SVG assets cannot be
+  compared authoritatively until the owner supplies the list.

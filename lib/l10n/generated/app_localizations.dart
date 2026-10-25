@@ -332,6 +332,28 @@ abstract class AppLocalizations {
   /// **'V'**
   String get voltageUnit;
 
+  String get unitAmpere;
+
+  String get unitWatt;
+
+  String get unitPercent;
+
+  String get unitCelsius;
+
+  String get unitMillivolt;
+
+  String get unitMillisecond;
+
+  String get unitSecond;
+
+  String get unitHertz;
+
+  String get unitCycle;
+
+  String get unitFrame;
+
+  String get unitSample;
+
   /// No description provided for @pipelineValidate.
   ///
   /// In en, this message translates to:
@@ -703,6 +725,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =0{No cells} =1{1 cell} =2{2 cells} few{{count} cells} many{{count} cells} other{{count} cells}}'**
   String cellCount(int count);
+
+  String cycleValue(int count, String formattedCount);
+
+  String frameValue(int count, String formattedCount);
+
+  String sampleValue(int count, String formattedCount);
+
+  String sampleCoverage(
+    int reportedCount,
+    String formattedReported,
+    String formattedTotal,
+  );
 
   /// No description provided for @continueAction.
   ///

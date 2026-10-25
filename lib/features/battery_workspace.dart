@@ -47,7 +47,7 @@ class _BatteryWorkspaceState extends State<BatteryWorkspace> {
           PrecisionPageHeading(
             title: s.batteryBmsDiagnostics,
             subtitle: s.batteryWorkspaceDescription,
-            icon: Icons.battery_charging_full_outlined,
+            icon: SolarIcons.battery,
           ),
           const SizedBox(height: 18),
           PrecisionCard(
@@ -330,7 +330,12 @@ class _Cells extends StatelessWidget {
             ),
             _SummaryCard(
               s.cellDelta,
-              '${localizedNumber(context, (maximum.value - minimum.value) * 1000, fractionDigits: 1)} mV',
+              localizedMeasurement(
+                context,
+                (maximum.value - minimum.value) * 1000,
+                'mV',
+                fractionDigits: 1,
+              ),
             ),
           ],
         ),
@@ -357,7 +362,12 @@ class _Cells extends StatelessWidget {
                             Text(s.cellNumber(cell.index + 1)),
                             const SizedBox(height: 6),
                             Text(
-                              '${localizedNumber(context, cell.value, fractionDigits: 3)} V',
+                              localizedMeasurement(
+                                context,
+                                cell.value,
+                                'V',
+                                fractionDigits: 3,
+                              ),
                               style: Theme.of(context).textTheme.titleLarge,
                             ),
                           ],
@@ -421,39 +431,66 @@ class _Faults extends StatelessWidget {
     if (alarms.isEmpty) return _Unavailable(s.noActiveAlarms);
     return Column(
       children: [
-        for (final code in alarms)
-          PrecisionCard(
-            child: ListTile(
-              leading: const SolarIcon(SolarIcons.warning),
-              title: Text(switch (code) {
-                'CELL_OVERVOLTAGE' => s.cellOvervoltageAlarm,
-                'CELL_OVERTEMPERATURE' => s.temperatureHigh,
-                _ => s.unrecognizedAlarm,
-              }),
-              subtitle: Text(s.rawAlarmCode(code)),
+        for (final code in alarms) ...[
+          Semantics(
+            liveRegion: true,
+            label:
+                '${switch (code) {
+                  'CELL_OVERVOLTAGE' => s.cellOvervoltageAlarm,
+                  'CELL_OVERTEMPERATURE' => s.temperatureHigh,
+                  _ => s.unrecognizedAlarm,
+                }}, ${s.rawAlarmCode(code)}',
+            child: ExcludeSemantics(
+              child: PrecisionCard(
+                child: ListTile(
+                  leading: const SolarIcon(SolarIcons.warning),
+                  title: Text(switch (code) {
+                    'CELL_OVERVOLTAGE' => s.cellOvervoltageAlarm,
+                    'CELL_OVERTEMPERATURE' => s.temperatureHigh,
+                    _ => s.unrecognizedAlarm,
+                  }),
+                  subtitle: Text(s.rawAlarmCode(code)),
+                ),
+              ),
             ),
           ),
+        ],
       ],
     );
   }
 }
 
 class _MeasurementCard extends StatelessWidget {
-  const _MeasurementCard(this.label, this.value, {this.fractionDigits = 1});
+  const _MeasurementCard(this.label, this.value, {this.fractionDigits});
   final String label;
   final Measurement value;
-  final int fractionDigits;
+  final int? fractionDigits;
 
   @override
   Widget build(BuildContext context) {
-    final valueLabel = value.value == null
-        ? AppLocalizations.of(context).notReportedByDevice
-        : '${localizedNumber(context, value.value!, fractionDigits: fractionDigits)} ${value.unit}';
-    return Semantics(
-      label: '$label, $valueLabel',
-      child: SizedBox(
-        width: 220,
-        child: PrecisionReading(label: label, value: valueLabel),
+    final s = AppLocalizations.of(context);
+    final numericValue = value.value;
+    final valueLabel = numericValue == null
+        ? s.notReportedByDevice
+        : localizedMeasurement(
+            context,
+            numericValue,
+            value.unit,
+            fractionDigits: fractionDigits,
+          );
+    final freshness = numericValue == null
+        ? s.telemetryUnavailable
+        : value.quality == MeasurementQuality.stale
+        ? s.measurementStale
+        : value.timestamp == null
+        ? s.updatedNow
+        : s.measurementCapturedAt(value.timestamp!.toUtc().toIso8601String());
+    return SizedBox(
+      width: 220,
+      child: PrecisionReading(
+        label: label,
+        value: valueLabel,
+        freshness: freshness,
       ),
     );
   }

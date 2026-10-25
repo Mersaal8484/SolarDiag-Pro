@@ -301,7 +301,11 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
             ListTile(
               title: Text(savedSession.id),
               subtitle: Text(
-                '${_formatCount(context, savedSession.frames.length)} frames',
+                localizedMeasurement(
+                  context,
+                  savedSession.frames.length,
+                  'frames',
+                ),
               ),
               onTap: () => setState(() => _applySession(savedSession)),
             ),
@@ -318,8 +322,10 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
     StudioSection.frames => _StudioPage(
       key: const ValueKey('frames'),
       eyebrow: 'FRAME EXPLORER',
-      title:
-          '${_formatCount(context, session.frames.length)} timestamped frames',
+      title: AppLocalizations.of(context).timestampedFrameValue(
+        session.frames.length,
+        _formatCount(context, session.frames.length),
+      ),
       subtitle: 'Raw values remain raw until evidence supports a mapping.',
       body: _FrameTable(frames: session.frames),
     ),
@@ -486,7 +492,7 @@ class _StudioPage extends StatelessWidget {
         PrecisionPageHeading(
           title: title,
           subtitle: subtitle,
-          icon: Icons.science_outlined,
+          icon: SolarIcons.research,
         ),
         const SizedBox(height: 22),
         body,
@@ -669,40 +675,36 @@ class _CaptureSourcesView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(_StudioCopy.selectFormat),
-                  DropdownButton<String>(
+                  SolarSelect<String>(
                     value: selectedFormat,
-                    isExpanded: true,
-                    items: const [
-                      DropdownMenuItem(
+                    options: const [
+                      SolarSelectOption(
                         value: 'candump',
-                        child: Text(_StudioCopy.candumpOption),
+                        label: _StudioCopy.candumpOption,
                       ),
-                      DropdownMenuItem(
+                      SolarSelectOption(
                         value: 'sdcap',
-                        child: Text(_StudioCopy.sdcapOption),
+                        label: _StudioCopy.sdcapOption,
                       ),
-                      DropdownMenuItem(
+                      SolarSelectOption(
                         value: 'slcan',
-                        child: Text(_StudioCopy.slcanOption),
+                        label: _StudioCopy.slcanOption,
                       ),
-                      DropdownMenuItem(
+                      SolarSelectOption(
                         value: 'asc',
-                        child: Text(_StudioCopy.vectorAscOption),
+                        label: _StudioCopy.vectorAscOption,
                       ),
-                      DropdownMenuItem(
+                      SolarSelectOption(
                         value: 'trc',
-                        child: Text(_StudioCopy.peakTrcOption),
+                        label: _StudioCopy.peakTrcOption,
                       ),
-                      DropdownMenuItem(
+                      SolarSelectOption(
                         value: 'generic',
-                        child: Text(_StudioCopy.genericHexOption),
+                        label: _StudioCopy.genericHexOption,
                       ),
                     ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setDialogState(() => selectedFormat = val);
-                      }
-                    },
+                    onChanged: (value) =>
+                        setDialogState(() => selectedFormat = value),
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -762,7 +764,10 @@ class _CaptureSourcesView extends StatelessWidget {
                     context,
                     result.session!.frames.length,
                   );
-                  final message = 'Loaded $frameCount frames successfully.';
+                  final message = AppLocalizations.of(context).framesLoaded(
+                    result.session!.frames.length,
+                    frameCount,
+                  );
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text(message)));
@@ -1010,14 +1015,9 @@ class _AnalysisRow extends StatelessWidget {
   final IdentifierStatistics stats;
   @override
   Widget build(BuildContext context) {
-    final frameCount = localizedNumber(
-      context,
-      stats.frameCount,
-      fractionDigits: 0,
-    );
     final averagePeriod = stats.averagePeriodMicros == null
         ? '—'
-        : localizedNumber(context, stats.averagePeriodMicros!);
+        : localizedMeasurement(context, stats.averagePeriodMicros!, 'µs');
     final changedOffsets = stats.changedByteOffsets
         .map((offset) => localizedNumber(context, offset, fractionDigits: 0))
         .join(', ');
@@ -1029,7 +1029,13 @@ class _AnalysisRow extends StatelessWidget {
           '0x${stats.identifier.toRadixString(16).toUpperCase()}',
         ),
         subtitle: TechnicalText(
-          '$frameCount frames · $averagePeriod µs period',
+          '${localizedMeasurement(
+                context,
+                stats.frameCount,
+                'frames',
+                isolate: false,
+              )} · '
+          '$averagePeriod',
         ),
         trailing: TechnicalText(
           'Δ [$changedOffsets]',
@@ -1350,7 +1356,10 @@ String _differentialSummary(
 ) =>
     'A ${candidate.baselineValues.join('/')} → '
     'B ${candidate.comparisonValues.join('/')} · '
-    '${localizedNumber(context, candidate.evidence.length)} frame references';
+    '${AppLocalizations.of(context).frameReferences(
+      candidate.evidence.length,
+      localizedNumber(context, candidate.evidence.length),
+    )}';
 
 String _differentialLocation(
   BuildContext context,

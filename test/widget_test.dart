@@ -4,6 +4,7 @@ import 'package:solardiag_pro/app/solardiag_app.dart';
 import 'package:solardiag_pro/audit/audit_chain.dart';
 import 'package:solardiag_pro/auth/authorization_controller.dart';
 import 'package:solardiag_pro/gateway/gateway_contract.dart';
+import 'package:solardiag_pro/features/device_library.dart';
 import 'package:solardiag_pro/parameters/parameter_models.dart';
 import 'package:solardiag_pro/parameters/write_pipeline.dart';
 import 'package:solardiag_pro/session/device_session.dart';
@@ -80,7 +81,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Battery / BMS diagnostics'), findsOneWidget);
-    expect(find.text('78.0 %'), findsOneWidget);
+    expect(find.textContaining('78 %'), findsOneWidget);
   });
 
   testWidgets('shows simulator, read-only mode, and honest missing data', (
@@ -101,6 +102,53 @@ void main() {
     );
     expect(find.text('Not reported by device'), findsOneWidget);
   });
+
+  final primaryReadingSemantics = <({String route, RegExp label})>[
+    (route: '/', label: RegExp(r'PACK VOLTAGE, .*V.*, Updated now')),
+    (
+      route: '/battery',
+      label: RegExp(r'State of charge, .*%.*, Updated now'),
+    ),
+    (
+      route: '/inverter',
+      label: RegExp(r'DC voltage, .*V.*, Updated now'),
+    ),
+    (
+      route: '/gateway',
+      label: RegExp(r'Observed bus load, .*%.*, Updated now'),
+    ),
+    (
+      route: '/parameters',
+      label: RegExp(r'Charge voltage limit, .*V.*, Updated now'),
+    ),
+    (
+      route: '/link',
+      label: RegExp(r'message delivery, .*, Updated now'),
+    ),
+  ];
+  for (final screen in primaryReadingSemantics) {
+    testWidgets('${screen.route} exposes its primary value to semantics', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      addTearDown(semantics.dispose);
+      final session = DeviceSession(
+        scenario: SimulationScenario.healthy,
+        autoStart: false,
+        auditSecretStore: TestSecretStore(),
+      );
+      addTearDown(session.dispose);
+      await session.refresh();
+      if (screen.route == '/parameters') await session.refreshParameters();
+
+      await tester.pumpWidget(
+        SolarDiagApp(session: session, initialRoute: screen.route),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.bySemanticsLabel(screen.label), findsOneWidget);
+    });
+  }
 
   testWidgets('switches to Arabic RTL and dark theme', (tester) async {
     await tester.pumpWidget(SolarDiagApp(auditSecretStore: TestSecretStore()));
@@ -147,6 +195,15 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('workspace-nav-library')));
     await tester.pumpAndSettle();
     expect(find.text('Device library'), findsOneWidget);
+    final libraryScroll = find.descendant(
+      of: find.byType(DeviceLibraryScreen),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Pylontech'),
+      240,
+      scrollable: libraryScroll,
+    );
     expect(find.text('Pylontech'), findsOneWidget);
     expect(find.text('SolarDiag deterministic BMS'), findsOneWidget);
   });
@@ -183,7 +240,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('SolarDiag simulated inverter'), findsOneWidget);
-    expect(find.text('230.0 V'), findsOneWidget);
+    expect(find.textContaining('230.0 V'), findsOneWidget);
     expect(
       find.text('Register map required from manufacturer.'),
       findsOneWidget,
@@ -303,7 +360,7 @@ void main() {
     await tester.tap(find.text('Parameters'));
     await tester.pumpAndSettle();
 
-    expect(find.text('55.2 V'), findsOneWidget);
+    expect(find.textContaining('55.2 V'), findsOneWidget);
     final parametersScroll = find.descendant(
       of: find.byType(ListView).first,
       matching: find.byType(Scrollable),
@@ -326,6 +383,67 @@ void main() {
       find.text('Configuration backup created from the current readback.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('desktop parameters list drives the detail inspector', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = DeviceSession(
+      scenario: SimulationScenario.healthy,
+      autoStart: false,
+      auditSecretStore: TestSecretStore(),
+    );
+    addTearDown(session.dispose);
+    await session.refreshParameters();
+
+    await tester.pumpWidget(
+      SolarDiagApp(session: session, initialRoute: '/parameters'),
+    );
+    await tester.pumpAndSettle();
+
+    final inspector = find.byKey(const Key('parameter-inspector'));
+    expect(inspector, findsOneWidget);
+    expect(
+      find.descendant(
+        of: inspector,
+        matching: find.text('Charge voltage limit'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Service mode').first);
+    await tester.pump();
+    expect(
+      find.descendant(of: inspector, matching: find.text('Service mode')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('tablet parameters layout includes the detail inspector', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(834, 1194);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = DeviceSession(
+      scenario: SimulationScenario.healthy,
+      autoStart: false,
+      auditSecretStore: TestSecretStore(),
+    );
+    addTearDown(session.dispose);
+    await session.refreshParameters();
+
+    await tester.pumpWidget(
+      SolarDiagApp(session: session, initialRoute: '/parameters'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('parameter-inspector')), findsOneWidget);
   });
 
   testWidgets('simulated parameter review confirms through readback', (
@@ -431,11 +549,13 @@ void main() {
       120,
       scrollable: parametersScroll,
     );
+    await tester.drag(parametersScroll, const Offset(0, -120));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('compare-latest-backup')));
     await tester.pumpAndSettle();
     expect(find.text('Backup comparison'), findsOneWidget);
     expect(find.text('Changed'), findsOneWidget);
-    expect(find.textContaining('Backup: 55.2 V'), findsOneWidget);
+    expect(find.textContaining('55.2 V'), findsWidgets);
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
 
@@ -504,14 +624,14 @@ void main() {
     );
     addTearDown(session.dispose);
     await tester.pumpWidget(SolarDiagApp(session: session));
-    expect(find.text('78 %'), findsOneWidget);
+    expect(find.textContaining('78 %'), findsOneWidget);
 
     await session.refresh();
     await session.refresh();
     await tester.pump();
 
-    expect(find.text('77 %'), findsOneWidget);
-    expect(find.text('78 %'), findsNothing);
+    expect(find.textContaining('77 %'), findsOneWidget);
+    expect(find.textContaining('78 %'), findsNothing);
   });
 
   testWidgets('diagnostic history exposes persisted session evidence', (

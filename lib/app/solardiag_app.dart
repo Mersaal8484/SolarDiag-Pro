@@ -54,7 +54,7 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
   late final bool _ownsDeviceSession;
   late final bool _ownsDatabase;
   Locale _locale = const Locale('en');
-  ThemeMode _themeMode = ThemeMode.dark;
+  ThemeMode _themeMode = ThemeMode.light;
   bool _highContrast = false;
   bool _wakelockEnabled = false;
   late bool _onboardingVisible;

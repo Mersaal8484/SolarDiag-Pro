@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../app/theme.dart';
+import '../l10n/generated/app_localizations.dart';
+import 'solar_icon.dart';
+import 'solar_icons.g.dart';
 
 /// Shared page architecture for the premium diagnostic workspaces.
 /// Titles, descriptions and readings are supplied by the original screens.
@@ -10,12 +13,12 @@ class PrecisionPageHeading extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
-    this.icon = Icons.analytics_outlined,
+    this.icon = SolarIcons.evidence,
   });
 
   final String title;
   final String? subtitle;
-  final IconData icon;
+  final SolarIconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +56,7 @@ class PrecisionPageHeading extends StatelessWidget {
                 color: const Color(0xFF00D5FF).withValues(alpha: .35),
               ),
             ),
-            child: Icon(icon, color: const Color(0xFF00D5FF), size: 24),
+            child: SolarIcon(icon, color: const Color(0xFF00D5FF), size: 24),
           ),
           const SizedBox(width: 15),
           Expanded(
@@ -104,7 +107,7 @@ class PrecisionSectionHeading extends StatelessWidget {
   const PrecisionSectionHeading({super.key, required this.label, this.icon});
 
   final String label;
-  final IconData? icon;
+  final SolarIconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +124,7 @@ class PrecisionSectionHeading extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         if (icon != null) ...[
-          Icon(icon, color: palette.tint, size: 21),
+          SolarIcon(icon!, color: palette.tint, size: 21),
           const SizedBox(width: 8),
         ],
         Expanded(
@@ -144,15 +147,23 @@ class PrecisionReading extends StatelessWidget {
     required this.label,
     required this.value,
     this.accent,
+    this.freshness,
   });
   final String label;
   final String value;
   final Color? accent;
+  final String? freshness;
 
   @override
   Widget build(BuildContext context) {
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
-    return Container(
+    final semanticsLabel = '$label, $value, '
+        '${freshness ?? AppLocalizations.of(context).updatedNow}';
+    return Semantics(
+      container: true,
+      label: semanticsLabel,
+      child: ExcludeSemantics(
+        child: Container(
       constraints: const BoxConstraints(minHeight: 110),
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
@@ -204,6 +215,8 @@ class PrecisionReading extends StatelessWidget {
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }
@@ -355,12 +368,12 @@ class PrecisionValueStrip extends StatelessWidget {
     super.key,
     required this.label,
     required this.value,
-    this.icon = Icons.monitor_heart_outlined,
+    this.icon = SolarIcons.evidence,
     this.warning = false,
   });
   final String label;
   final String value;
-  final IconData icon;
+  final SolarIconData icon;
   final bool warning;
 
   @override
@@ -378,7 +391,7 @@ class PrecisionValueStrip extends StatelessWidget {
                 color: accent.withValues(alpha: .12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: accent, size: 20),
+              child: SolarIcon(icon, color: accent, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
