@@ -33,6 +33,9 @@ migrate_working_dir/
 /build/
 /coverage/
 *.rar
+key.properties
+*.jks
+*.keystore
 test/golden/failures/
 
 # Symbolication related

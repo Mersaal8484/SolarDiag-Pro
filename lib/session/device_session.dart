@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 
 import '../audit/audit_chain.dart';
 import '../auth/authorization_controller.dart';
+import '../composition/simulator_runtime.dart';
 import '../core/battery_models.dart';
 import '../core/inverter_models.dart';
 import '../integration/compatibility_engine.dart';
@@ -18,7 +19,6 @@ import '../parameters/write_pipeline.dart';
 import '../persistence/local_database.dart';
 import '../protocol/bms_adapter.dart';
 import '../protocol/inverter_adapter.dart';
-import '../simulator/simulation_scenario.dart';
 import '../transport/safe_frame_transport.dart';
 import '../trust/library_write_reason.dart';
 
@@ -39,12 +39,12 @@ class DeviceSession extends ChangeNotifier {
     LoopbackGatewayTransport? gatewayTransport,
     bool autoStart = true,
   }) : _scenario = scenario,
-       _snapshot = ScenarioFactory.create(
+       _snapshot = SimulatorRuntime.initialSnapshot(
          scenario,
-         tick: _initialTick(scenario),
-       ).snapshot,
-       _adapter = SimulatedBmsAdapter(
-         scenario: scenario,
+         initialTick: _initialTick(scenario),
+       ),
+       _adapter = SimulatorRuntime.createBms(
+         scenario,
          initialTick: _initialTick(scenario),
        ),
        _providedGatewayTransport = gatewayTransport,
@@ -81,7 +81,7 @@ class DeviceSession extends ChangeNotifier {
   TelemetrySnapshot _snapshot;
   BmsAdapter _adapter;
   IdentificationResult? _lastIdentification;
-  final InverterAdapter _inverterAdapter = SimulatedInverterAdapter();
+  final InverterAdapter _inverterAdapter = SimulatorRuntime.createInverter();
   InverterTelemetrySnapshot? _inverterSnapshot;
   Timer? _pollTimer;
   bool _polling = false;
@@ -306,11 +306,11 @@ class DeviceSession extends ChangeNotifier {
     if (_scenario == scenario) return;
     _scenario = scenario;
     final initialTick = _initialTick(scenario);
-    _adapter = SimulatedBmsAdapter(
-      scenario: scenario,
+    _adapter = SimulatorRuntime.createBms(scenario, initialTick: initialTick);
+    _snapshot = SimulatorRuntime.initialSnapshot(
+      scenario,
       initialTick: initialTick,
     );
-    _snapshot = ScenarioFactory.create(scenario, tick: initialTick).snapshot;
     _linkState = DeviceSessionLinkState.connecting;
     _linkHealth = null;
     _alarmCodes = const {};

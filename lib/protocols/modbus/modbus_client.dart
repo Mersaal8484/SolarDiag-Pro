@@ -1,9 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
 
-import '../../parameters/write_pipeline.dart';
+import 'package:crypto/crypto.dart';
+
+import '../../audit/audit_chain.dart';
+import '../../auth/authorization_controller.dart';
+import '../../parameters/parameter_models.dart';
 import 'modbus_guard.dart';
 import 'modbus_link.dart';
 import 'modbus_models.dart';
+
+part '../../parameters/write_authorization.dart';
 
 class ModbusGuardException implements Exception {
   const ModbusGuardException(this.reason);
@@ -33,15 +40,12 @@ class ModbusClient {
     required int address,
     required int count,
     required int unitId,
+    required ModbusRegisterKind kind,
   }) {
     _validateRange(address, count, unitId, maximumCount: 125);
-    for (final function in [
-      ModbusFunction.readHoldingRegisters,
-      ModbusFunction.readInputRegisters,
-    ]) {
-      if (guard.allows(function: function, address: address, count: count)) {
-        return function;
-      }
+    final function = kind.function;
+    if (guard.allows(function: function, address: address, count: count)) {
+      return function;
     }
     throw ModbusGuardException(
       'Read of $count register(s) at $address (unit $unitId) '
@@ -49,7 +53,7 @@ class ModbusClient {
     );
   }
 
-  void checkWrite({
+  void _checkWrite({
     required int address,
     required List<int> values,
     required int unitId,
@@ -71,7 +75,7 @@ class ModbusClient {
       );
     }
     if (authorization == null ||
-        !authorization.consume(
+        !authorization._consume(
           functionCode: function.code,
           address: address,
           values: values,
@@ -87,8 +91,14 @@ class ModbusClient {
     int address,
     int count, {
     required int unitId,
+    required ModbusRegisterKind kind,
   }) async {
-    final function = checkRead(address: address, count: count, unitId: unitId);
+    final function = checkRead(
+      address: address,
+      count: count,
+      unitId: unitId,
+      kind: kind,
+    );
     final request = [
       unitId,
       function.code,
@@ -117,7 +127,7 @@ class ModbusClient {
     required int unitId,
     required PipelineWriteAuthorization? authorization,
   }) async {
-    checkWrite(
+    _checkWrite(
       address: address,
       values: values,
       unitId: unitId,

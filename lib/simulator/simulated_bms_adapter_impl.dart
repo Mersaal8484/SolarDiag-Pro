@@ -1,4 +1,4 @@
-part of '../parameters/write_pipeline.dart';
+part of 'simulated_bms_adapter.dart';
 
 class SimulatedBmsAdapter extends SimulatedParameterBackend
     implements BmsAdapter, SimulationClock {

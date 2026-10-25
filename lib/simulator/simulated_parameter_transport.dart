@@ -1,6 +1,6 @@
-part of '../parameters/write_pipeline.dart';
+import '../parameters/write_pipeline.dart';
 
-sealed class SimulatedParameterBackend {
+abstract class SimulatedParameterBackend {
   const SimulatedParameterBackend();
 
   Future<num> readParameter(String id);
@@ -14,7 +14,7 @@ sealed class SimulatedParameterBackend {
 
 ParameterTransport createSimulatedParameterTransport(
   SimulatedParameterBackend backend,
-) => ParameterTransport._simulator(
+) => ParameterTransport.simulator(
   read: backend.readParameter,
   readAll: backend.readConfiguration,
   write: backend.applyRawParameter,

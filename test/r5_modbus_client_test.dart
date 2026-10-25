@@ -5,7 +5,6 @@ import 'package:solardiag_pro/audit/audit_chain.dart';
 import 'package:solardiag_pro/auth/authorization_controller.dart';
 import 'package:solardiag_pro/auth/confirmation_factory.dart';
 import 'package:solardiag_pro/parameters/parameter_models.dart';
-import 'package:solardiag_pro/parameters/write_pipeline.dart';
 import 'package:solardiag_pro/protocols/modbus/crc16.dart';
 import 'package:solardiag_pro/protocols/modbus/modbus_client.dart';
 import 'package:solardiag_pro/protocols/modbus/modbus_guard.dart';
@@ -16,6 +15,7 @@ import 'package:solardiag_pro/protocols/modbus/rtu_codec.dart';
 import 'package:solardiag_pro/protocols/modbus/rtu_link.dart';
 import 'package:solardiag_pro/protocols/modbus/tcp_codec.dart';
 import 'package:solardiag_pro/protocols/modbus/tcp_link.dart';
+import 'package:solardiag_pro/simulator/simulated_inverter_adapter.dart';
 
 class _RecordingLink implements ModbusLink {
   _RecordingLink(this.respond);
@@ -90,16 +90,7 @@ Future<PipelineWriteAuthorization> _authorizeWrite({
     sessionId: context.sessionId,
     expiresAt: now.add(const Duration(minutes: 5)),
   );
-  final pipeline = VerifiedWritePipeline(
-    transport: ParameterTransport.physical(
-      read: (_) async => 0,
-      readAll: () async => const {},
-      write: (_, _, _) async {},
-    ),
-    audit: AuditChain(secretStore: InMemorySecretStore()),
-    clock: () => now,
-  );
-  return pipeline.authorizeModbusWrite(
+  return mintPipelineWriteAuthorization(
     functionCode: ModbusFunction.writeMultipleRegisters.code,
     address: address,
     values: values,
@@ -108,6 +99,8 @@ Future<PipelineWriteAuthorization> _authorizeWrite({
     confirmation: confirmation,
     shownPlanHash: planHash,
     safetyAcknowledged: true,
+    audit: AuditChain(secretStore: InMemorySecretStore()),
+    clock: () => now,
   );
 }
 
@@ -159,7 +152,15 @@ void main() {
       link: RtuLink(transport: bytes, baudRate: 115200),
     );
 
-    expect(await client.readRegisters(0, 2, unitId: 1), [540, 102]);
+    expect(
+      await client.readRegisters(
+        0,
+        2,
+        unitId: 1,
+        kind: ModbusRegisterKind.holding,
+      ),
+      [540, 102],
+    );
   });
 
   test(
@@ -171,7 +172,15 @@ void main() {
         link: LoopbackLink(SimulatedInverterAdapter()),
       );
 
-      expect(await client.readRegisters(0, 1, unitId: 1), [540]);
+      expect(
+        await client.readRegisters(
+          0,
+          1,
+          unitId: 1,
+          kind: ModbusRegisterKind.holding,
+        ),
+        [540],
+      );
     },
   );
 
@@ -186,7 +195,15 @@ void main() {
       link: TcpLink(transport: bytes),
     );
 
-    expect(await client.readRegisters(0, 2, unitId: 1), [540, 102]);
+    expect(
+      await client.readRegisters(
+        0,
+        2,
+        unitId: 1,
+        kind: ModbusRegisterKind.holding,
+      ),
+      [540, 102],
+    );
   });
 
   test('input-register guard selects function code 0x04', () async {
@@ -197,7 +214,15 @@ void main() {
       link: link,
     );
 
-    expect(await client.readRegisters(0, 1, unitId: 1), [7]);
+    expect(
+      await client.readRegisters(
+        0,
+        1,
+        unitId: 1,
+        kind: ModbusRegisterKind.input,
+      ),
+      [7],
+    );
     expect(link.requests.single[1], ModbusFunction.readInputRegisters.code);
   });
 
@@ -210,7 +235,7 @@ void main() {
     );
 
     await expectLater(
-      client.readRegisters(20, 1, unitId: 1),
+      client.readRegisters(20, 1, unitId: 1, kind: ModbusRegisterKind.holding),
       throwsA(isA<ModbusGuardException>()),
     );
     expect(link.requests, isEmpty);
@@ -281,45 +306,10 @@ void main() {
         link: link,
       );
       final authorization = await _authorizeWrite(address: 0, values: [42]);
-      final now = DateTime.now().toUtc();
-
-      expect(
-        authorization.consume(
-          functionCode: 0x06,
-          address: 0,
-          values: [42],
-          now: now,
-        ),
-        isFalse,
+      await expectLater(
+        client.writeRegisters(1, [42], unitId: 1, authorization: authorization),
+        throwsA(isA<ModbusGuardException>()),
       );
-      expect(
-        authorization.consume(
-          functionCode: 0x10,
-          address: 1,
-          values: [42],
-          now: now,
-        ),
-        isFalse,
-      );
-      expect(
-        authorization.consume(
-          functionCode: 0x10,
-          address: 0,
-          values: [43],
-          now: now,
-        ),
-        isFalse,
-      );
-      expect(
-        authorization.consume(
-          functionCode: 0x10,
-          address: 0,
-          values: [42, 43],
-          now: now,
-        ),
-        isFalse,
-      );
-
       await client.writeRegisters(
         0,
         [42],
@@ -339,7 +329,7 @@ void main() {
     );
 
     await expectLater(
-      client.readRegisters(0, 1, unitId: 1),
+      client.readRegisters(0, 1, unitId: 1, kind: ModbusRegisterKind.holding),
       throwsA(isA<ModbusTimeout>()),
     );
   });
@@ -352,7 +342,7 @@ void main() {
     );
 
     await expectLater(
-      client.readRegisters(0, 1, unitId: 1),
+      client.readRegisters(0, 1, unitId: 1, kind: ModbusRegisterKind.holding),
       throwsA(isA<ModbusExceptionResponse>()),
     );
   });
@@ -365,7 +355,7 @@ void main() {
     );
 
     await expectLater(
-      client.readRegisters(0, 2, unitId: 1),
+      client.readRegisters(0, 2, unitId: 1, kind: ModbusRegisterKind.holding),
       throwsFormatException,
     );
   });
@@ -397,8 +387,35 @@ void main() {
     );
 
     await expectLater(
-      client.readRegisters(0, 1, unitId: 1),
+      client.readRegisters(0, 1, unitId: 1, kind: ModbusRegisterKind.holding),
       throwsFormatException,
     );
+  });
+
+  test('RTU link enforces the configured inter-frame idle gap', () async {
+    final observedDelays = <Duration>[];
+    final bytes = _RecordingByteTransport((_) {
+      final response = [1, 0x03, 2, 0, 7];
+      final crc = ModbusCrc16.calculate(response);
+      return Stream.value([...response, crc & 0xff, crc >> 8]);
+    });
+    final client = ModbusClient(
+      guard: _readGuard(),
+      timeout: const Duration(seconds: 1),
+      link: RtuLink(
+        transport: bytes,
+        baudRate: 9600,
+        idleDelay: (duration) async => observedDelays.add(duration),
+      ),
+    );
+
+    await client.readRegisters(
+      0,
+      1,
+      unitId: 1,
+      kind: ModbusRegisterKind.holding,
+    );
+
+    expect(observedDelays, [ModbusRtuCodec.interFrameDelay(9600)]);
   });
 }

@@ -1,12 +1,11 @@
 import 'modbus_link.dart';
 import 'modbus_models.dart';
 import 'rtu_codec.dart';
-import '../../simulator/simulated_inverter_adapter.dart';
 
 class LoopbackLink implements ModbusLink {
   const LoopbackLink(this.adapter);
 
-  final SimulatedInverterAdapter adapter;
+  final ModbusRtuResponder adapter;
 
   @override
   Future<List<int>> exchange(

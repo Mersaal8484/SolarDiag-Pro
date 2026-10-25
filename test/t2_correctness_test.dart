@@ -10,7 +10,6 @@ import 'package:solardiag_pro/audit/audit_chain.dart';
 import 'package:solardiag_pro/auth/authorization_controller.dart';
 import 'package:solardiag_pro/auth/confirmation_factory.dart';
 import 'package:solardiag_pro/parameters/parameter_models.dart';
-import 'package:solardiag_pro/parameters/write_pipeline.dart';
 import 'package:solardiag_pro/protocols/modbus/rtu_codec.dart';
 import 'package:solardiag_pro/protocols/modbus/crc16.dart';
 import 'package:solardiag_pro/protocols/modbus/modbus_models.dart';
@@ -26,7 +25,9 @@ class _CheckOnlyLink implements ModbusLink {
   Future<List<int>> exchange(
     List<int> request, {
     required Duration timeout,
-  }) async => const [];
+  }) async => request[1] == ModbusFunction.writeMultipleRegisters.code
+      ? request.sublist(0, 6)
+      : const [];
 }
 
 Future<PipelineWriteAuthorization> _mintModbusAuthorization({
@@ -60,16 +61,7 @@ Future<PipelineWriteAuthorization> _mintModbusAuthorization({
     sessionId: context.sessionId,
     expiresAt: now.add(const Duration(minutes: 5)),
   );
-  final pipeline = VerifiedWritePipeline(
-    transport: ParameterTransport.physical(
-      read: (_) async => 0,
-      readAll: () async => const {},
-      write: (_, _, _) async {},
-    ),
-    audit: AuditChain(secretStore: InMemorySecretStore()),
-    clock: () => now,
-  );
-  return pipeline.authorizeModbusWrite(
+  return mintPipelineWriteAuthorization(
     functionCode: ModbusFunction.writeMultipleRegisters.code,
     address: address,
     values: values,
@@ -78,6 +70,8 @@ Future<PipelineWriteAuthorization> _mintModbusAuthorization({
     confirmation: confirmation,
     shownPlanHash: planHash,
     safetyAcknowledged: true,
+    audit: AuditChain(secretStore: InMemorySecretStore()),
+    clock: () => now,
   );
 }
 
@@ -208,7 +202,12 @@ void main() {
         // Guard check is synchronous; call returns normally (future may fail on
         // transport, but the guard must not reject an in-range read).
         expect(
-          () => client.checkRead(address: 0, count: 10, unitId: 1),
+          () => client.checkRead(
+            address: 0,
+            count: 10,
+            unitId: 1,
+            kind: ModbusRegisterKind.holding,
+          ),
           returnsNormally,
         );
       },
@@ -224,44 +223,39 @@ void main() {
           link: _CheckOnlyLink(),
         );
         expect(
-          () => client.checkRead(address: 200, count: 5, unitId: 1),
+          () => client.checkRead(
+            address: 200,
+            count: 5,
+            unitId: 1,
+            kind: ModbusRegisterKind.holding,
+          ),
           throwsA(isA<ModbusGuardException>()),
         );
       },
     );
 
     // C2-d: write blocked without pipeline authorization
-    test('C2-d write blocked without pipeline authorization', () {
+    test('C2-d write blocked without pipeline authorization', () async {
       final client = ModbusClient(
         guard: writeGuard(),
         timeout: const Duration(seconds: 1),
         link: _CheckOnlyLink(),
       );
-      expect(
-        () => client.checkWrite(
-          address: 0,
-          values: [1, 2],
-          unitId: 1,
-          authorization: null,
-        ),
+      await expectLater(
+        client.writeRegisters(0, [1, 2], unitId: 1, authorization: null),
         throwsA(isA<ModbusGuardException>()),
       );
     });
 
     // C2-e: write blocked when writeVerifiedOnHardware == false
-    test('C2-e write blocked when hardware not verified by guard', () {
+    test('C2-e write blocked when hardware not verified by guard', () async {
       final client = ModbusClient(
         guard: readOnlyGuard(), // writeVerifiedOnHardware: false
         timeout: const Duration(seconds: 1),
         link: _CheckOnlyLink(),
       );
-      expect(
-        () => client.checkWrite(
-          address: 0,
-          values: [1],
-          unitId: 1,
-          authorization: null,
-        ),
+      await expectLater(
+        client.writeRegisters(0, [1], unitId: 1, authorization: null),
         throwsA(isA<ModbusGuardException>()),
       );
     });
@@ -279,14 +273,14 @@ void main() {
           address: 0,
           values: [1],
         );
-        expect(
-          () => client.checkWrite(
-            address: 0,
-            values: [1],
+        await expectLater(
+          client.writeRegisters(
+            0,
+            [1],
             unitId: 1,
             authorization: authorization,
           ),
-          returnsNormally,
+          completes,
         );
       },
     );

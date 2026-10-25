@@ -12,6 +12,7 @@ import 'package:solardiag_pro/protocol/capabilities.dart';
 import 'package:solardiag_pro/protocol/device_profile.dart';
 import 'package:solardiag_pro/protocol/profile_registry.dart';
 import 'package:solardiag_pro/session/device_session.dart';
+import 'package:solardiag_pro/simulator/simulated_bms_adapter.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
 import 'package:solardiag_pro/transport/safe_frame_transport.dart';
 import 'package:solardiag_pro/trust/library_write_reason.dart';
@@ -357,6 +358,37 @@ void main() {
         }
       },
     );
+
+    test('production safety layers do not import simulator libraries', () {
+      const roots = [
+        'lib/parameters',
+        'lib/session',
+        'lib/protocols',
+        'lib/transport',
+        'lib/auth',
+        'lib/trust',
+      ];
+      final simulatorImport = RegExp(
+        r'''\b(?:import|export)\s+['"][^'"]*simulator/''',
+      );
+      final simulatorConstruction = RegExp(
+        r'\b(?:createSimulatedParameterTransport|ParameterTransport\.simulator)\s*\(',
+      );
+      final offenders = <String>[];
+      for (final root in roots) {
+        for (final entity in Directory(root).listSync(recursive: true)) {
+          if (entity is! File || !entity.path.endsWith('.dart')) continue;
+          final source = entity.readAsStringSync();
+          final normalized = entity.path.replaceAll(r'\', '/');
+          if (simulatorImport.hasMatch(source) ||
+              (normalized != 'lib/parameters/parameter_transport.dart' &&
+                  simulatorConstruction.hasMatch(source))) {
+            offenders.add(entity.path);
+          }
+        }
+      }
+      expect(offenders, isEmpty);
+    });
   });
 
   group(

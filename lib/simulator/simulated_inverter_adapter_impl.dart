@@ -1,7 +1,7 @@
-part of '../parameters/write_pipeline.dart';
+part of 'simulated_inverter_adapter.dart';
 
 class SimulatedInverterAdapter extends SimulatedParameterBackend
-    implements InverterAdapter, SimulationClock {
+    implements InverterAdapter, SimulationClock, ModbusRtuResponder {
   SimulatedInverterAdapter({this.tick = 0});
   @override
   int tick;
@@ -80,6 +80,7 @@ class SimulatedInverterAdapter extends SimulatedParameterBackend
     crcFailures: 0,
   );
 
+  @override
   List<int> respondRtu(List<int> requestBytes) {
     final request = const ModbusRtuCodec().decode(requestBytes);
     if (request.functionCode != ModbusFunction.readHoldingRegisters.code &&

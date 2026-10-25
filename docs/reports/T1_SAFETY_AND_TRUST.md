@@ -10,19 +10,16 @@
 
 | ID | Finding | Resolution |
 |----|---------|------------|
-| S1 | `DeviceSession` self-issued `AuthorizationSession` and `ConfirmationToken` | Introduced `AuthorizationController` in `lib/auth/`; session never constructs tokens itself |
-| S2 | `restoreParameterBackup` passed `safetyAcknowledged: true` for all steps automatically | Now requires explicit `authorization`, `List<ConfirmationToken>` and `safetyAcknowledged` per-call; stops at first missing confirmation |
-| S2 | `DeviceWriteContext` was not derived from live identity | `createWriteContext()` uses `_lastIdentification` (populated in `refresh()`); `identityMismatch` scenario reflects `exactIdentityMatch = false` |
-| S3 | Simulator transport could be constructed without token outside `lib/simulator/` | `createSimulatedParameterTransport` requires `SimulatorToken`; `SimulatedInverterAdapter` updated to implement `SimulatedParameterBackend` |
-| S4 | `hasWriteCapability` referenced `DeviceCapability.factoryCommand / serviceMode` that didn't exist | Removed non-existent enum values; now checks only `writeParameter` and `calibrate` via `verifiedHardware` status |
-| S4 | `ProfileApproval.isApprovedFor` called `_capabilityKey()` which didn't exist | Fixed to use only `capability.name` comparison |
-| S5 | `ParameterAccess.from()` static method missing | Added `from()` alias that calls `fromString()` and throws `FormatException` on unknown values |
-| S6 | `RevocationList` had required `signature` param breaking tests | Made `signature` optional (default `''`); added `recordRevocationSequence()` and anti-rollback check in `LibrarySync` |
-| S7 | Spoofed `simulated: true` profiles could be registered | `ProfileRegistry.fromJsonDocuments` throws `FormatException` if `isBundled: false` and profile is simulated |
-| S8 | Audit chain HMAC API missing | Added `AuditChain.inMemory()` factory, `computeHeadHmac()`, `verifyHeadHmac()`; `InMemorySecretStore.setSecret()` for test setup |
-| S8 | `_MemoryAuditStore` missing `saveHeadMac` | Implemented in test helper |
-| S9 | `TrustAnchorRegistry.getKey()` missing | Renamed to `findKey()` throughout |
-| S10 | `LoopbackGatewayTransport` required `_guard` positional but named param expected | Fixed constructor: `guard:` named param with proper assignment |
+| S1 | Session self-issued authorization/confirmation and restore acknowledgement | Moved unlock control outside the session; restore requires explicit authorization, confirmations, and acknowledgement |
+| S2 | `DeviceWriteContext` was not derived from live identity | `createWriteContext()` uses refreshed identification and locks identity mismatches |
+| S3 | Public simulator transport construction | Simulator construction is isolated and production safety roots are checked by an architecture test |
+| S4 | Signature incorrectly implied approval | Registry write eligibility requires the explicit lifecycle role/stage approval, not a signature alone |
+| S5 | `hasWriteCapability` was incomplete | Write/calibration capability must be `verifiedHardware`; schema access parsing rejects unknown values |
+| S6 | Revocation-list rollback | `LibrarySync` persists and rejects decreasing revocation sequences |
+| S7 | Spoofed `simulated: true` profile | Non-bundled simulated profiles are rejected |
+| S8 | Audit chain lacked authenticated persistence | Audit heads use a separately stored HMAC; missing keys fail closed |
+| S9 | Trust-anchor provisioning | Typed trust-anchor lookup is wired; shipped placeholder/development anchors remain fail-closed in production |
+| S10 | Gateway/identification hardening | Guard ownership, negotiation evidence, identification thresholds, and safe loopback construction were hardened |
 
 ---
 
@@ -42,7 +39,7 @@
 - `lib/session/device_session.dart` — integrated `AuthorizationController auth`, dynamic `createWriteContext()`, `applySimulatedParameterChange`/`restoreParameterBackup` now require external auth; `refresh()` populates `_lastIdentification`
 - `lib/simulator/simulated_bms_adapter.dart` — `identityMismatch` scenario returns `LFP-UNKNOWN-MISMATCH` model
 - `lib/simulator/simulated_inverter_adapter.dart` — now implements `SimulatedParameterBackend` properly
-- `lib/simulator/simulated_parameter_transport.dart` — `SimulatorToken` isolation enforced
+- `lib/simulator/simulated_parameter_transport.dart` — simulator-only transport construction isolated from production roots
 - `lib/trust/signed_tokens.dart` — `RevocationList.signature` made optional; `LibrarySync.recordRevocationSequence()` with anti-rollback; `RevocationList` `revokedPackIds` made optional
 - `lib/audit/audit_chain.dart` — `AuditChain.inMemory()` factory; `computeHeadHmac()`, `verifyHeadHmac()`; `InMemorySecretStore.setSecret()`; `AuditChainStore.saveHeadMac()` method added
 - `lib/transport/safe_frame_transport.dart` — `LoopbackGatewayTransport` constructor uses named `guard:` parameter
@@ -67,7 +64,7 @@
 | architecture: ConfirmationToken restricted | Only `lib/auth/`, `lib/features/`, `parameter_models.dart` may construct tokens |
 | DeviceWriteContext derived dynamically | `exactIdentityMatch = true` on healthy session |
 | identityMismatch breaks exactIdentityMatch | `LFP-UNKNOWN-MISMATCH` model causes `exactIdentityMatch = false` |
-| SimulatedParameterTransport isolation | No `createSimulatedParameterTransport` outside `lib/simulator/` |
+| SimulatedParameterTransport isolation | No simulator transport construction outside `lib/simulator/` |
 | ParameterAccess rejects unknown | `FormatException` on unknown access string |
 | hasWriteCapability with readWrite param | Profile with `readWrite` param reports `hasWriteCapability = true` |
 | ProfileApproval role/stage enforcement | Only `published` + `approvalEngineer` returns `isApprovedFor = true` |

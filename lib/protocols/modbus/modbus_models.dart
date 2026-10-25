@@ -24,6 +24,15 @@ enum ModbusFunction {
   };
 }
 
+enum ModbusRegisterKind {
+  holding(ModbusFunction.readHoldingRegisters),
+  input(ModbusFunction.readInputRegisters);
+
+  const ModbusRegisterKind(this.function);
+
+  final ModbusFunction function;
+}
+
 class ModbusExceptionResponse implements Exception {
   const ModbusExceptionResponse({
     required this.functionCode,

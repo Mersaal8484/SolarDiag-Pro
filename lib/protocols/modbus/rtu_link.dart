@@ -4,16 +4,23 @@ import 'modbus_link.dart';
 import 'modbus_models.dart';
 import 'rtu_codec.dart';
 
+typedef RtuIdleDelay = Future<void> Function(Duration duration);
+
+Future<void> _defaultRtuIdleDelay(Duration duration) =>
+    Future<void>.delayed(duration);
+
 class RtuLink implements ModbusLink {
   RtuLink({
     required this.transport,
     required this.baudRate,
     this.bitsPerCharacter = 11,
+    this.idleDelay = _defaultRtuIdleDelay,
   });
 
   final ModbusByteTransport transport;
   final int baudRate;
   final int bitsPerCharacter;
+  final RtuIdleDelay idleDelay;
 
   @override
   Future<List<int>> exchange(
@@ -43,7 +50,7 @@ class RtuLink implements ModbusLink {
       if (decoded.functionCode != functionCode) {
         throw const FormatException('RTU response function mismatch.');
       }
-      await Future<void>.delayed(
+      await idleDelay(
         ModbusRtuCodec.interFrameDelay(
           baudRate,
           bitsPerCharacter: bitsPerCharacter,
@@ -51,7 +58,7 @@ class RtuLink implements ModbusLink {
       );
       return [unitId, decoded.functionCode, ...decoded.data];
     } on ModbusExceptionResponse catch (exception) {
-      await Future<void>.delayed(
+      await idleDelay(
         ModbusRtuCodec.interFrameDelay(
           baudRate,
           bitsPerCharacter: bitsPerCharacter,

@@ -1,108 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
-import '../auth/authorization_controller.dart';
 import '../audit/audit_chain.dart';
-import '../core/battery_models.dart';
-import '../core/inverter_models.dart';
-import '../core/simulation_clock.dart';
 import 'parameter_models.dart';
 import 'parameter_validator.dart';
-import '../protocol/bms_adapter.dart';
-import '../protocol/capabilities.dart';
-import '../protocol/device_profile.dart';
-import '../protocol/inverter_adapter.dart';
-import '../protocols/modbus/crc16.dart';
-import '../protocols/modbus/modbus_models.dart';
-import '../protocols/modbus/rtu_codec.dart';
-import '../simulator/simulated_profile_document.dart';
-import '../simulator/simulation_scenario.dart';
 
-part '../simulator/simulated_parameter_transport.dart';
-part '../simulator/simulated_bms_adapter_impl.dart';
-part '../simulator/simulated_inverter_adapter_impl.dart';
-
-typedef ParameterReader = Future<num> Function(String id);
-typedef ConfigurationReader = Future<Map<String, num>> Function();
-typedef ParameterWriter =
-    Future<void> Function(String id, int rawValue, String idempotencyKey);
-
-sealed class ParameterTransport {
-  ParameterTransport._({
-    required this.kind,
-    required this._read,
-    required this._readAll,
-    required this._write,
-  });
-  factory ParameterTransport.physical({
-    required ParameterReader read,
-    required ConfigurationReader readAll,
-    required ParameterWriter write,
-  }) = _PhysicalParameterTransport;
-  factory ParameterTransport._simulator({
-    required ParameterReader read,
-    required ConfigurationReader readAll,
-    required ParameterWriter write,
-  }) = _SimulatorParameterTransport;
-  final TransportKind kind;
-  final ParameterReader _read;
-  final ConfigurationReader _readAll;
-  final ParameterWriter _write;
-  Future<num> readParameter(String id) => _read(id);
-  Future<Map<String, num>> readConfiguration() => _readAll();
-  Future<void> _commit(String id, int raw, String key) => _write(id, raw, key);
-}
-
-final class _PhysicalParameterTransport extends ParameterTransport {
-  _PhysicalParameterTransport({
-    required super.read,
-    required super.readAll,
-    required super.write,
-  }) : super._(kind: TransportKind.physical);
-}
-
-final class _SimulatorParameterTransport extends ParameterTransport {
-  _SimulatorParameterTransport({
-    required super.read,
-    required super.readAll,
-    required super.write,
-  }) : super._(kind: TransportKind.simulator);
-}
-
-final class PipelineWriteAuthorization {
-  PipelineWriteAuthorization._({
-    required this.functionCode,
-    required this.address,
-    required this.count,
-    required this.valueHash,
-    required this.expiresAt,
-  });
-
-  final int functionCode;
-  final int address;
-  final int count;
-  final String valueHash;
-  final DateTime expiresAt;
-  bool _used = false;
-
-  bool consume({
-    required int functionCode,
-    required int address,
-    required List<int> values,
-    required DateTime now,
-  }) {
-    if (_used ||
-        !now.isBefore(expiresAt) ||
-        this.functionCode != functionCode ||
-        this.address != address ||
-        count != values.length ||
-        valueHash != _modbusValueHash(values)) {
-      return false;
-    }
-    _used = true;
-    return true;
-  }
-}
+part 'parameter_transport.dart';
 
 class VerifiedWritePipeline {
   VerifiedWritePipeline({
@@ -117,59 +20,6 @@ class VerifiedWritePipeline {
   final DateTime Function() _clock;
   final Set<String> _completedKeys = {};
   Future<void> _serial = Future.value();
-
-  PipelineWriteAuthorization authorizeModbusWrite({
-    required int functionCode,
-    required int address,
-    required List<int> values,
-    required AuthorizationController authorizationController,
-    required DeviceWriteContext context,
-    required ConfirmationToken confirmation,
-    required String shownPlanHash,
-    required bool safetyAcknowledged,
-  }) {
-    final now = _clock().toUtc();
-    final authorization = authorizationController.current;
-    if (audit.availability != AuditAvailability.available) {
-      throw StateError('Audit key unavailable; Modbus write is locked.');
-    }
-    if (functionCode != 0x10 ||
-        address < 0 ||
-        address > 0xffff ||
-        values.isEmpty ||
-        values.length > 123 ||
-        values.any((value) => value < 0 || value > 0xffff)) {
-      throw ArgumentError('Invalid Modbus write request.');
-    }
-    if (authorization == null ||
-        !authorization.isValidAt(now) ||
-        authorization.tier.index < AuthorizationTier.technician.index ||
-        context.writeLocked ||
-        !context.exactIdentityMatch ||
-        !context.linkHealthy ||
-        !safetyAcknowledged ||
-        shownPlanHash.isEmpty ||
-        !confirmation.consume(
-          expectedHash: shownPlanHash,
-          context: context,
-          now: now,
-        )) {
-      throw StateError('Verified pipeline rejected the Modbus write.');
-    }
-    audit.append('modbus_write_authorized', {
-      'function': functionCode,
-      'address': address,
-      'count': values.length,
-      'value_hash': _modbusValueHash(values),
-    });
-    return PipelineWriteAuthorization._(
-      functionCode: functionCode,
-      address: address,
-      count: values.length,
-      valueHash: _modbusValueHash(values),
-      expiresAt: confirmation.expiresAt,
-    );
-  }
 
   Future<WriteResult> execute({
     required ParameterChange change,
@@ -429,6 +279,3 @@ class VerifiedWritePipeline {
       )
       .toString();
 }
-
-String _modbusValueHash(List<int> values) =>
-    sha256.convert(utf8.encode(jsonEncode(values))).toString();
