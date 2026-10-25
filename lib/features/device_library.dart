@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 
 import '../app/theme.dart';
 import '../design/components.dart';
@@ -36,7 +37,7 @@ class DeviceLibraryScreen extends StatelessWidget {
             title: s.warning,
             message: localizedLibraryWriteReason(context, reason),
           ),
-        Card(
+        PrecisionCard(
           child: ListTile(
             contentPadding: const EdgeInsets.all(20),
             leading: _Badge(
@@ -51,7 +52,7 @@ class DeviceLibraryScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 18),
-        Card(
+        PrecisionCard(
           child: ListTile(
             leading: const SolarIcon(SolarIcons.inverter),
             title: const Text(freconName),
@@ -63,20 +64,23 @@ class DeviceLibraryScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 18),
-        Text(
-          s.researchTargets,
-          style: Theme.of(context).textTheme.headlineSmall,
+        PrecisionSectionHeading(
+          label: s.researchTargets,
+          icon: Icons.science_outlined,
         ),
         const SizedBox(height: 10),
         ...targets.map(
-          (name) => Card(
-            child: ListTile(
-              leading: const SolarIcon(SolarIcons.battery),
-              title: Text(name),
-              subtitle: Text(s.noVerifiedDefinition),
-              trailing: _Badge(
-                text: s.planned,
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          (name) => Padding(
+            padding: const EdgeInsets.only(bottom: 9),
+            child: PrecisionCard(
+              child: ListTile(
+                leading: const SolarIcon(SolarIcons.battery),
+                title: Text(name),
+                subtitle: Text(s.noVerifiedDefinition),
+                trailing: _Badge(
+                  text: s.planned,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                ),
               ),
             ),
           ),
@@ -115,11 +119,13 @@ class _Page extends StatelessWidget {
   final List<Widget> children;
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(24),
+    padding: const EdgeInsets.fromLTRB(20, 22, 20, 64),
     children: [
-      Text(title, style: Theme.of(context).textTheme.displaySmall),
-      const SizedBox(height: 8),
-      Text(subtitle),
+      PrecisionPageHeading(
+        title: title,
+        subtitle: subtitle,
+        icon: Icons.inventory_2_outlined,
+      ),
       const SizedBox(height: 24),
       ...children,
     ],

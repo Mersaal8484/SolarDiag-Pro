@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 
 import '../app/theme.dart';
 import '../auth/confirmation_factory.dart';
@@ -38,16 +39,21 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final entries = session.parameters.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 64),
       children: [
-        Text(s.parameters, style: Theme.of(context).textTheme.displaySmall),
-        const SizedBox(height: 8),
-        Text(s.simulatorValuesNotice),
+        PrecisionPageHeading(
+          title: s.parameters,
+          subtitle: s.simulatorValuesNotice,
+          icon: Icons.tune_rounded,
+        ),
         const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: palette.labelPrimary,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF203D5C), Color(0xFF0C1C33)],
+            ),
+            border: Border.all(color: const Color(0xFF375477)),
             borderRadius: BorderRadius.circular(22),
           ),
           child: Row(
@@ -58,7 +64,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                 child: Text(
                   s.simulatedWritePipeline,
                   style: TextStyle(
-                    color: palette.background,
+                    color: const Color(0xFFF3F7FF),
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -68,7 +74,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
         ),
         if (session.libraryWriteDisabledReason case final reason?) ...[
           const SizedBox(height: 12),
-          Card(
+          PrecisionCard(
             child: ListTile(
               leading: const SolarIcon(SolarIcons.locked),
               title: Text(s.physicalWriteLocked),
@@ -513,40 +519,79 @@ class _ParameterTile extends StatelessWidget {
   final String value;
   final String range;
   final VoidCallback? onEdit;
+
   @override
-  Widget build(BuildContext context) => Card(
-    child: ListTile(
-      contentPadding: const EdgeInsets.all(20),
-      title: Text(title),
-      subtitle: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Text(range),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                fontFeatures: [FontFeature.tabularFigures()],
+  Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: PrecisionCard(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 4,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: onEdit == null ? palette.info : palette.warning,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 6),
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          range,
+                          softWrap: true,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                flex: 2,
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(
+                    value,
+                    textAlign: TextAlign.end,
+                    softWrap: true,
+                    style: TextStyle(
+                      fontSize: 17,
+                      color: palette.tint,
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+              ),
+              if (onEdit != null) ...[
+                const SizedBox(width: 6),
+                IconButton(
+                  key: const Key('edit-charge-limit'),
+                  tooltip: AppLocalizations.of(context).editParameter,
+                  onPressed: onEdit,
+                  icon: const SolarIcon(SolarIcons.configure),
+                ),
+              ],
+            ],
           ),
-          if (onEdit != null) ...[
-            const SizedBox(width: 8),
-            IconButton(
-              key: const Key('edit-charge-limit'),
-              tooltip: AppLocalizations.of(context).editParameter,
-              onPressed: onEdit,
-              icon: const SolarIcon(SolarIcons.configure),
-            ),
-          ],
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

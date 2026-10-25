@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 import '../app/theme.dart';
 import '../core/battery_models.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -22,24 +23,25 @@ class AdvancedDiagnosticsScreen extends StatelessWidget {
     );
     return Scaffold(
       appBar: AppBar(title: Text(s.advancedDiagnostics)),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          Text(
-            s.evidenceBeforeConclusions,
-            style: Theme.of(context).textTheme.displaySmall,
-          ),
-          const SizedBox(height: 10),
-          Text(s.diagnosticEvidenceNote),
-          const SizedBox(height: 24),
-          _SohCard(assessment: assessment),
-          const SizedBox(height: 16),
-          for (final finding in assessment.findings)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _FindingCard(finding: finding),
+      body: PrecisionCanvas(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 64),
+          children: [
+            PrecisionPageHeading(
+              title: s.evidenceBeforeConclusions,
+              subtitle: s.diagnosticEvidenceNote,
+              icon: Icons.biotech_outlined,
             ),
-        ],
+            const SizedBox(height: 24),
+            _SohCard(assessment: assessment),
+            const SizedBox(height: 16),
+            for (final finding in assessment.findings)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _FindingCard(finding: finding),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -63,7 +65,10 @@ class _SohCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: palette.labelPrimary,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF203D5C), Color(0xFF0C1C33)],
+        ),
+        border: Border.all(color: const Color(0xFF375477)),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
@@ -77,7 +82,7 @@ class _SohCard extends StatelessWidget {
                 Text(
                   value == null ? s.sohUnavailable : s.stateOfHealth,
                   style: TextStyle(
-                    color: palette.background,
+                    color: const Color(0xFFF3F7FF),
                     fontWeight: FontWeight.w800,
                     fontSize: 17,
                   ),
@@ -85,9 +90,7 @@ class _SohCard extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   description,
-                  style: TextStyle(
-                    color: palette.background.withValues(alpha: .72),
-                  ),
+                  style: TextStyle(color: const Color(0xFFBDCEE2)),
                 ),
               ],
             ),
@@ -111,7 +114,7 @@ class _FindingCard extends StatelessWidget {
       DiagnosticSeverity.warning => tokens.warning,
       DiagnosticSeverity.critical => Theme.of(context).colorScheme.error,
     };
-    return Card(
+    return PrecisionCard(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(

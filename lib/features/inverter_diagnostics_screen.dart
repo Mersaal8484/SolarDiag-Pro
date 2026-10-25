@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 
 import '../core/battery_models.dart';
 import '../design/solar_icon.dart';
@@ -18,14 +19,13 @@ class InverterDiagnosticsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 56),
         children: [
-          Text(
-            s.inverterDiagnostics,
-            style: Theme.of(context).textTheme.displaySmall,
+          PrecisionPageHeading(
+            title: s.inverterDiagnostics,
+            subtitle: s.inverterDiagnosticsDescription,
+            icon: Icons.bolt_outlined,
           ),
-          const SizedBox(height: 8),
-          Text(s.inverterDiagnosticsDescription),
           const SizedBox(height: 20),
-          Card(
+          PrecisionCard(
             child: ListTile(
               leading: const SolarIcon(SolarIcons.research),
               title: Text(s.simulatedInverterProfile),
@@ -33,7 +33,7 @@ class InverterDiagnosticsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Card(
+          PrecisionCard(
             child: ListTile(
               leading: const SolarIcon(SolarIcons.library),
               title: Text(s.freconResearchProfile),
@@ -42,7 +42,7 @@ class InverterDiagnosticsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           if (snapshot == null)
-            Card(
+            PrecisionCard(
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Text(s.waitingForInverterTelemetry),
@@ -87,22 +87,7 @@ class _ReadingCard extends StatelessWidget {
       label: '$label, $valueLabel',
       child: SizedBox(
         width: 220,
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label),
-                const SizedBox(height: 10),
-                Text(
-                  valueLabel,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-              ],
-            ),
-          ),
-        ),
+        child: PrecisionReading(label: label, value: valueLabel),
       ),
     );
   }

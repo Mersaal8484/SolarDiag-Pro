@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 
 import '../app/theme.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -20,16 +21,15 @@ class GatewayScreen extends StatelessWidget {
     final session = DeviceSessionScope.of(context);
     final gateway = session.gatewayStatus;
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 64),
       children: [
-        Text(
-          s.diagnosticGateway,
-          style: Theme.of(context).textTheme.displaySmall,
+        PrecisionPageHeading(
+          title: s.diagnosticGateway,
+          subtitle: s.gatewayDescription,
+          icon: Icons.hub_outlined,
         ),
-        const SizedBox(height: 8),
-        Text(s.gatewayDescription),
         const SizedBox(height: 24),
-        Card(
+        PrecisionCard(
           child: Padding(
             padding: const EdgeInsets.all(22),
             child: Wrap(
@@ -114,17 +114,17 @@ class GatewayScreen extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         if (gateway.lastDecision case final decision?) ...[
-          Text(
-            s.lastGuardDecision,
-            style: Theme.of(context).textTheme.headlineSmall,
+          PrecisionSectionHeading(
+            label: s.lastGuardDecision,
+            icon: Icons.verified_user_outlined,
           ),
           const SizedBox(height: 8),
           Text(decision.reason, key: const Key('gateway-last-decision-reason')),
           const SizedBox(height: 18),
         ],
-        Text(
-          s.connectionChecklist,
-          style: Theme.of(context).textTheme.headlineSmall,
+        PrecisionSectionHeading(
+          label: s.connectionChecklist,
+          icon: Icons.fact_check_outlined,
         ),
         const SizedBox(height: 10),
         for (final item in [
@@ -133,7 +133,7 @@ class GatewayScreen extends StatelessWidget {
           s.terminationCheck,
           s.transmissionBlockedCheck,
         ])
-          Card(
+          PrecisionCard(
             child: ListTile(
               leading: const SolarIcon(SolarIcons.evidence),
               title: Text(item),
@@ -169,35 +169,48 @@ class _Status extends StatelessWidget {
   final String label;
   final String value;
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 190,
-    child: Row(
-      children: [
-        SolarIcon(
-          icon,
-          color: Theme.of(context).extension<SolarTokens>()!.palette.tint,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
+    return SizedBox(
+      width: 215,
+      child: PrecisionCard(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 12,
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: palette.tint.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: SolarIcon(icon, color: palette.tint, size: 20),
               ),
-              Text(
-                value,
-                softWrap: true,
-                style: const TextStyle(fontWeight: FontWeight.w800),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(label, style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 5),
+                    Text(
+                      value,
+                      softWrap: true,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }

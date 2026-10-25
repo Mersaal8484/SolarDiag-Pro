@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 
 import '../core/battery_models.dart';
 import '../design/components.dart';
@@ -43,67 +44,71 @@ class _BatteryWorkspaceState extends State<BatteryWorkspace> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 56),
         children: [
-          Text(
-            s.batteryBmsDiagnostics,
-            style: Theme.of(context).textTheme.displaySmall,
+          PrecisionPageHeading(
+            title: s.batteryBmsDiagnostics,
+            subtitle: s.batteryWorkspaceDescription,
+            icon: Icons.battery_charging_full_outlined,
           ),
-          const SizedBox(height: 8),
-          Text(s.batteryWorkspaceDescription),
           const SizedBox(height: 18),
-          SingleChildScrollView(
-            key: const Key('battery-section-scroll'),
-            scrollDirection: Axis.horizontal,
-            child: SegmentedButton<BatterySection>(
-              segments: [
-                ButtonSegment(
-                  value: BatterySection.overview,
-                  icon: const SolarIcon(SolarIcons.home),
-                  label: Text(s.overview),
+          PrecisionCard(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: SingleChildScrollView(
+                key: const Key('battery-section-scroll'),
+                scrollDirection: Axis.horizontal,
+                child: SegmentedButton<BatterySection>(
+                  segments: [
+                    ButtonSegment(
+                      value: BatterySection.overview,
+                      icon: const SolarIcon(SolarIcons.home),
+                      label: Text(s.overview),
+                    ),
+                    ButtonSegment(
+                      value: BatterySection.cells,
+                      icon: const SolarIcon(SolarIcons.cellGrid),
+                      label: Text(s.cellMonitoring),
+                    ),
+                    ButtonSegment(
+                      value: BatterySection.temperature,
+                      icon: const SolarIcon(SolarIcons.temperature),
+                      label: Text(s.temperature),
+                    ),
+                    ButtonSegment(
+                      value: BatterySection.faults,
+                      icon: const SolarIcon(SolarIcons.warning),
+                      label: Text(s.faultDiagnostics),
+                    ),
+                    ButtonSegment(
+                      value: BatterySection.balancing,
+                      icon: const SolarIcon(SolarIcons.balancing),
+                      label: Text(s.cellBalancing),
+                    ),
+                    ButtonSegment(
+                      value: BatterySection.health,
+                      icon: const SolarIcon(SolarIcons.soh),
+                      label: Text(s.batteryHealth),
+                    ),
+                    ButtonSegment(
+                      value: BatterySection.service,
+                      icon: const SolarIcon(SolarIcons.configure),
+                      label: Text(s.serviceFunctions),
+                    ),
+                    ButtonSegment(
+                      value: BatterySection.reports,
+                      icon: const SolarIcon(SolarIcons.report),
+                      label: Text(s.reports),
+                    ),
+                    ButtonSegment(
+                      value: BatterySection.parallel,
+                      icon: const SolarIcon(SolarIcons.parallelBank),
+                      label: Text(s.parallelBank),
+                    ),
+                  ],
+                  selected: {section},
+                  onSelectionChanged: (value) =>
+                      setState(() => section = value.single),
                 ),
-                ButtonSegment(
-                  value: BatterySection.cells,
-                  icon: const SolarIcon(SolarIcons.cellGrid),
-                  label: Text(s.cellMonitoring),
-                ),
-                ButtonSegment(
-                  value: BatterySection.temperature,
-                  icon: const SolarIcon(SolarIcons.temperature),
-                  label: Text(s.temperature),
-                ),
-                ButtonSegment(
-                  value: BatterySection.faults,
-                  icon: const SolarIcon(SolarIcons.warning),
-                  label: Text(s.faultDiagnostics),
-                ),
-                ButtonSegment(
-                  value: BatterySection.balancing,
-                  icon: const SolarIcon(SolarIcons.balancing),
-                  label: Text(s.cellBalancing),
-                ),
-                ButtonSegment(
-                  value: BatterySection.health,
-                  icon: const SolarIcon(SolarIcons.soh),
-                  label: Text(s.batteryHealth),
-                ),
-                ButtonSegment(
-                  value: BatterySection.service,
-                  icon: const SolarIcon(SolarIcons.configure),
-                  label: Text(s.serviceFunctions),
-                ),
-                ButtonSegment(
-                  value: BatterySection.reports,
-                  icon: const SolarIcon(SolarIcons.report),
-                  label: Text(s.reports),
-                ),
-                ButtonSegment(
-                  value: BatterySection.parallel,
-                  icon: const SolarIcon(SolarIcons.parallelBank),
-                  label: Text(s.parallelBank),
-                ),
-              ],
-              selected: {section},
-              onSelectionChanged: (value) =>
-                  setState(() => section = value.single),
+              ),
             ),
           ),
           const SizedBox(height: 22),
@@ -137,7 +142,7 @@ class _Balancing extends StatelessWidget {
       children: [
         _MeasurementCard(s.balancingMask, mask),
         const SizedBox(height: 12),
-        Card(
+        PrecisionCard(
           child: ListTile(
             leading: mask.value != null && mask.value != 0
                 ? const SolarAnimatedIcon(
@@ -184,7 +189,7 @@ class _Health extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        Card(
+        PrecisionCard(
           child: Padding(
             padding: const EdgeInsets.all(18),
             child: Text(s.healthMethodNote),
@@ -234,7 +239,7 @@ class _LockedService extends StatelessWidget {
   final SolarIconData icon;
 
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: ListTile(
       leading: SolarIcon(icon),
       title: Text(title),
@@ -344,7 +349,7 @@ class _Cells extends StatelessWidget {
                   SizedBox(
                     key: Key('battery-cell-card-${cell.index + 1}'),
                     width: cardWidth,
-                    child: Card(
+                    child: PrecisionCard(
                       child: Padding(
                         padding: const EdgeInsets.all(14),
                         child: Column(
@@ -417,7 +422,7 @@ class _Faults extends StatelessWidget {
     return Column(
       children: [
         for (final code in alarms)
-          Card(
+          PrecisionCard(
             child: ListTile(
               leading: const SolarIcon(SolarIcons.warning),
               title: Text(switch (code) {
@@ -448,25 +453,7 @@ class _MeasurementCard extends StatelessWidget {
       label: '$label, $valueLabel',
       child: SizedBox(
         width: 220,
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label),
-                const SizedBox(height: 10),
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Text(
-                    valueLabel,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        child: PrecisionReading(label: label, value: valueLabel),
       ),
     );
   }
@@ -480,19 +467,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     width: 220,
-    child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label),
-            const SizedBox(height: 8),
-            Text(value, style: Theme.of(context).textTheme.titleLarge),
-          ],
-        ),
-      ),
-    ),
+    child: PrecisionReading(label: label, value: value),
   );
 }
 
@@ -501,7 +476,7 @@ class _Unavailable extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: Padding(
       padding: const EdgeInsets.all(20),
       child: Row(

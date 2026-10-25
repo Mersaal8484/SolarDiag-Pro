@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../app/theme.dart';
+import '../design/precision_ui.dart';
 import '../design/components.dart';
 import '../design/solar_icon.dart';
 import '../design/solar_icons.g.dart';
@@ -95,9 +96,18 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
             if (wide)
               Container(
                 width: 112,
-                color: Theme.of(
-                  context,
-                ).extension<SolarTokens>()!.palette.labelPrimary,
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).extension<SolarTokens>()!.palette.surface,
+                  border: BorderDirectional(
+                    end: BorderSide(
+                      color: Theme.of(
+                        context,
+                      ).extension<SolarTokens>()!.palette.separator,
+                    ),
+                  ),
+                ),
                 child: Column(
                   children: [
                     const SizedBox(height: 22),
@@ -105,9 +115,12 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).extension<SolarTokens>()!.palette.tint,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF17537E), Color(0xFF102B47)],
+                        ),
+                        border: Border.all(color: const Color(0xFF397A9C)),
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: SolarIcon(
@@ -118,21 +131,29 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                       ),
                     ),
                     const SizedBox(height: 28),
-                    for (var i = 0; i < destinations.length; i++)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 4,
-                          horizontal: 10,
-                        ),
-                        child: _RailButton(
-                          key: ValueKey('workspace-nav-${destinations[i].$1}'),
-                          icon: destinations[i].$2,
-                          label: destinations[i].$3,
-                          selected: index == i,
-                          onTap: () => setState(() => index = i),
-                        ),
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        children: [
+                          for (var i = 0; i < destinations.length; i++)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 3,
+                                horizontal: 10,
+                              ),
+                              child: _RailButton(
+                                key: ValueKey(
+                                  'workspace-nav-${destinations[i].$1}',
+                                ),
+                                icon: destinations[i].$2,
+                                label: destinations[i].$3,
+                                selected: index == i,
+                                onTap: () => setState(() => index = i),
+                              ),
+                            ),
+                        ],
                       ),
-                    const Spacer(),
+                    ),
                     IconButton(
                       onPressed: widget.onOpenDesignLab,
                       tooltip: s.designLab,
@@ -140,7 +161,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                         SolarIcons.research,
                         color: Theme.of(
                           context,
-                        ).extension<SolarTokens>()!.palette.surface,
+                        ).extension<SolarTokens>()!.palette.tint,
                       ),
                     ),
                     IconButton(
@@ -150,7 +171,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                         SolarIcons.configure,
                         color: Theme.of(
                           context,
-                        ).extension<SolarTokens>()!.palette.surface,
+                        ).extension<SolarTokens>()!.palette.tint,
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -178,7 +199,9 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                     ),
                   ),
                   Expanded(
-                    child: IndexedStack(index: index, children: pages),
+                    child: PrecisionCanvas(
+                      child: IndexedStack(index: index, children: pages),
+                    ),
                   ),
                 ],
               ),
@@ -233,18 +256,35 @@ class _RailButton extends StatelessWidget {
       message: label,
       child: Material(
         color: selected
-            ? palette.tint
-            : palette.labelPrimary.withValues(alpha: 0),
+            ? palette.tint.withValues(alpha: .15)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
           child: SizedBox(
-            width: 82,
-            height: 58,
-            child: SolarIcon(
-              icon,
-              color: selected ? palette.background : palette.surface,
+            width: 88,
+            height: 62,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SolarIcon(
+                  icon,
+                  size: 22,
+                  color: selected ? palette.tint : palette.labelSecondary,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                    color: selected ? palette.tint : palette.labelSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

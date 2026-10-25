@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 import '../app/theme.dart';
 import '../design/accessibility.dart';
 import '../design/solar_icon.dart';
@@ -203,7 +204,7 @@ class _DestinationGrid extends StatelessWidget {
             for (final item in items)
               SizedBox(
                 width: width,
-                child: Card(
+                child: PrecisionCard(
                   child: InkWell(
                     key: ValueKey('destination-${item.$1}'),
                     borderRadius: BorderRadius.circular(20),
@@ -212,7 +213,26 @@ class _DestinationGrid extends StatelessWidget {
                       padding: const EdgeInsets.all(20),
                       child: Row(
                         children: [
-                          SolarIcon(item.$3),
+                          Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .extension<SolarTokens>()!
+                                  .palette
+                                  .tint
+                                  .withValues(alpha: .12),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Center(
+                              child: SolarIcon(
+                                item.$3,
+                                color: Theme.of(
+                                  context,
+                                ).extension<SolarTokens>()!.palette.tint,
+                              ),
+                            ),
+                          ),
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
@@ -229,7 +249,13 @@ class _DestinationGrid extends StatelessWidget {
                               ],
                             ),
                           ),
-                          const SolarIcon(SolarIcons.currentFlow),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 15,
+                            color: Theme.of(
+                              context,
+                            ).extension<SolarTokens>()!.palette.labelSecondary,
+                          ),
                         ],
                       ),
                     ),
@@ -255,13 +281,13 @@ class _RecentSessions extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          s.recentSessions,
-          style: Theme.of(context).textTheme.headlineSmall,
+        PrecisionSectionHeading(
+          label: s.recentSessions,
+          icon: Icons.history_toggle_off_outlined,
         ),
         const SizedBox(height: 10),
         if (recent.isEmpty)
-          Card(
+          PrecisionCard(
             child: Padding(
               padding: const EdgeInsets.all(18),
               child: Text(s.noSavedSessions),
@@ -278,7 +304,7 @@ class _RecentSessions extends StatelessWidget {
                 final record = recent[index];
                 return SizedBox(
                   width: 260,
-                  child: Card(
+                  child: PrecisionCard(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -312,7 +338,7 @@ class _Rail extends StatelessWidget {
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     return Container(
       width: 92,
-      color: palette.labelPrimary,
+      color: palette.surface,
       child: Column(
         children: [
           const SizedBox(height: 28),
@@ -320,10 +346,10 @@ class _Rail extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: palette.simulated,
+              color: palette.tint.withValues(alpha: .16),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: SolarIcon(SolarIcons.solar, color: palette.background),
+            child: SolarIcon(SolarIcons.solar, color: palette.labelPrimary),
           ),
           const Spacer(),
           Padding(
@@ -333,25 +359,19 @@ class _Rail extends StatelessWidget {
           for (final icon in [SolarIcons.battery, SolarIcons.gateway])
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 15),
-              child: SolarIcon(
-                icon,
-                color: palette.background.withValues(alpha: .54),
-              ),
+              child: SolarIcon(icon, color: palette.labelSecondary),
             ),
           IconButton(
             onPressed: onOpenDesignLab,
             tooltip: AppLocalizations.of(context).designLab,
-            icon: SolarIcon(
-              SolarIcons.research,
-              color: palette.background.withValues(alpha: .54),
-            ),
+            icon: SolarIcon(SolarIcons.research, color: palette.labelSecondary),
           ),
           const Spacer(),
           Padding(
             padding: const EdgeInsets.only(bottom: 26),
             child: SolarIcon(
               SolarIcons.configure,
-              color: palette.background.withValues(alpha: .54),
+              color: palette.labelSecondary,
             ),
           ),
         ],
@@ -419,7 +439,10 @@ class _Header extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 7),
-        Text(s.tagline, style: Theme.of(context).textTheme.displaySmall),
+        PrecisionPageHeading(
+          title: s.tagline,
+          icon: Icons.solar_power_outlined,
+        ),
       ],
     );
   }
@@ -432,12 +455,16 @@ class _Hero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: palette.labelPrimary,
-        borderRadius: BorderRadius.circular(30),
+        gradient: const LinearGradient(
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
+          colors: [Color(0xFF1D3C60), Color(0xFF0E213A), Color(0xFF0A162A)],
+        ),
+        border: Border.all(color: const Color(0xFF365477)),
+        borderRadius: BorderRadius.circular(27),
       ),
       child: Wrap(
         spacing: 42,
@@ -454,7 +481,7 @@ class _Hero extends StatelessWidget {
                 Text(
                   s.bank,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: palette.background,
+                    color: const Color(0xFFF3F7FF),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -465,7 +492,7 @@ class _Hero extends StatelessWidget {
                     DeviceSessionLinkState.unavailable => s.linkUnavailable,
                   },
                   style: TextStyle(
-                    color: palette.background.withValues(alpha: .62),
+                    color: const Color(0xFFF3F7FF).withValues(alpha: .62),
                   ),
                 ),
               ],
@@ -502,7 +529,7 @@ class _BigMetric extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: palette.background.withValues(alpha: .54),
+                color: palette.labelSecondary,
                 fontSize: 11,
                 letterSpacing: 1.1,
               ),
@@ -513,9 +540,9 @@ class _BigMetric extends StatelessWidget {
               child: Text(
                 valueLabel,
                 style: TextStyle(
-                  color: palette.background,
-                  fontSize: 31,
-                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFF3F7FF),
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
                   fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
@@ -577,8 +604,7 @@ class _MetricCard extends StatelessWidget {
       label: '$title, $valueLabel',
       child: SizedBox(
         width: 230,
-        height: 148,
-        child: Card(
+        child: PrecisionCard(
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -636,7 +662,7 @@ class _CellPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    return Card(
+    return PrecisionCard(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(

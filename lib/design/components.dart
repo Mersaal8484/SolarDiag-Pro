@@ -41,13 +41,17 @@ class SolarSurface extends StatelessWidget {
       borderRadius: BorderRadius.circular(SolarRadius.card),
       side: BorderSide(
         color: t.palette.separator,
-        width: t.highContrast ? 2 : .5,
+        width: t.highContrast ? 2 : 1,
       ),
     );
     final surface = raised ? t.palette.surfaceRaised : t.palette.surface;
     final content = DecoratedBox(
       decoration: ShapeDecoration(
-        color: t.reduceTransparency ? surface : surface.withValues(alpha: .88),
+        gradient: LinearGradient(
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
+          colors: [(raised ? t.palette.surfaceRaised : surface), surface],
+        ),
         shape: shape,
       ),
       child: Padding(padding: padding, child: child),
@@ -104,10 +108,20 @@ class MetricTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text(
-                      value,
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()],
+                    Flexible(
+                      child: Text(
+                        value,
+                        softWrap: true,
+                        style: Theme.of(context).textTheme.displaySmall
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).extension<SolarTokens>()!.palette.tint,
+                              fontWeight: FontWeight.w800,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
                       ),
                     ),
                     const SizedBox(width: SolarSpace.xs),

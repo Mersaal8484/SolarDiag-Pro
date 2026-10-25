@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 
 import '../identification/identification_state_machine.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -10,7 +11,7 @@ class IdentificationEvidencePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Card(
+    return PrecisionCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

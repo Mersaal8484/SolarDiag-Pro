@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../app/theme.dart';
 import '../design/solar_icon.dart';
@@ -19,19 +20,21 @@ class LinkScreen extends StatelessWidget {
     final recommendations = session.integrationRecommendations;
     final delivery = link.messageDeliveryRatio;
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 64),
       children: [
-        Text(
-          s.inverterBatteryLink,
-          style: Theme.of(context).textTheme.displaySmall,
+        PrecisionPageHeading(
+          title: s.inverterBatteryLink,
+          subtitle: s.linkDescription,
+          icon: Icons.cable_outlined,
         ),
-        const SizedBox(height: 8),
-        Text(s.linkDescription),
         const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: palette.labelPrimary,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1E3A5B), Color(0xFF0C1C33)],
+            ),
+            border: Border.all(color: const Color(0xFF375477)),
             borderRadius: BorderRadius.circular(26),
           ),
           child: Row(
@@ -52,7 +55,7 @@ class LinkScreen extends StatelessWidget {
                         _verdictLabel(s, assessment.verdict),
                       ].join(' · '),
                       style: TextStyle(
-                        color: palette.background,
+                        color: const Color(0xFFF3F7FF),
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
                       ),
@@ -61,9 +64,7 @@ class LinkScreen extends StatelessWidget {
                       delivery == null
                           ? s.deliveryUnavailable
                           : '${localizedNumber(context, delivery * 100)}% ${s.messageDelivery}',
-                      style: TextStyle(
-                        color: palette.background.withValues(alpha: .72),
-                      ),
+                      style: TextStyle(color: const Color(0xFFBDCEE2)),
                     ),
                   ],
                 ),
@@ -82,7 +83,7 @@ class LinkScreen extends StatelessWidget {
         if (recommendations.isNotEmpty) ...[
           const SizedBox(height: 12),
           for (final item in recommendations)
-            Card(
+            PrecisionCard(
               child: ListTile(
                 leading: const SolarIcon(SolarIcons.evidence),
                 title: Text([item.device, item.setting].join(': ')),
@@ -112,7 +113,7 @@ class _FindingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     final ok = finding.state == CompatibilityState.compatible;
-    return Card(
+    return PrecisionCard(
       child: ListTile(
         leading: SolarIcon(
           ok ? SolarIcons.confirmedCheck : SolarIcons.warning,

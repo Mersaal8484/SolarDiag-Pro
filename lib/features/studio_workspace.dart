@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 import '../app/theme.dart';
 import '../persistence/local_database.dart';
 import '../studio/capture_analysis.dart';
@@ -391,7 +392,7 @@ class _SectionList extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     return Material(
-      color: palette.labelPrimary,
+      color: palette.surface,
       child: ListView(
         padding: const EdgeInsets.all(12),
         children: [
@@ -412,7 +413,7 @@ class _SectionList extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 4),
               child: ListTile(
                 selected: selected == item,
-                selectedTileColor: palette.simulated,
+                selectedTileColor: palette.tint.withValues(alpha: .15),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -426,8 +427,8 @@ class _SectionList extends StatelessWidget {
                   _label(item),
                   style: TextStyle(
                     color: selected == item
-                        ? palette.labelPrimary
-                        : palette.background.withValues(alpha: .72),
+                        ? palette.tint
+                        : palette.labelSecondary,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -469,16 +470,14 @@ class _StudioPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(title, style: Theme.of(context).textTheme.displaySmall),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+        PrecisionPageHeading(
+          title: title,
+          subtitle: subtitle,
+          icon: Icons.science_outlined,
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 22),
         body,
+        const SizedBox(height: 42),
       ],
     );
   }
@@ -527,7 +526,7 @@ class _Stat extends StatelessWidget {
     child: SizedBox(
       width: 180,
       child: IntrinsicHeight(
-        child: Card(
+        child: PrecisionCard(
           child: Padding(
             padding: const EdgeInsets.all(18),
             child: Column(
@@ -560,7 +559,7 @@ class _EmptyInstrument extends StatelessWidget {
   final String title;
   final String detail;
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -596,7 +595,7 @@ class _CaptureSourcesView extends StatelessWidget {
             'Import or generate synthetic data. Captured frames can never be replayed to hardware.',
       ),
       const SizedBox(height: 14),
-      Card(
+      PrecisionCard(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -753,7 +752,7 @@ class _ProtocolSummary extends StatelessWidget {
   final ProtocolAnalysisReport report;
 
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -841,7 +840,7 @@ class _DifferentialView extends StatelessWidget {
     return Column(
       children: [
         for (final candidate in report.candidates)
-          Card(
+          PrecisionCard(
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
               leading: CircleAvatar(
@@ -868,14 +867,14 @@ class _FrameTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (frames.isEmpty) {
-      return const Card(
+      return const PrecisionCard(
         child: Padding(
           padding: EdgeInsets.all(32),
           child: Center(child: Text(_StudioCopy.noFrames)),
         ),
       );
     }
-    return Card(
+    return PrecisionCard(
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -991,7 +990,7 @@ class _AnalysisRow extends StatelessWidget {
     final changedOffsets = stats.changedByteOffsets
         .map((offset) => localizedNumber(context, offset, fractionDigits: 0))
         .join(', ');
-    return Card(
+    return PrecisionCard(
       child: ListTile(
         contentPadding: const EdgeInsets.all(18),
         leading: const SolarIcon(SolarIcons.frame),
@@ -1014,7 +1013,7 @@ class _FindingView extends StatelessWidget {
   const _FindingView({required this.finding});
   final ProtocolFinding finding;
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: Padding(
       padding: const EdgeInsets.all(22),
       child: Column(
@@ -1051,7 +1050,7 @@ class _IdentityCard extends StatelessWidget {
   const _IdentityCard({required this.draft});
   final StudioProfileDraft draft;
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: Padding(
       padding: const EdgeInsets.all(22),
       child: Column(
@@ -1075,7 +1074,7 @@ class _MappingRow extends StatelessWidget {
   const _MappingRow({required this.mapping});
   final FieldMapping mapping;
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: ListTile(
       contentPadding: const EdgeInsets.all(18),
       leading: const SolarIcon(SolarIcons.registerMap),
@@ -1097,9 +1096,9 @@ class _ValidationView extends StatelessWidget {
   const _ValidationView({required this.result});
   final DraftValidationResult result;
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 64),
       child: Row(
         children: [
           SolarIcon(
