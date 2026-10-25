@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "safety_critical_features": [
+    "active_alarms",
+    "protection_states",
+    "safety_warnings",
+    "read_only_monitoring"
+  ],
+  "free_features": [
+    "device_identification",
+    "basic_diagnostics"
+  ],
+  "paid_features": [
+    "advanced_diagnostics",
+    "engineering_report_export"
+  ]
+}

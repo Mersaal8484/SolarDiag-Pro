@@ -316,30 +316,33 @@ class PrecisionCanvas extends StatelessWidget {
           stops: const [0, .4, 1],
         ),
       ),
-      child: Stack(
-        children: [
-          if (dark)
-            PositionedDirectional(
-              end: -90,
-              top: -110,
-              child: IgnorePointer(
-                child: Container(
-                  width: 280,
-                  height: 280,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        palette.tint.withValues(alpha: .065),
-                        Colors.transparent,
-                      ],
+      child: Material(
+        type: MaterialType.transparency,
+        child: Stack(
+          children: [
+            if (dark)
+              PositionedDirectional(
+                end: -90,
+                top: -110,
+                child: IgnorePointer(
+                  child: Container(
+                    width: 280,
+                    height: 280,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          palette.tint.withValues(alpha: .065),
+                          Colors.transparent,
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          Positioned.fill(child: child),
-        ],
+            Positioned.fill(child: child),
+          ],
+        ),
       ),
     );
   }

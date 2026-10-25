@@ -6,6 +6,50 @@ import '../protocol/profile_registry.dart';
 import 'library_write_reason.dart';
 import 'profile_integrity.dart';
 
+enum LibraryChannel { beta, stable }
+
+class LibraryDeliveryMetadata {
+  const LibraryDeliveryMetadata({
+    required this.channel,
+    this.deltaFromVersion,
+    this.retainedPreviousVersion,
+  });
+
+  final LibraryChannel channel;
+  final int? deltaFromVersion;
+  final int? retainedPreviousVersion;
+
+  bool get isDelta => deltaFromVersion != null;
+
+  Map<String, Object?> toJson() => {
+    'channel': channel.name,
+    if (deltaFromVersion != null) 'delta_from_version': deltaFromVersion,
+    if (retainedPreviousVersion != null)
+      'retained_previous_version': retainedPreviousVersion,
+  };
+
+  factory LibraryDeliveryMetadata.fromJson(Map<String, Object?> json) {
+    final channelName = _string(json, 'channel');
+    final channel = LibraryChannel.values.where(
+      (candidate) => candidate.name == channelName,
+    );
+    if (channel.length != 1) {
+      throw FormatException('Unsupported library channel: $channelName.');
+    }
+    final delta = json['delta_from_version'];
+    final previous = json['retained_previous_version'];
+    if ((delta != null && delta is! int) ||
+        (previous != null && previous is! int)) {
+      throw const FormatException('Invalid library delivery version metadata.');
+    }
+    return LibraryDeliveryMetadata(
+      channel: channel.single,
+      deltaFromVersion: delta as int?,
+      retainedPreviousVersion: previous as int?,
+    );
+  }
+}
+
 class LibraryPack {
   const LibraryPack({
     required this.id,
@@ -15,6 +59,7 @@ class LibraryPack {
     required this.profileHashes,
     required this.profiles,
     required this.signature,
+    this.delivery,
   });
   final String id;
   final int version;
@@ -23,13 +68,19 @@ class LibraryPack {
   final Map<String, String> profileHashes;
   final Map<String, SignedProfileDocument> profiles;
   final String signature;
-  Map<String, Object?> get payload => {
-    'id': id,
-    'version': version,
-    'min_app_version': minAppVersion,
-    'expires_at': expiresAt.toUtc().toIso8601String(),
-    'profile_hashes': profileHashes,
-  };
+  final LibraryDeliveryMetadata? delivery;
+  Map<String, Object?> get payload {
+    final deliveryJson = delivery?.toJson();
+    return {
+      'id': id,
+      'version': version,
+      'min_app_version': minAppVersion,
+      'expires_at': expiresAt.toUtc().toIso8601String(),
+      'profile_hashes': profileHashes,
+      if (deliveryJson != null) 'delivery': deliveryJson,
+    };
+  }
+
   Map<String, Object?> toJson() => {
     ...payload,
     'profiles': profiles.map((key, value) => MapEntry(key, value.toJson())),
@@ -39,8 +90,16 @@ class LibraryPack {
   factory LibraryPack.fromJson(Map<String, Object?> json) {
     final hashes = json['profile_hashes'];
     final documents = json['profiles'];
+    final deliveryJson = json['delivery'];
     if (hashes is! Map || documents is! Map) {
       throw const FormatException('Invalid library pack profile maps.');
+    }
+    Map<String, Object?>? parsedDelivery;
+    if (deliveryJson != null) {
+      if (deliveryJson is! Map) {
+        throw const FormatException('Invalid library delivery metadata.');
+      }
+      parsedDelivery = Map<String, Object?>.from(deliveryJson);
     }
     return LibraryPack(
       id: _string(json, 'id'),
@@ -59,6 +118,9 @@ class LibraryPack {
         ),
       ),
       signature: _string(json, 'signature'),
+      delivery: parsedDelivery == null
+          ? null
+          : LibraryDeliveryMetadata.fromJson(parsedDelivery),
     );
   }
 }
@@ -130,11 +192,17 @@ abstract interface class LibraryPackStore {
   Future<void> saveHighestRevocationSequence(int sequence);
 }
 
-class FileLibraryPackStore implements LibraryPackStore {
+abstract interface class RetainedLibraryPackStore implements LibraryPackStore {
+  Future<void> savePrevious(LibraryPack pack);
+  Future<LibraryPack?> loadPrevious();
+}
+
+class FileLibraryPackStore implements RetainedLibraryPackStore {
   const FileLibraryPackStore(this.path);
   final String path;
   String get _seqPath => '$path.revseq';
   String get _revocationsPath => '$path.revocations';
+  String get _previousPath => '$path.previous';
 
   @override
   Future<LibraryPack?> load() async {
@@ -154,6 +222,28 @@ class FileLibraryPackStore implements LibraryPackStore {
     final temporary = File('$path.tmp');
     await temporary.writeAsString(jsonEncode(pack.toJson()), flush: true);
     await temporary.rename(path);
+  }
+
+  @override
+  Future<LibraryPack?> loadPrevious() async {
+    final file = File(_previousPath);
+    if (!await file.exists()) return null;
+    final decoded = jsonDecode(await file.readAsString());
+    if (decoded is! Map<String, Object?>) {
+      throw const FormatException(
+        'Stored previous library pack is not an object.',
+      );
+    }
+    return LibraryPack.fromJson(decoded);
+  }
+
+  @override
+  Future<void> savePrevious(LibraryPack pack) async {
+    final target = File(_previousPath);
+    await target.parent.create(recursive: true);
+    final temporary = File('$_previousPath.tmp');
+    await temporary.writeAsString(jsonEncode(pack.toJson()), flush: true);
+    await temporary.rename(_previousPath);
   }
 
   @override
@@ -273,11 +363,13 @@ class LibrarySync {
   final Duration maxRevocationAge;
   final DateTime Function() _clock;
   InstalledLibrary? _installed;
+  LibraryPack? _previousKnownGood;
   int _highestRevocationSequence = 0;
   final Future<int> _revocationState;
 
   InstalledLibrary? get installed => _installed;
   LibraryPack? get lastKnownGood => _installed?.pack;
+  LibraryPack? get previousKnownGood => _previousKnownGood;
   int get highestRevocationSequence => _highestRevocationSequence;
   LibraryWriteDisabledReason? writeDisabledReasonFor(String profileId) =>
       _installed?.writeDisabledReasonFor(profileId) ??
@@ -316,6 +408,7 @@ class LibrarySync {
     required DateTime now,
     required RevocationList revocations,
     required bool allowRevokedPack,
+    bool restoringStoredPack = false,
   }) async {
     await _ensureRevocationState();
     if (!await verifier.verifyPayload(
@@ -332,12 +425,22 @@ class LibrarySync {
     final hashKeys = pack.profileHashes.keys.toSet();
     final profileKeys = pack.profiles.keys.toSet();
     final packRevoked = revocations.revokedPackIds.contains(pack.id);
+    final delivery = pack.delivery;
+    final currentVersion = _installed?.pack.version;
     if ((packRevoked && !allowRevokedPack) ||
         pack.expiresAt.isBefore(now) ||
         pack.minAppVersion > appVersion ||
         (_installed != null && pack.version <= _installed!.pack.version) ||
         hashKeys.difference(profileKeys).isNotEmpty ||
         profileKeys.difference(hashKeys).isNotEmpty) {
+      return false;
+    }
+    if (!restoringStoredPack &&
+        delivery != null &&
+        ((delivery.deltaFromVersion != null &&
+                delivery.deltaFromVersion != currentVersion) ||
+            (delivery.retainedPreviousVersion != null &&
+                delivery.retainedPreviousVersion != currentVersion))) {
       return false;
     }
     for (final entry in pack.profiles.entries) {
@@ -352,6 +455,14 @@ class LibrarySync {
       verifier: verifier,
       technicianMode: true,
     );
+    final previous = _installed?.pack;
+    final retainedStore = store;
+    if (!restoringStoredPack &&
+        previous != null &&
+        retainedStore is RetainedLibraryPackStore) {
+      await retainedStore.savePrevious(previous);
+      _previousKnownGood = previous;
+    }
     await store.saveRevocations(revocations);
     await store.save(pack);
     _highestRevocationSequence = revocations.sequence;
@@ -382,7 +493,15 @@ class LibrarySync {
       now: now,
       revocations: persistedRevocations,
       allowRevokedPack: true,
+      restoringStoredPack: true,
     );
+  }
+
+  Future<LibraryPack?> loadRetainedPrevious() async {
+    final retainedStore = store;
+    if (retainedStore is! RetainedLibraryPackStore) return null;
+    _previousKnownGood = await retainedStore.loadPrevious();
+    return _previousKnownGood;
   }
 
   Future<bool> refreshRevocations(RevocationList revocations) async {
@@ -455,12 +574,6 @@ class EntitlementValidator {
       await verifier.verifyPayload(token.payload, token.signature) &&
       !token.expiresAt.isBefore(now) &&
       token.features.contains(feature);
-  bool safetyInformationVisible(String feature) => const {
-    'active_alarms',
-    'protection_states',
-    'safety_warnings',
-    'read_only_monitoring',
-  }.contains(feature);
 }
 
 String _string(Map<String, Object?> json, String key) {

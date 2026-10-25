@@ -71,6 +71,7 @@ flutter:
   uses-material-design: true
   assets:
     - device_profiles/batteries/_simulated/solardiag_sim.json
+    - config/entitlements.json
     - assets/icons/
     - assets/fonts/
 

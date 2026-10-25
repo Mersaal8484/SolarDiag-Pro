@@ -74,7 +74,9 @@ class Dashboard extends StatelessWidget {
                               ),
                           ],
                           onChanged: (value) {
-                            if (value != null) session.selectScenario(value);
+                            if (value != null) {
+                              session.selectScenario(value);
+                            }
                           },
                         ),
                         const SizedBox(height: 16),
@@ -609,6 +611,7 @@ class _MetricCard extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
@@ -632,7 +635,7 @@ class _MetricCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const Spacer(),
+                const SizedBox(height: 24),
                 Directionality(
                   textDirection: TextDirection.ltr,
                   child: Text(

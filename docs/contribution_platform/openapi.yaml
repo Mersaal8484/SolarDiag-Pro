@@ -1,0 +1,426 @@
+openapi: 3.1.0
+info:
+  title: SolarDiag Contribution Platform API
+  version: 1.0.0-draft
+  description: |
+    Contract for the future SolarDiag contribution, review, signed-library,
+    revocation and entitlement services. This document does not describe an
+    implemented production backend. The Flutter application currently uses an
+    in-memory mock portal for local contract tests only.
+servers:
+  - url: https://api.example.invalid/solardiag/v1
+    description: Placeholder. A production service has not been deployed.
+paths:
+  /contributions:
+    post:
+      summary: Submit a pre-redacted contribution package
+      operationId: submitContribution
+      security:
+        - contributorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributionEnvelope'
+      responses:
+        '202':
+          description: Accepted into sanitization quarantine
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributionReceipt'
+        '400':
+          description: Invalid manifest, consent, hash, or redaction report
+        '401':
+          description: Missing or invalid contributor entitlement
+        '422':
+          description: Quarantined because a server-side privacy scan failed
+  /contributions/{contributionId}:
+    get:
+      summary: Read the contributor-visible lifecycle state
+      operationId: getContribution
+      security:
+        - contributorToken: []
+      parameters:
+        - $ref: '#/components/parameters/ContributionId'
+      responses:
+        '200':
+          description: Contribution status and append-only lifecycle events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributionStatus'
+        '404':
+          description: Unknown or unauthorized contribution
+    delete:
+      summary: Request withdrawal of raw, unmerged contribution data
+      operationId: withdrawContribution
+      security:
+        - contributorToken: []
+      parameters:
+        - $ref: '#/components/parameters/ContributionId'
+      responses:
+        '202':
+          description: Withdrawal request accepted for deletion orchestration
+        '409':
+          description: Raw data has already been irreversibly merged
+  /contributions/{contributionId}/lifecycle:
+    post:
+      summary: Advance a contribution through a server-enforced review gate
+      operationId: advanceContributionLifecycle
+      security:
+        - reviewerToken: []
+      parameters:
+        - $ref: '#/components/parameters/ContributionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifecycleTransition'
+      responses:
+        '200':
+          description: Transition appended to the immutable lifecycle history
+        '403':
+          description: Role, separation-of-duties, or evidence gate rejected
+        '409':
+          description: Illegal state transition
+  /contributions/{contributionId}/quarantine:
+    post:
+      summary: Record the independent server-side quarantine scan outcome
+      operationId: quarantineContribution
+      security:
+        - reviewerToken: []
+      parameters:
+        - $ref: '#/components/parameters/ContributionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accepted]
+              properties:
+                accepted:
+                  type: boolean
+      responses:
+        '200':
+          description: Quarantine decision appended to lifecycle history
+  /contributions/{contributionId}/triage:
+    post:
+      summary: Record the system or reviewer triage note
+      operationId: triageContribution
+      security:
+        - reviewerToken: []
+      parameters:
+        - $ref: '#/components/parameters/ContributionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note:
+                  type: string
+                  minLength: 1
+      responses:
+        '200':
+          description: Triage event appended
+  /contributions/{contributionId}/findings:
+    post:
+      summary: Append an analyst finding backed by evidence
+      operationId: recordAnalystFinding
+      security:
+        - reviewerToken: []
+      parameters:
+        - $ref: '#/components/parameters/ContributionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [finding]
+              properties:
+                finding:
+                  type: string
+                  minLength: 1
+      responses:
+        '200':
+          description: Analyst finding appended
+  /contributions/{contributionId}/approval:
+    post:
+      summary: Record approval after evidence and separation-of-duties gates
+      operationId: approveContribution
+      security:
+        - reviewerToken: []
+      parameters:
+        - $ref: '#/components/parameters/ContributionId'
+      responses:
+        '200':
+          description: Approval record appended
+        '403':
+          description: Evidence, role, or separation-of-duties gate rejected
+  /contributions/{contributionId}/signature:
+    post:
+      summary: Request service-side signing after approval
+      operationId: signContribution
+      security:
+        - reviewerToken: []
+      parameters:
+        - $ref: '#/components/parameters/ContributionId'
+      responses:
+        '200':
+          description: Signing event appended; private keys remain server-side
+        '409':
+          description: Contribution is not approved
+  /library/packs/{channel}/latest:
+    get:
+      summary: Fetch the latest signed profile library pack for a channel
+      operationId: getLatestLibraryPack
+      parameters:
+        - name: channel
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [beta, stable]
+        - name: installed_version
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        '200':
+          description: Signed library pack; client verifies signature and hashes locally
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignedLibraryPack'
+        '204':
+          description: No newer pack is available
+  /library/revocations:
+    get:
+      summary: Fetch the signed anti-rollback revocation list
+      operationId: getRevocations
+      responses:
+        '200':
+          description: Signed monotonic revocation list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevocationList'
+  /entitlements/{subject}:
+    get:
+      summary: Fetch a signed offline-verifiable entitlement token
+      operationId: getEntitlement
+      security:
+        - contributorToken: []
+      parameters:
+        - name: subject
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Signed entitlement token; no token may hide safety information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntitlementToken'
+components:
+  securitySchemes:
+    contributorToken:
+      type: http
+      scheme: bearer
+      bearerFormat: Signed entitlement
+    reviewerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: Signed reviewer entitlement
+  parameters:
+    ContributionId:
+      name: contributionId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  schemas:
+    ContributionEnvelope:
+      type: object
+      required: [id, manifest, payload, sha256, signature]
+      properties:
+        id:
+          type: string
+        manifest:
+          $ref: '#/components/schemas/ContributionManifest'
+        payload:
+          type: string
+          description: Redacted JSON payload only; credentials and identifiers are prohibited.
+        sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        signature:
+          type: string
+    ContributionManifest:
+      type: object
+      required: [schema_version, contributor_id, synthetic, consent, redaction_report]
+      properties:
+        schema_version:
+          type: integer
+          minimum: 1
+        contributor_id:
+          type: string
+        synthetic:
+          type: boolean
+          const: false
+        what_will_be_shared:
+          type: array
+          items:
+            type: string
+            enum: [logs, samples, notes, device_identity]
+        consent:
+          type: object
+          required: [granted_at, version]
+          properties:
+            granted_at:
+              type: string
+              format: date-time
+            version:
+              type: string
+        redaction_report:
+          type: object
+          required: [changes, kinds, legal_review_required]
+          properties:
+            changes:
+              type: integer
+              minimum: 0
+            kinds:
+              type: array
+              items:
+                type: string
+            legal_review_required:
+              type: boolean
+    ContributionReceipt:
+      type: object
+      required: [id, stage]
+      properties:
+        id:
+          type: string
+        stage:
+          type: string
+          const: submitted
+    ContributionStatus:
+      type: object
+      required: [id, stage, events]
+      properties:
+        id:
+          type: string
+        stage:
+          $ref: '#/components/schemas/ContributionStage'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/LifecycleEvent'
+    LifecycleTransition:
+      type: object
+      required: [to]
+      properties:
+        to:
+          $ref: '#/components/schemas/ContributionStage'
+        reason:
+          type: string
+    LifecycleEvent:
+      type: object
+      required: [stage, occurred_at]
+      properties:
+        stage:
+          $ref: '#/components/schemas/ContributionStage'
+        occurred_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+    ContributionStage:
+      type: string
+      enum: [draft, submitted, sanitized, triage, analysis, candidate, validation, safetyReview, approved, signed, published, declined, deprecated, revoked]
+    SignedLibraryPack:
+      type: object
+      required: [id, version, min_app_version, expires_at, delivery, profile_hashes, profiles, signature]
+      properties:
+        id:
+          type: string
+        version:
+          type: integer
+        min_app_version:
+          type: integer
+        expires_at:
+          type: string
+          format: date-time
+        delivery:
+          type: object
+          required: [channel]
+          properties:
+            channel:
+              type: string
+              enum: [beta, stable]
+            delta_from_version:
+              type: integer
+              minimum: 1
+            retained_previous_version:
+              type: integer
+              minimum: 1
+        profile_hashes:
+          type: object
+          additionalProperties:
+            type: string
+        profiles:
+          type: object
+          additionalProperties:
+            type: object
+        signature:
+          type: string
+    RevocationList:
+      type: object
+      required: [sequence, issued_at, valid_until, revoked_packs, revoked_profiles, signature]
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+        issued_at:
+          type: string
+          format: date-time
+        valid_until:
+          type: string
+          format: date-time
+        revoked_packs:
+          type: array
+          items:
+            type: string
+        revoked_profiles:
+          type: array
+          items:
+            type: string
+        signature:
+          type: string
+    EntitlementToken:
+      type: object
+      required: [subject, features, expires_at, signature]
+      properties:
+        subject:
+          type: string
+        features:
+          type: array
+          items:
+            type: string
+        expires_at:
+          type: string
+          format: date-time
+        signature:
+          type: string

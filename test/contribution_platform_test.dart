@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:solardiag_pro/app/solardiag_app.dart';
 import 'package:solardiag_pro/config/feature_flags.dart';
 import 'package:solardiag_pro/contribution/consent.dart';
+import 'package:solardiag_pro/contribution/entitlements.dart';
 import 'package:solardiag_pro/contribution/lifecycle.dart';
 import 'package:solardiag_pro/contribution/mock_portal.dart';
 import 'package:solardiag_pro/contribution/offline_queue.dart';
@@ -16,14 +17,19 @@ import 'package:solardiag_pro/trust/profile_integrity.dart';
 import 'support/test_secret_store.dart';
 import 'support/test_signer.dart';
 
-class _MemoryPackStore implements LibraryPackStore {
+class _MemoryPackStore implements RetainedLibraryPackStore {
   LibraryPack? value;
+  LibraryPack? previous;
   RevocationList? revocations;
   int highestSequence = 0;
   @override
   Future<LibraryPack?> load() async => value;
   @override
   Future<void> save(LibraryPack pack) async => value = pack;
+  @override
+  Future<LibraryPack?> loadPrevious() async => previous;
+  @override
+  Future<void> savePrevious(LibraryPack pack) async => previous = pack;
   @override
   Future<RevocationList?> loadRevocations() async => revocations;
   @override
@@ -418,15 +424,19 @@ void main() {
       DateTime? expiry,
       int minApp = 1,
       TestSigner? signingSigner,
+      LibraryDeliveryMetadata? delivery,
     }) async {
       final profile = await signer.signProfile(simulatorProfile);
-      final payload = {
-        'id': id,
-        'version': version,
-        'min_app_version': minApp,
-        'expires_at': (expiry ?? DateTime.utc(2027)).toIso8601String(),
-        'profile_hashes': {'sim': profile.contentHash},
-      };
+      final unsigned = LibraryPack(
+        id: id,
+        version: version,
+        minAppVersion: minApp,
+        expiresAt: expiry ?? DateTime.utc(2027),
+        profileHashes: {'sim': profile.contentHash},
+        profiles: {'sim': profile},
+        signature: '',
+        delivery: delivery,
+      );
       return LibraryPack(
         id: id,
         version: version,
@@ -434,7 +444,10 @@ void main() {
         expiresAt: expiry ?? DateTime.utc(2027),
         profileHashes: {'sim': profile.contentHash},
         profiles: {'sim': profile},
-        signature: await (signingSigner ?? signer).signPayload(payload),
+        signature: await (signingSigner ?? signer).signPayload(
+          unsigned.payload,
+        ),
+        delivery: delivery,
       );
     }
 
@@ -477,6 +490,64 @@ void main() {
         isTrue,
       );
       expect(sync.lastKnownGood!.version, 1);
+    });
+    test('library channel delta metadata retains the previous pack', () async {
+      final store = _MemoryPackStore();
+      final sync = LibrarySync(
+        verifier: Ed25519TrustVerifier(signer.publicKeyBytes),
+        appVersion: 2,
+        store: store,
+      );
+      expect(
+        await sync.apply(
+          await pack(
+            1,
+            delivery: const LibraryDeliveryMetadata(
+              channel: LibraryChannel.stable,
+            ),
+          ),
+          now: DateTime.utc(2026),
+          revocations: await revocations({}),
+        ),
+        isTrue,
+      );
+      final delta = await pack(
+        2,
+        delivery: const LibraryDeliveryMetadata(
+          channel: LibraryChannel.stable,
+          deltaFromVersion: 1,
+          retainedPreviousVersion: 1,
+        ),
+      );
+      expect(
+        await sync.apply(
+          delta,
+          now: DateTime.utc(2026),
+          revocations: await revocations({}, sequence: 2),
+        ),
+        isTrue,
+      );
+      expect(sync.previousKnownGood?.version, 1);
+      expect((await sync.loadRetainedPrevious())?.version, 1);
+      expect(store.previous?.version, 1);
+      final restored = LibraryPack.fromJson(delta.toJson());
+      expect(restored.delivery?.channel, LibraryChannel.stable);
+      expect(restored.delivery?.deltaFromVersion, 1);
+      expect(
+        await sync.apply(
+          await pack(
+            3,
+            delivery: const LibraryDeliveryMetadata(
+              channel: LibraryChannel.beta,
+              deltaFromVersion: 1,
+            ),
+          ),
+          now: DateTime.utc(2026),
+          revocations: await revocations({}, sequence: 3),
+        ),
+        isFalse,
+      );
+      expect(sync.lastKnownGood?.version, 2);
     });
     test('tampered profile bytes are rejected', () async {
       final valid = await pack(1);
@@ -689,7 +760,30 @@ void main() {
           ),
           isFalse,
         );
-        expect(validator.safetyInformationVisible('active_alarms'), isTrue);
+        final policy = EntitlementPolicy.fromJson(
+          jsonDecode(File('config/entitlements.json').readAsStringSync())
+              as Map<String, Object?>,
+        );
+        final access = EntitlementAccessController(
+          policy: policy,
+          validator: validator,
+        );
+        expect(
+          await access.canAccess(
+            feature: 'active_alarms',
+            token: token,
+            now: DateTime.utc(2028),
+          ),
+          isTrue,
+        );
+        expect(
+          await access.canAccess(
+            feature: 'advanced_diagnostics',
+            token: token,
+            now: DateTime.utc(2028),
+          ),
+          isFalse,
+        );
       },
     );
   });
@@ -702,6 +796,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(SolarDiagApp(auditSecretStore: TestSecretStore()));
+    expect(tester.takeException(), isNull);
     expect(find.byTooltip('Contribute'), findsNothing);
     await tester.pumpWidget(
       SolarDiagApp(
