@@ -25,11 +25,18 @@ class LinkHealth {
     required this.errorRate,
     required this.timeouts,
     required this.crcFailures,
-  });
+    this.canTransmitErrorCounter,
+    this.canReceiveErrorCounter,
+    this.canBusOff,
+  }) : assert(canTransmitErrorCounter == null || canTransmitErrorCounter >= 0),
+       assert(canReceiveErrorCounter == null || canReceiveErrorCounter >= 0);
   final Duration latency;
   final double errorRate;
   final int timeouts;
   final int crcFailures;
+  final int? canTransmitErrorCounter;
+  final int? canReceiveErrorCounter;
+  final bool? canBusOff;
 }
 
 class DeviceProfileIdentity {

@@ -54,6 +54,9 @@ Post-review corrections (2026-10-21):
 ## Not implemented or not validated
 
 - No ESP32 firmware or physical multi-interface gateway exists in this repository.
+- **OPEN DECISION — gateway firmware ownership:** decide whether the ESP32
+  firmware belongs in this repository or in a separately governed repository;
+  no firmware location, implementation, or validation is implied here.
 - The host-side gateway contract is implemented for passive negotiation, but no
   USB/BLE/TCP connector or hardware attestation exists.
 - No manufacturer profile is verified from authoritative documents or hardware.

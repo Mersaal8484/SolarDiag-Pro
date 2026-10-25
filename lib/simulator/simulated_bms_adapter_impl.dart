@@ -101,6 +101,13 @@ class SimulatedBmsAdapter extends SimulatedParameterBackend
     errorRate: scenario == SimulationScenario.communicationFaults ? .5 : 0,
     timeouts: scenario == SimulationScenario.communicationFaults ? 1 : 0,
     crcFailures: scenario == SimulationScenario.communicationFaults ? 1 : 0,
+    canTransmitErrorCounter: scenario == SimulationScenario.communicationFaults
+        ? 8
+        : 0,
+    canReceiveErrorCounter: scenario == SimulationScenario.communicationFaults
+        ? 12
+        : 0,
+    canBusOff: false,
   );
 }
 

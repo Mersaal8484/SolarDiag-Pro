@@ -77,7 +77,7 @@ class LibraryPack {
       'min_app_version': minAppVersion,
       'expires_at': expiresAt.toUtc().toIso8601String(),
       'profile_hashes': profileHashes,
-      if (deliveryJson != null) 'delivery': deliveryJson,
+      'delivery': ?deliveryJson,
     };
   }
 

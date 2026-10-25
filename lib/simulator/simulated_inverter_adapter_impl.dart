@@ -78,6 +78,9 @@ class SimulatedInverterAdapter extends SimulatedParameterBackend
     errorRate: 0,
     timeouts: 0,
     crcFailures: 0,
+    canTransmitErrorCounter: 0,
+    canReceiveErrorCounter: 0,
+    canBusOff: false,
   );
 
   @override

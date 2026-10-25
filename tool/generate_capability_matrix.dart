@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:solardiag_pro/protocol/research_target_registry.dart';
+
 void main() {
   final root = Directory('device_profiles');
   final files = root.existsSync()
@@ -25,20 +27,9 @@ void main() {
       '| ${json['manufacturer']} | $models | $firmware | ${capabilities['identify'] ?? 'unavailable'} | ${capabilities['read_live'] ?? 'unavailable'} | ${capabilities['read_config'] ?? 'unavailable'} | ${capabilities['write_parameter'] ?? 'unavailable'} | ${json['provenance'] is Map ? (json['provenance'] as Map)['document_id'] : 'none'} |',
     );
   }
-  const targets = [
-    'Pylontech',
-    'Dyness',
-    'Felicity Solar Lithium',
-    'Growatt ARK',
-    'Deye Lithium',
-    'JK BMS',
-    'JBD / Xiaoxiang',
-    'Daly',
-    'Seplos',
-  ];
-  for (final target in targets) {
+  for (final target in researchTargets) {
     rows.add(
-      '| $target | -- | -- | research-target | unavailable | unavailable | prohibited | documents and hardware required |',
+      '| ${target.manufacturer} | -- | -- | research-target | unavailable | unavailable | prohibited | documents and hardware required |',
     );
   }
   final output =

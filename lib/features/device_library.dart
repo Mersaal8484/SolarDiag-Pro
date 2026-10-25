@@ -7,6 +7,7 @@ import '../design/components.dart';
 import '../design/solar_icon.dart';
 import '../design/solar_icons.g.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../protocol/research_target_registry.dart';
 import '../trust/library_write_reason.dart';
 import 'library_write_reason_label.dart';
 
@@ -14,17 +15,6 @@ class DeviceLibraryScreen extends StatelessWidget {
   const DeviceLibraryScreen({super.key, this.writeDisabledReason});
   final LibraryWriteDisabledReason? writeDisabledReason;
   static const freconName = 'FRECON PV100 / PV200';
-  static const targets = [
-    'Pylontech',
-    'Dyness',
-    'Felicity Solar Lithium',
-    'Growatt ARK',
-    'Deye Lithium',
-    'JK BMS',
-    'JBD / Xiaoxiang',
-    'Daly',
-    'Seplos',
-  ];
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
@@ -69,13 +59,17 @@ class DeviceLibraryScreen extends StatelessWidget {
           icon: Icons.science_outlined,
         ),
         const SizedBox(height: 10),
-        ...targets.map(
-          (name) => Padding(
+        ...researchTargets.map(
+          (target) => Padding(
             padding: const EdgeInsets.only(bottom: 9),
             child: PrecisionCard(
               child: ListTile(
-                leading: const SolarIcon(SolarIcons.battery),
-                title: Text(name),
+                leading: SolarIcon(
+                  target.category == ResearchTargetCategory.battery
+                      ? SolarIcons.battery
+                      : SolarIcons.inverter,
+                ),
+                title: Text(target.manufacturer),
                 subtitle: Text(s.noVerifiedDefinition),
                 trailing: _Badge(
                   text: s.planned,
