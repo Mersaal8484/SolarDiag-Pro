@@ -281,10 +281,6 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
                 value: session.synthetic ? 'SYNTHETIC' : session.source.name,
               ),
               const _Stat(label: 'TX', value: 'LOCKED'),
-              _Stat(
-                label: 'Saved sessions',
-                value: _formatCount(context, _savedSessions.length),
-              ),
             ],
           ),
           for (final savedSession in _savedSessions)
