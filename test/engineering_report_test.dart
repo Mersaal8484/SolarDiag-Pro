@@ -25,6 +25,11 @@ void main() {
       EngineeringReportData(
         sessions: sessions,
         parameters: const {'charge_limit': 55.2},
+        gatewayVersion: null,
+        deviceIdentity: 'SOLARDIAG-SIM-BMS',
+        firmwareVersion: 'simulator-v2',
+        profileVersion: 'solardiag.simulated.lfp16.v2',
+        profileVerification: 'simulated',
         alarms: const {},
         findings: const [
           {'severity': 'info', 'message': 'No active alarms reported'},
@@ -40,6 +45,10 @@ void main() {
     expect(
       (report['sessions'] as List).single['sessionDataHash'],
       session.dataHash,
+    );
+    expect(
+      (report['gateway'] as Map<String, Object?>)['version'],
+      isNull,
     );
     expect(report['parameterSnapshot'], {'charge_limit': 55.2});
   });
@@ -145,6 +154,11 @@ void main() {
       final reportData = EngineeringReportData(
         sessions: [session],
         parameters: const {'charge_limit': 55.2},
+        gatewayVersion: null,
+        deviceIdentity: 'SOLARDIAG-SIM-BMS',
+        firmwareVersion: 'simulator-v2',
+        profileVersion: 'solardiag.simulated.lfp16.v2',
+        profileVerification: 'simulated',
         eventsBySession: {
           session.id: [
             DiagnosticEventRecord(

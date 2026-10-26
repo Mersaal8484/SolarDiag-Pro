@@ -103,9 +103,15 @@ class _SessionCard extends StatelessWidget {
     DeviceSession session,
   ) {
     final sessions = session.history;
+    final identity = session.adapter.profileIdentity;
     return EngineeringReportData(
       sessions: sessions,
       parameters: session.parameters,
+      gatewayVersion: null,
+      deviceIdentity: identity.deviceId,
+      firmwareVersion: identity.firmware,
+      profileVersion: identity.profileId,
+      profileVerification: session.simulated ? 'simulated' : 'unverified',
       eventsBySession: {
         for (final item in sessions) item.id: session.eventsFor(item.id),
       },

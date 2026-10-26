@@ -1,55 +1,55 @@
-# Honest gap report
+# SolarDiag Pro — honest final gap report
 
-## Implemented
+This report maps the implemented source to the master specification. A status
+of **implemented** means the software path and automated checks exist; it does
+not mean that real hardware, legal, visual, signing, or production deployment
+validation has occurred.
 
-Simulator vertical slice, safe nullable telemetry, profile validation,
-allow-listed transmission policy, identification state machine, diagnostics,
-verified-write workflow with restore planning/audit, compatibility analysis,
-responsive AR/EN UI, Studio core/UI and Replay Lock, contribution
-privacy/lifecycle/mock portal, library/entitlement contract verification, CI
-definition and generated capability matrix. Studio remains feature-flagged;
-imported sessions and evidence-based findings now save and restore through the
-existing SQLite research tables when the application database is supplied.
-Library write blocks carry typed causes through the session into the parameters
-and library screens, with localized explanations for missing trust, library,
-revocation, stale-data and expired-list states. NDA-marked captures remain
-eligible for local persistence but are rejected by external capture and
-research-bundle export paths.
+## Specification closure matrix
 
-M5 now includes a shared live session, scenario switching, computed gateway and
-link status, adapter-backed parameters, persistent SQLite diagnostic sessions
-and configuration backups, verified backup restoration, diagnostic-history UI,
-and offline JSON/PDF engineering reports. Stored session evidence is hashed;
-report generation verifies it, refuses mixed simulated/real inputs, and marks
-simulated output in JSON metadata and on every PDF page.
+| Specification area | Status | Source evidence | Automated evidence |
+|---|---|---|---|
+| Safety, authorization, audit and trust | Implemented in software; physical validation and production keys remain open | `lib/safety/`, `lib/auth/`, `lib/audit/`, `lib/trust/` | `test/t1_safety_and_trust_test.dart`, `test/r5_2_trust_and_safety_test.dart`, `test/safety/write_pipeline_test.dart`, `test/audit_chain_test.dart` |
+| Protocol correctness and Modbus | Implemented for the declared passive/read and guarded-write contracts | `lib/protocols/modbus/`, `lib/transport/`, `lib/integration/` | `test/t2_correctness_test.dart`, `test/r5_modbus_client_test.dart`, `test/m3_modbus_profile_inverter_test.dart`, `test/protocol_test.dart` |
+| Profiles, simulator and identification | Implemented for schema-checked profiles and explicitly simulated adapters; manufacturer validation remains open | `lib/protocol/`, `lib/simulator/`, `device_profiles/` | `test/profile_schema_test.dart`, `test/simulator_identification_test.dart`, `test/m2_completion_test.dart` |
+| Live session, diagnostics and persistence | Implemented with nullable telemetry, SQLite sessions/events/backups/settings and append-only audit storage | `lib/session/`, `lib/diagnostics/`, `lib/persistence/local_database.dart` | `test/device_session_test.dart`, `test/diagnostics_test.dart`, `test/local_database_test.dart`, `test/parameter_backup_comparison_test.dart` |
+| Verified parameter writes and restoration | Implemented behind identity, authorization, readback and audit gates; real-device rollback is not validated | `lib/parameters/`, `lib/safety/` | `test/safety/write_pipeline_test.dart`, `test/t1_safety_and_trust_test.dart`, `test/r5_z4_test.dart` |
+| Engineering reports | Implemented for integrity-checked JSON/PDF with simulation marking and mixed-source refusal | `lib/reports/engineering_report.dart`, `lib/features/session_history_screen.dart` | `test/engineering_report_test.dart` |
+| Arabic/English UI, accessibility and adaptive design | Implemented in source; current PNGs remain pending human visual review | `lib/design/`, `lib/features/`, `lib/l10n/` | `test/design_system_test.dart`, `test/ui_polish_test.dart`, `test/widget_test.dart`, golden suites |
+| Protocol Discovery Studio | Implemented as feature-flagged, read-only research tooling with import, analysis, inference, persistence and Replay Lock | `lib/studio/`, `lib/features/studio_workspace.dart` | capture, inference, protocol, differential, streaming, builder, persistence and Studio end-to-end tests |
+| Contribution platform | Local consent, redaction, lifecycle, queue, reward and mock portal implemented; production service and legal approval remain open | `lib/contribution/`, `docs/contribution_platform/` | `test/contribution_platform_test.dart`, `test/r7_h_contribution_platform_test.dart` |
+| Gateway contract and capability evidence | Host-side negotiation/guard contracts and generated capability evidence implemented; gateway firmware and physical connectors are absent | `lib/gateway/`, `docs/CAPABILITY_MATRIX.md`, `tool/generate_capability_matrix.dart` | `test/gateway_contract_test.dart`, profile/reference check tools |
+| Release gates | CI definition includes format/generator drift, localization, schema/reference checks, fatal analyzer, non-golden tests, APK build and a separate Windows golden job | `.github/workflows/quality.yml` | GitHub Actions execution is owner/CI evidence, not an implementer-run claim |
 
-Post-review corrections (2026-10-21):
+## Implemented behavior worth calling out
 
-- `AuditChain` is now persisted via `DatabaseAuditChainStore` backed by SQLite
-  schema migration 6 (`audit_entries` append-only table + `audit_chain_heads`).
-  Both tables are protected by SQLite triggers that abort UPDATE and DELETE,
-  preventing in-database tampering.
-- PDF engineering reports now iterate over all sessions in `data.sessions`,
-  matching the JSON export. Single-session and multi-session PDF rendering is
-  covered by `engineering_report_test.dart`.
-- `restoreParameterBackup` now requires an explicit `safetyAcknowledged`
-  parameter; callers must pass the value obtained from user confirmation.
-- `linkDiagnostics.expectedMessages` is now derived from the adapter poll
-  interval rather than a hard-coded constant.
-- `writeLocked` in `applySimulatedParameterChange` is now derived from live
-  link state and last-error presence.
-- `hasWriteCapability` in `DeviceProfile` now exclusively checks
-  `VerificationStatus.verifiedHardware` on write or calibration capabilities,
-  removing the unreliable text-matching fallback.
-- Open-source research references (`syssi/esphome-jk-bms`, `jblance/mpp-solar`)
-  added to `docs/research/references.json` with MIT license tags and legal
-  review flags.
-- `LEGAL_REVIEW_CHECKLIST.md` created at project root and `docs/studio/`.
-- Studio `_FrameTable` replaced `DataTable` with `ListView.separated` + lazy
-  `itemBuilder`, enabling virtualized rendering of large captures.
-- Studio capture import dialog added with format selector, hex-paste area, and
-  NDA acknowledgement toggle.
-- Milestone reports created for M5, M6, and M7 in `docs/reports/`.
+- Writes cannot bypass the verified pipeline; authorization material is issued
+  outside `DeviceSession`, and audit records persist through an HMAC-protected,
+  append-only chain.
+- Library and revocation failures carry typed, localized write-block reasons.
+- Studio research sessions/findings persist locally; NDA-marked material is
+  rejected by external export paths.
+- Report identity is now explicit. Production code no longer supplies a fake
+  simulator device/profile/gateway identity when evidence is absent; an unknown
+  gateway is rendered as “Not reported / غير مبلغ عنه”.
+- Report generation verifies stored evidence, rejects mixed simulated/real
+  inputs, and marks simulated output in metadata and every PDF page.
+
+## Batch K static audit
+
+- `Healthy|ENFORCED|Verified|Online|Connected` matches in feature/design source
+  are dynamic session states, Design Lab examples, enum/icon identifiers, or
+  localized labels—not fixed measurements presented as live evidence.
+- Hard-coded device/profile IDs are confined to `lib/simulator`, simulator-ID
+  validation guards, and localized text explicitly labelled “Simulator only”.
+  The previous report-model simulator defaults were removed.
+- Remaining raw enum names are technical/developer labels: simulator scenario
+  selection, temperature-sensor kind, diagnostic confidence, Studio source,
+  finding state and mapping data type. They are listed rather than represented
+  as localized verdicts; localization is still incomplete for those labels.
+- No task-comment marker was found in implementation source. `placeholder`
+  matches are intentional fail-closed trust-anchor purpose values, redaction
+  field names, tests, and the honestly labelled undeployed contribution API.
 
 ## Not implemented or not validated
 
@@ -63,36 +63,31 @@ Post-review corrections (2026-10-21):
 - No real battery, inverter, CAN, RS485, RS232, UART or BLE test was run.
 - No production backend, reviewer console, KMS/HSM signing, asymmetric trust
   root, account system or cloud distribution exists.
-- SQLite now covers diagnostic sessions, events, backups, settings, lifecycle
-  history, and audit chain (schema 8); Studio research session and finding
-  persistence uses the existing schema 5 tables. Owner validation of the live
-  Studio persistence flow is pending.
-- The F2 screen inventory, deep-linkable routing, onboarding and adaptive
-  navigation are substantially implemented. Backup comparison, ordered
-  state-transition timelines and report preview are implemented; broader
-  real-device workflows remain dependent on verified hardware profiles.
-- No production signing key or KMS/HSM integration is configured. The shipped
-  trust-anchor registry contains placeholder-purpose keys, which are rejected;
-  development-purpose keys are rejected in release builds.
-- No legal approval has been obtained for privacy, contributor terms or
-  reverse-engineering workflows; `LEGAL_REVIEW_CHECKLIST.md` tracks open items.
-- Visual screenshot/golden review has not yet been completed on representative
-  Android devices. Arabic PDF rendering has not been visually verified on device.
-- Build status for the current branch has not been confirmed in this close-out;
-  the owner must check the workflow results.
+- SQLite covers diagnostic sessions, events, backups, settings, lifecycle,
+  Studio research data and audit chain. Owner validation of the live Studio
+  persistence flow on every target platform is still pending.
+- No production signing key or KMS/HSM integration is configured. Shipped
+  placeholder-purpose trust anchors fail closed; development anchors are
+  rejected in release builds.
+- Secure-storage behavior has automated abstraction coverage, but Android and
+  other target-platform keystore behavior has not been validated here.
+- No legal approval has been obtained for privacy, contributor terms,
+  reverse-engineering workflows, or market-specific requirements;
+  `LEGAL_REVIEW_CHECKLIST.md` tracks open items.
+- Visual screenshot/golden review has not been completed. Arabic PDF rendering
+  has not been visually verified on representative devices.
+- Real-device write rollback, electrical safety, firmware-specific behavior,
+  protocol provenance and the Android device matrix remain residual risks.
 
-## Round 6 validation status
+## Validation status
 
-NOT RUN — owner will verify. This close-out used source searches and Git
-history/status only; no Dart/Flutter formatter, generator, analyzer, tests,
-builds or CI jobs were run.
+The owner reported `flutter analyze --fatal-infos` with no issues and the full
+non-golden suite with **376 tests passed** after Batch J. Batch K changes are
+**NOT RUN — owner will verify**. The implementer did not run Dart/Flutter,
+generators, tests, builds, goldens, or CI, and did not open any PNG.
 
-## Primary risks
+## Golden status
 
-Hardware electrical safety, protocol provenance, firmware-specific behavior, write rollback behavior on real devices, key management, privacy false negatives, localization completeness and UI behavior across the Android device matrix.
-
-## Round 7 Batch J icon inventory
-
-- The authoritative §11.4 inventory represented by `design/icons.json` was
-  compared with `assets/icons`: all 76 required SVG symbols are present, with
-  no missing or extra assets.
+Every group remains pending in `docs/design/GOLDEN_REVIEW.md`. The required
+Windows update command is `flutter test --tags golden --update-goldens`; the
+owner or reviewer must then open every PNG and record defects.

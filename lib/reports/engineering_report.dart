@@ -30,11 +30,11 @@ class EngineeringReportData {
     this.alarms = const {},
     this.findings = const [],
     this.technicianId,
-    this.gatewayVersion = 'SolarDiag virtual gateway v2',
-    this.deviceIdentity = 'SOLARDIAG-SIM-BMS',
-    this.firmwareVersion = 'simulator-v2',
-    this.profileVersion = 'solardiag.simulated.lfp16.v2',
-    this.profileVerification = 'simulated',
+    required this.gatewayVersion,
+    required this.deviceIdentity,
+    required this.firmwareVersion,
+    required this.profileVersion,
+    required this.profileVerification,
     this.digitPreference = DigitPreference.western,
   });
 
@@ -47,7 +47,7 @@ class EngineeringReportData {
   final Set<String> alarms;
   final List<Map<String, String>> findings;
   final String? technicianId;
-  final String gatewayVersion;
+  final String? gatewayVersion;
   final String deviceIdentity;
   final String firmwareVersion;
   final String profileVersion;
@@ -173,12 +173,13 @@ class EngineeringReportService {
               _label('Device', 'الجهاز', language): data.deviceIdentity,
               _label('Firmware', 'البرنامج الثابت', language):
                   data.firmwareVersion,
-              _label('Gateway', 'البوابة', language): data.gatewayVersion,
+              _label('Gateway', 'البوابة', language):
+                  data.gatewayVersion ?? _notReported(language),
               _label('Profile', 'الملف', language): data.profileVersion,
               _label('Verification', 'التحقق', language):
                   data.profileVerification,
               _label('Technician', 'الفني', language):
-                  data.technicianId ?? 'Not provided',
+                  data.technicianId ?? _notReported(language),
             },
             bold,
             language: language,
@@ -423,6 +424,12 @@ class EngineeringReportService {
         ReportLanguage.arabic => ar,
         ReportLanguage.bilingual => '$en · $ar',
       };
+
+  static String _notReported(ReportLanguage language) => switch (language) {
+    ReportLanguage.english => 'Not reported',
+    ReportLanguage.arabic => 'غير مبلغ عنه',
+    ReportLanguage.bilingual => 'Not reported · غير مبلغ عنه',
+  };
 
   static String _readableValue(Object? value, DigitPreference digitPreference) {
     if (value is Map<String, Object?>) {
