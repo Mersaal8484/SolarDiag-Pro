@@ -163,10 +163,7 @@ class MetricTile extends StatelessWidget {
               spacing: SolarSpace.sm,
               runSpacing: SolarSpace.xs,
               children: [
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
+                Text(label, style: Theme.of(context).textTheme.labelSmall),
                 if (simulated) const SimulatedBadge(label: 'SIMULATED'),
               ],
             ),

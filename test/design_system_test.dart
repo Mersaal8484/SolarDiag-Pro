@@ -305,23 +305,20 @@ void main() {
       },
     );
 
-    testWidgets(
-      'R7 golden handoff controls fit narrow width at 200% text in '
-      '${locale.languageCode}',
-      (tester) async {
-        tester.view
-          ..physicalSize = const Size(390, 1200)
-          ..devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        await _pumpAtDoubleTextScale(
-          tester,
-          locale,
-          const _GoldenHandoffControlsFixture(),
-        );
-        expect(tester.takeException(), isNull);
-      },
-    );
+    testWidgets('R7 golden handoff controls fit narrow width at 200% text in '
+        '${locale.languageCode}', (tester) async {
+      tester.view
+        ..physicalSize = const Size(390, 1200)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await _pumpAtDoubleTextScale(
+        tester,
+        locale,
+        const _GoldenHandoffControlsFixture(),
+      );
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets(
       'R7 report preview fits phone width in ${locale.languageCode}',
