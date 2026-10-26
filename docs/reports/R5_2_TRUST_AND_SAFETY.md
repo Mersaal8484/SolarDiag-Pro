@@ -40,7 +40,7 @@ Milestone R5-2 closes the seven trust and safety defects (Y1 through Y7) identif
 - **Resolution:**
   - Added `loadHighestRevocationSequence()` and `saveHighestRevocationSequence(int sequence)` to `LibraryPackStore` and implemented atomic file persistence in `FileLibraryPackStore` (`.revseq`).
   - `LibrarySync.apply` now accepts revocation lists with sequence equal to or greater than the highest seen (`revocations.sequence >= _highestRevocationSequence`) and rejects strictly lower sequences.
-  - Enforced `validUntil`: if the current clock time exceeds `revocations.validUntil`, `InstalledLibrary.writeDisabledReason` returns `'Revocation list expired'` and blocks all writes.
+  - Enforced `validUntil`: when the revocation list expires, `InstalledLibrary.writeDisabledReason` returns the typed `LibraryWriteDisabledReason.revocationListExpired` and blocks writes.
 
 ### Y6: Secure Audit Key Generation & Head MAC Enforcement
 - **Finding:** `InMemorySecretStore` used a deterministic formula `(i * 31 + 17) % 256` as its default secret.

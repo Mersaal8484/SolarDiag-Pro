@@ -23,6 +23,7 @@ import '../design/accessibility.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../persistence/local_database.dart';
 import '../session/device_session.dart';
+import '../trust/library_write_reason.dart';
 import '../trust/signed_tokens.dart';
 import '../trust/trust_anchors.dart';
 import 'theme.dart';
@@ -53,11 +54,10 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
   late final bool _ownsDeviceSession;
   late final bool _ownsDatabase;
   Locale _locale = const Locale('en');
-  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode _themeMode = ThemeMode.dark;
   bool _highContrast = false;
   bool _wakelockEnabled = false;
   late bool _onboardingVisible;
-  InstalledLibrary? _installedLibrary;
   @override
   void initState() {
     super.initState();
@@ -71,8 +71,13 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
         );
     _onboardingVisible = widget.showOnboarding;
     _restoreSettings();
+    _deviceSession.setLibraryWriteStatus(
+      reason: widget.flags.libraryEnabled
+          ? LibraryWriteDisabledReason.libraryMissing
+          : null,
+      blocksWrites: widget.flags.libraryEnabled,
+    );
     if (widget.flags.libraryEnabled) {
-      _deviceSession.setLibraryWriteBlocked(true);
       unawaited(_loadOfflineLibrary());
     }
     if (_designPreferences.workshopMode) {
@@ -94,7 +99,10 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
         .where((key) => key.isValidAt(now))
         .firstOrNull;
     if (trustedAnchor == null) {
-      _deviceSession.setLibraryWriteBlocked(true);
+      _deviceSession.setLibraryWriteStatus(
+        reason: LibraryWriteDisabledReason.noValidTrustAnchor,
+        blocksWrites: true,
+      );
       return;
     }
     final directory = await getApplicationSupportDirectory();
@@ -106,12 +114,11 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
       ),
     );
     await sync.restoreOffline(now: now);
-    final installed = sync.installed;
-    final blocked =
-        installed == null ||
-        installed.blocksWritesFor(_deviceSession.activeProfileId);
-    _installedLibrary = installed;
-    _deviceSession.setLibraryWriteBlocked(blocked);
+    final reason = sync.writeDisabledReasonFor(_deviceSession.activeProfileId);
+    _deviceSession.setLibraryWriteStatus(
+      reason: reason,
+      blocksWrites: reason != null,
+    );
     if (mounted) setState(() {});
   }
 
@@ -185,8 +192,9 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
           '/diagnostics': (_) => const AdvancedDiagnosticsScreen(),
           '/inverter': (_) => const InverterDiagnosticsScreen(),
           '/link': (_) => const LinkScreen(),
-          '/library': (_) =>
-              DeviceLibraryScreen(installedLibrary: _installedLibrary),
+          '/library': (_) => DeviceLibraryScreen(
+            writeDisabledReason: _deviceSession.libraryWriteDisabledReason,
+          ),
           '/history': (_) => const SessionHistoryScreen(),
           '/gateway': (_) => const GatewayScreen(),
           '/parameters': (_) => const ParametersScreen(),
@@ -271,7 +279,8 @@ class _SolarDiagAppState extends State<SolarDiagApp> {
                   Navigator.of(context).pushNamed('/settings'),
               studioEnabled: widget.flags.studioEnabled,
               contributionsEnabled: widget.flags.contributionsEnabled,
-              installedLibrary: _installedLibrary,
+              libraryWriteDisabledReason:
+                  _deviceSession.libraryWriteDisabledReason,
             );
           },
         ),

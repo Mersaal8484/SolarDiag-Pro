@@ -5,6 +5,7 @@ import 'package:solardiag_pro/config/feature_flags.dart';
 import 'package:solardiag_pro/parameters/parameter_models.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
+import 'package:solardiag_pro/trust/library_write_reason.dart';
 import 'package:solardiag_pro/trust/profile_integrity.dart';
 import 'package:solardiag_pro/trust/signed_tokens.dart';
 
@@ -112,12 +113,15 @@ void main() {
     );
     final restartedSession = DeviceSession(autoStart: false);
     addTearDown(restartedSession.dispose);
-    restartedSession.setLibraryWriteBlocked(
-      restartedSync.installed!.blocksWritesFor(
-        restartedSession.activeProfileId,
-      ),
+    final writeBlockReason = restartedSync.writeDisabledReasonFor(
+      restartedSession.activeProfileId,
+    );
+    restartedSession.setLibraryWriteStatus(
+      reason: writeBlockReason,
+      blocksWrites: writeBlockReason != null,
     );
     expect(restartedSession.libraryWritesBlocked, isTrue);
+    expect(writeBlockReason, LibraryWriteDisabledReason.revoked);
     expect(
       restartedSync.installed!.profileCanWrite(
         restartedSession.activeProfileId,
@@ -131,8 +135,15 @@ void main() {
     addTearDown(session.dispose);
     await session.refresh();
 
-    session.setLibraryWriteBlocked(true);
+    session.setLibraryWriteStatus(
+      reason: LibraryWriteDisabledReason.noValidTrustAnchor,
+      blocksWrites: true,
+    );
     expect(session.libraryWritesBlocked, isTrue);
+    expect(
+      session.libraryWriteDisabledReason,
+      LibraryWriteDisabledReason.noValidTrustAnchor,
+    );
     expect(session.createWriteContext().writeLocked, isTrue);
   });
 }

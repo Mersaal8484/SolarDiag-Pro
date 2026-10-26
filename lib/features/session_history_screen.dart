@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../core/battery_models.dart';
@@ -23,17 +24,16 @@ class SessionHistoryScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 56),
         children: [
-          Text(
-            s.diagnosticHistory,
-            style: Theme.of(context).textTheme.displaySmall,
+          PrecisionPageHeading(
+            title: s.diagnosticHistory,
+            subtitle: s.historyDescription,
+            icon: Icons.history_outlined,
           ),
-          const SizedBox(height: 8),
-          Text(s.historyDescription),
           const SizedBox(height: 24),
           if (records.isEmpty)
-            Card(
+            PrecisionCard(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 64),
                 child: Text(s.noSavedSessions),
               ),
             )
@@ -57,7 +57,7 @@ class _SessionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     final shortHash = record.dataHash.substring(0, 12);
-    return Card(
+    return PrecisionCard(
       child: Column(
         children: [
           ListTile(

@@ -55,8 +55,8 @@ ThemeData solarTheme({
     contrastLevel: highContrast ? 1 : 0,
   );
   final base = TextStyle(
-    fontFamily: 'Inter',
-    fontFamilyFallback: const ['IBM Plex Sans Arabic'],
+    fontFamily: 'Roboto',
+    fontFamilyFallback: const ['Noto Sans Arabic', 'Arial'],
     color: palette.labelPrimary,
   );
   return ThemeData(
@@ -64,8 +64,8 @@ ThemeData solarTheme({
     brightness: brightness,
     scaffoldBackgroundColor: palette.background,
     colorScheme: scheme,
-    fontFamily: 'Inter',
-    fontFamilyFallback: const ['IBM Plex Sans Arabic'],
+    fontFamily: 'Roboto',
+    fontFamilyFallback: const ['Noto Sans Arabic', 'Arial'],
     extensions: [
       SolarTokens(
         palette: palette,
@@ -76,20 +76,20 @@ ThemeData solarTheme({
     ],
     textTheme: TextTheme(
       displayLarge: base.copyWith(
-        fontSize: 68,
+        fontSize: 60,
         height: 1,
         fontWeight: FontWeight.w300,
         letterSpacing: -2.4,
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
       displaySmall: base.copyWith(
-        fontSize: 34,
+        fontSize: 33,
         height: 1.1,
         fontWeight: FontWeight.w700,
         letterSpacing: -1.1,
       ),
       headlineMedium: base.copyWith(
-        fontSize: 28,
+        fontSize: 27,
         fontWeight: FontWeight.w600,
         letterSpacing: -.7,
       ),
@@ -111,31 +111,22 @@ ThemeData solarTheme({
       margin: EdgeInsets.zero,
       shape: RoundedSuperellipseBorder(
         borderRadius: BorderRadius.circular(SolarRadius.card),
-        side: BorderSide(
-          color: palette.separator,
-          width: highContrast ? 2 : .5,
-        ),
+        side: BorderSide(color: palette.separator, width: highContrast ? 2 : 1),
       ),
     ),
     appBarTheme: AppBarTheme(
-      backgroundColor: reduceTransparency
-          ? palette.background
-          : palette.background.withValues(alpha: .88),
+      backgroundColor: palette.background,
       surfaceTintColor: palette.background.withValues(alpha: 0),
       elevation: 0,
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: reduceTransparency
-          ? palette.surface
-          : palette.surface.withValues(alpha: .88),
-      indicatorColor: palette.tint.withValues(alpha: .14),
-      height: workshop ? 72 : 64,
+      backgroundColor: palette.surface,
+      indicatorColor: palette.tint.withValues(alpha: .17),
+      height: workshop ? 78 : 70,
     ),
     navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: reduceTransparency
-          ? palette.surface
-          : palette.surface.withValues(alpha: .88),
-      indicatorColor: palette.tint.withValues(alpha: .14),
+      backgroundColor: palette.surface,
+      indicatorColor: palette.tint.withValues(alpha: .17),
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
@@ -179,10 +170,67 @@ ThemeData solarTheme({
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: palette.surfaceRaised.withValues(alpha: .72),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+      floatingLabelStyle: TextStyle(
+        color: palette.tint,
+        fontWeight: FontWeight.w700,
+      ),
+      labelStyle: TextStyle(color: palette.labelSecondary),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(SolarRadius.control),
+        borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(color: palette.separator),
       ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: palette.separator),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: palette.tint, width: 1.6),
+      ),
+    ),
+    dividerTheme: DividerThemeData(color: palette.separator, thickness: 1),
+    iconTheme: IconThemeData(color: palette.tint, size: 22),
+    listTileTheme: ListTileThemeData(
+      iconColor: palette.tint,
+      textColor: palette.labelPrimary,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: palette.surfaceRaised,
+      selectedColor: palette.tint.withValues(alpha: .18),
+      labelStyle: TextStyle(color: palette.labelPrimary),
+      side: BorderSide(color: palette.separator),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: palette.surfaceRaised,
+      contentTextStyle: TextStyle(color: palette.labelPrimary),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: palette.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? palette.tint
+            : palette.labelSecondary,
+      ),
+    ),
+    tabBarTheme: TabBarThemeData(
+      labelColor: palette.tint,
+      unselectedLabelColor: palette.labelSecondary,
+      indicatorColor: palette.tint,
+      dividerColor: palette.separator,
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: palette.tint,
+      linearTrackColor: palette.surfaceRaised,
     ),
     materialTapTargetSize: MaterialTapTargetSize.padded,
     visualDensity: VisualDensity.standard,

@@ -19,6 +19,7 @@ import 'package:solardiag_pro/features/session_history_screen.dart';
 import 'package:solardiag_pro/features/studio_workspace.dart';
 import 'package:solardiag_pro/features/workspace_shell.dart';
 import 'package:solardiag_pro/l10n/generated/app_localizations.dart';
+import 'package:solardiag_pro/persistence/local_database.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/simulator/simulation_scenario.dart';
 import '../support/test_secret_store.dart';
@@ -138,6 +139,10 @@ void main() {
               auditSecretStore: TestSecretStore(),
             );
             addTearDown(session.dispose);
+            final database = screen.key == 'studio'
+                ? LocalDatabase.inMemory()
+                : null;
+            if (database != null) addTearDown(database.close);
             for (
               var refresh = 0;
               refresh < (refreshCounts[screen.key] ?? 1);
@@ -171,7 +176,11 @@ void main() {
                     ),
                     home: RepaintBoundary(
                       key: const Key('golden-root'),
-                      child: Material(child: screen.value()),
+                      child: Material(
+                        child: screen.key == 'studio'
+                            ? StudioWorkspace(database: database)
+                            : screen.value(),
+                      ),
                     ),
                   ),
                 ),

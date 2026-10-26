@@ -456,11 +456,35 @@ class AppLocalizationsAr extends AppLocalizations {
   String get replayLock => 'قفل إعادة الإرسال';
 
   @override
+  String get studioPersistenceError =>
+      'حفظ بيانات الاستوديو غير متاح أو تعذر. قد لا تُحفظ بيانات البحث المستوردة.';
+
+  @override
   String get deviceLibrary => 'مكتبة الأجهزة';
 
   @override
   String get libraryVerificationNote =>
       'تظهر حالة التحقق لكل ملف. مخطط لا تعني مدعوم.';
+
+  @override
+  String get productionTrustAnchorMissing =>
+      'لم يتم إعداد مرساة ثقة إنتاجية صالحة. تظل تحديثات المكتبة الموقعة والكتابة الفعلية محظورة.';
+
+  @override
+  String get libraryWriteBlockedMissing =>
+      'لم تُثبّت مكتبة أجهزة موثّقة. تظل الكتابة على الأجهزة الفعلية محظورة.';
+
+  @override
+  String get libraryWriteBlockedRevoked =>
+      'حُظرت حزمة المكتبة النشطة أو ملف الجهاز. تظل الكتابة على الأجهزة الفعلية محظورة.';
+
+  @override
+  String get libraryWriteBlockedStale =>
+      'بيانات الإلغاء قديمة. حدّثها قبل تمكين الكتابة على الأجهزة الفعلية.';
+
+  @override
+  String get libraryWriteBlockedExpired =>
+      'انتهت صلاحية قائمة الإلغاء. حدّثها قبل تمكين الكتابة على الأجهزة الفعلية.';
 
   @override
   String get deterministicBms =>

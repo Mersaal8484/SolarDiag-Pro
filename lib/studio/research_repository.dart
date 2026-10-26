@@ -9,6 +9,7 @@ abstract interface class ResearchRepository {
   Future<void> saveSession(CaptureSession session);
   Future<void> saveFinding(ProtocolFinding finding);
   Future<CaptureSession?> session(String id);
+  Future<List<CaptureSession>> sessions();
   Future<List<ProtocolFinding>> findings();
 }
 
@@ -23,6 +24,11 @@ class InMemoryResearchRepository implements ResearchRepository {
       _findings[finding.id] = finding;
   @override
   Future<CaptureSession?> session(String id) async => _sessions[id];
+  @override
+  Future<List<CaptureSession>> sessions() async => List.unmodifiable(
+    _sessions.values.toList()
+      ..sort((left, right) => right.startedAt.compareTo(left.startedAt)),
+  );
   @override
   Future<List<ProtocolFinding>> findings() async =>
       List.unmodifiable(_findings.values);
@@ -57,6 +63,15 @@ class LocalResearchRepository implements ResearchRepository {
   Future<CaptureSession?> session(String id) async {
     final document = database.researchSessionDocument(id);
     return document == null ? null : codec.decode(document).session;
+  }
+
+  @override
+  Future<List<CaptureSession>> sessions() async {
+    final sessions = [
+      for (final document in database.researchSessionDocuments())
+        codec.decode(document).session,
+    ]..sort((left, right) => right.startedAt.compareTo(left.startedAt));
+    return List.unmodifiable(sessions);
   }
 
   @override

@@ -454,11 +454,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get replayLock => 'REPLAY LOCK';
 
   @override
+  String get studioPersistenceError =>
+      'Studio persistence is unavailable or failed. Imported research may not be saved.';
+
+  @override
   String get deviceLibrary => 'Device library';
 
   @override
   String get libraryVerificationNote =>
       'Verification status is shown per profile. Planned is not supported.';
+
+  @override
+  String get productionTrustAnchorMissing =>
+      'No valid production trust anchor is configured. Signed library updates and physical writes remain blocked.';
+
+  @override
+  String get libraryWriteBlockedMissing =>
+      'No verified device library is installed. Physical library writes remain blocked.';
+
+  @override
+  String get libraryWriteBlockedRevoked =>
+      'The active library pack or profile is revoked. Physical library writes remain blocked.';
+
+  @override
+  String get libraryWriteBlockedStale =>
+      'The revocation data is stale. Refresh it before physical writes can be enabled.';
+
+  @override
+  String get libraryWriteBlockedExpired =>
+      'The revocation list has expired. Refresh it before physical writes can be enabled.';
 
   @override
   String get deterministicBms => 'SolarDiag deterministic BMS';

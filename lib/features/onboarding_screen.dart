@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/theme.dart';
+import '../design/precision_ui.dart';
 import '../design/solar_icon.dart';
 import '../design/solar_icons.g.dart';
 import '../design/tokens.g.dart';
@@ -34,66 +35,68 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       (SolarIcons.gateway, s.onboardingConnect, s.onboardingConnectDetail),
     ];
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: PageView(
-                key: const Key('onboarding-pages'),
-                controller: controller,
-                onPageChanged: (value) => setState(() => page = value),
-                children: [
-                  for (final item in pages)
-                    _OnboardingPage(
-                      icon: item.$1,
-                      title: item.$2,
-                      detail: item.$3,
-                    ),
-                ],
+      body: PrecisionCanvas(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: PageView(
+                  key: const Key('onboarding-pages'),
+                  controller: controller,
+                  onPageChanged: (value) => setState(() => page = value),
+                  children: [
+                    for (final item in pages)
+                      _OnboardingPage(
+                        icon: item.$1,
+                        title: item.$2,
+                        detail: item.$3,
+                      ),
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
-              child: Row(
-                children: [
-                  for (var i = 0; i < pages.length; i++) ...[
-                    Container(
-                      width: page == i ? 28 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: page == i
-                            ? Theme.of(
-                                context,
-                              ).extension<SolarTokens>()!.palette.tint
-                            : Theme.of(
-                                context,
-                              ).extension<SolarTokens>()!.palette.separator,
-                        borderRadius: BorderRadius.circular(8),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < pages.length; i++) ...[
+                      Container(
+                        width: page == i ? 28 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: page == i
+                              ? Theme.of(
+                                  context,
+                                ).extension<SolarTokens>()!.palette.tint
+                              : Theme.of(
+                                  context,
+                                ).extension<SolarTokens>()!.palette.separator,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    const Spacer(),
+                    FilledButton(
+                      key: const Key('onboarding-next'),
+                      onPressed: page == pages.length - 1
+                          ? widget.onComplete
+                          : () => controller.nextPage(
+                              duration: MediaQuery.disableAnimationsOf(context)
+                                  ? Duration.zero
+                                  : SolarMotion.normal,
+                              curve: Curves.easeOut,
+                            ),
+                      child: Text(
+                        page == pages.length - 1
+                            ? s.startDiagnostics
+                            : s.continueAction,
                       ),
                     ),
-                    const SizedBox(width: 6),
                   ],
-                  const Spacer(),
-                  FilledButton(
-                    key: const Key('onboarding-next'),
-                    onPressed: page == pages.length - 1
-                        ? widget.onComplete
-                        : () => controller.nextPage(
-                            duration: MediaQuery.disableAnimationsOf(context)
-                                ? Duration.zero
-                                : SolarMotion.normal,
-                            curve: Curves.easeOut,
-                          ),
-                    child: Text(
-                      page == pages.length - 1
-                          ? s.startDiagnostics
-                          : s.continueAction,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -112,7 +115,6 @@ class _OnboardingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Center(
@@ -125,10 +127,19 @@ class _OnboardingPage extends StatelessWidget {
                 width: 96,
                 height: 96,
                 decoration: BoxDecoration(
-                  color: palette.simulated,
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF24618A), Color(0xFF10233E)],
+                  ),
+                  border: Border.all(color: const Color(0xFF4179A1)),
                   borderRadius: BorderRadius.circular(30),
                 ),
-                child: SolarIcon(icon, size: 46, color: palette.labelPrimary),
+                child: SolarIcon(
+                  icon,
+                  size: 46,
+                  color: const Color(0xFF00D5FF),
+                ),
               ),
               const SizedBox(height: 30),
               Text(

@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 import '../app/theme.dart';
+import '../persistence/local_database.dart';
 import '../studio/capture_analysis.dart';
 import '../studio/capture_importers.dart';
 import '../studio/capture_models.dart';
@@ -7,6 +11,7 @@ import '../studio/differential_analysis.dart';
 import '../studio/findings.dart';
 import '../studio/profile_builder.dart';
 import '../studio/protocol_analysis.dart';
+import '../studio/research_repository.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../design/accessibility.dart';
 import '../design/solar_icon.dart';
@@ -27,12 +32,17 @@ enum StudioSection {
 }
 
 class StudioWorkspace extends StatefulWidget {
-  const StudioWorkspace({super.key});
+  const StudioWorkspace({super.key, this.database});
+  final LocalDatabase? database;
+
   @override
   State<StudioWorkspace> createState() => _StudioWorkspaceState();
 }
 
 class _StudioWorkspaceState extends State<StudioWorkspace> {
+  late final LocalResearchRepository? _repository = widget.database == null
+      ? null
+      : LocalResearchRepository(widget.database!);
   StudioSection section = StudioSection.sessions;
   late CaptureSession session = _syntheticSession();
   late CaptureAnalysis analysis = const CaptureAnalyzer().analyze(session);
@@ -42,17 +52,109 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
   late SafeDifferentialReport differential = const SafeDifferentialAnalyzer(
     maximumCandidates: 12,
   ).compare(session, comparisonSession, baselineRepeat: session);
+  List<CaptureSession> _savedSessions = const [];
+  List<ProtocolFinding> _savedFindings = const [];
+  bool _persistenceError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.database == null) {
+      _persistenceError = true;
+    } else {
+      unawaited(_restoreResearch());
+    }
+  }
+
+  Future<void> _restoreResearch() async {
+    final repository = _repository;
+    if (repository == null) {
+      setState(() => _persistenceError = true);
+      return;
+    }
+    try {
+      final savedSessions = await repository.sessions();
+      final savedFindings = await repository.findings();
+      if (!mounted) return;
+      setState(() {
+        _savedSessions = savedSessions;
+        _savedFindings = savedFindings;
+        if (savedSessions.isNotEmpty) {
+          _applySession(savedSessions.first);
+        }
+      });
+    } catch (error, stackTrace) {
+      _reportPersistenceError(error, stackTrace);
+    }
+  }
 
   void _onSessionImported(CaptureSession newSession) {
     setState(() {
-      session = newSession;
-      analysis = const CaptureAnalyzer().analyze(session);
-      protocolAnalysis = const ProtocolAnalysisEngine().analyze(session);
-      differential = const SafeDifferentialAnalyzer(
-        maximumCandidates: 12,
-      ).compare(session, comparisonSession, baselineRepeat: session);
+      _applySession(newSession);
       section = StudioSection.frames;
     });
+    unawaited(_persistResearch(newSession));
+  }
+
+  void _applySession(CaptureSession value) {
+    session = value;
+    analysis = const CaptureAnalyzer().analyze(session);
+    protocolAnalysis = const ProtocolAnalysisEngine().analyze(session);
+    differential = const SafeDifferentialAnalyzer(
+      maximumCandidates: 12,
+    ).compare(session, comparisonSession, baselineRepeat: session);
+  }
+
+  Future<void> _persistResearch(CaptureSession importedSession) async {
+    final repository = _repository;
+    if (repository == null) {
+      setState(() => _persistenceError = true);
+      return;
+    }
+    final findings = List<ProtocolFinding>.of(protocolAnalysis.findings);
+    try {
+      await repository.saveSession(importedSession);
+      for (final item in findings) {
+        await repository.saveFinding(item);
+      }
+      final savedSessions = await repository.sessions();
+      final savedFindings = await repository.findings();
+      if (!mounted) return;
+      setState(() {
+        _savedSessions = savedSessions;
+        _savedFindings = savedFindings;
+      });
+    } catch (error, stackTrace) {
+      _reportPersistenceError(error, stackTrace);
+    }
+  }
+
+  void _reportPersistenceError(Object error, StackTrace stackTrace) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'protocol studio persistence',
+      ),
+    );
+    if (mounted) setState(() => _persistenceError = true);
+  }
+
+  List<ProtocolFinding> get _findingsForDisplay {
+    final findings = <String, ProtocolFinding>{};
+    for (final item in _savedFindings) {
+      if (item.evidence.any(
+        (evidence) =>
+            evidence.captureId == session.id ||
+            evidence.reference.startsWith('${session.id}:'),
+      )) {
+        findings[item.id] = item;
+      }
+    }
+    for (final item in protocolAnalysis.findings) {
+      findings[item.id] = item;
+    }
+    return findings.values.toList(growable: false);
   }
 
   late final StudioProfileDraft draft = StudioProfileDraft(
@@ -109,7 +211,21 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
               duration: MediaQuery.disableAnimationsOf(context)
                   ? Duration.zero
                   : SolarMotion.fast,
-              child: _section(context, section),
+              child: KeyedSubtree(
+                key: ValueKey(section),
+                child: Column(
+                  children: [
+                    if (_persistenceError)
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          AppLocalizations.of(context).studioPersistenceError,
+                        ),
+                      ),
+                    Expanded(child: _section(context, section)),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -133,20 +249,49 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
     );
   }
 
+  String _formatCount(BuildContext context, int count) =>
+      localizedNumber(context, count, fractionDigits: 0);
+
   Widget _section(BuildContext context, StudioSection value) => switch (value) {
     StudioSection.sessions => _StudioPage(
       key: const ValueKey('sessions'),
       eyebrow: 'RESEARCH SESSION',
-      title: 'Synthetic CAN study',
-      subtitle: 'One isolated session · no hardware attached',
-      body: Wrap(
-        spacing: 14,
-        runSpacing: 14,
+      title: session.synthetic
+          ? 'Synthetic CAN study'
+          : 'Imported capture ${session.id}',
+      subtitle: session.synthetic
+          ? 'One isolated session · no hardware attached'
+          : 'Imported read-only capture · no hardware attached',
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Stat(label: 'Frames', value: '${session.frames.length}'),
-          _Stat(label: 'Identifiers', value: '${analysis.identifiers.length}'),
-          const _Stat(label: 'Source', value: 'SYNTHETIC'),
-          const _Stat(label: 'TX', value: 'LOCKED'),
+          Wrap(
+            spacing: 14,
+            runSpacing: 14,
+            children: [
+              _Stat(
+                label: 'Frames',
+                value: _formatCount(context, session.frames.length),
+              ),
+              _Stat(
+                label: 'Identifiers',
+                value: _formatCount(context, analysis.identifiers.length),
+              ),
+              _Stat(
+                label: 'Source',
+                value: session.synthetic ? 'SYNTHETIC' : session.source.name,
+              ),
+              const _Stat(label: 'TX', value: 'LOCKED'),
+            ],
+          ),
+          for (final savedSession in _savedSessions)
+            ListTile(
+              title: Text(savedSession.id),
+              subtitle: Text(
+                '${_formatCount(context, savedSession.frames.length)} frames',
+              ),
+              onTap: () => setState(() => _applySession(savedSession)),
+            ),
         ],
       ),
     ),
@@ -160,7 +305,8 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
     StudioSection.frames => _StudioPage(
       key: const ValueKey('frames'),
       eyebrow: 'FRAME EXPLORER',
-      title: '${session.frames.length} timestamped frames',
+      title:
+          '${_formatCount(context, session.frames.length)} timestamped frames',
       subtitle: 'Raw values remain raw until evidence supports a mapping.',
       body: _FrameTable(frames: session.frames),
     ),
@@ -182,7 +328,9 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
     StudioSection.differential => _StudioPage(
       key: const ValueKey('diff'),
       eyebrow: 'DIFFERENTIAL',
-      title: '${differential.candidates.length} ranked candidates',
+      title:
+          '${_formatCount(context, differential.candidates.length)} '
+          'ranked candidates',
       subtitle: 'Synthetic A/B/A comparison · observations only',
       body: _DifferentialView(report: differential),
     ),
@@ -193,8 +341,8 @@ class _StudioWorkspaceState extends State<StudioWorkspace> {
       subtitle: 'Every claim carries state, confidence and references.',
       body: Column(
         children: [
-          _FindingView(finding: finding),
-          for (final item in protocolAnalysis.findings) ...[
+          if (session.synthetic) _FindingView(finding: finding),
+          for (final item in _findingsForDisplay) ...[
             const SizedBox(height: 12),
             _FindingView(finding: item),
           ],
@@ -244,7 +392,7 @@ class _SectionList extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     return Material(
-      color: palette.labelPrimary,
+      color: palette.surface,
       child: ListView(
         padding: const EdgeInsets.all(12),
         children: [
@@ -265,7 +413,7 @@ class _SectionList extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 4),
               child: ListTile(
                 selected: selected == item,
-                selectedTileColor: palette.simulated,
+                selectedTileColor: palette.tint.withValues(alpha: .15),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -279,8 +427,8 @@ class _SectionList extends StatelessWidget {
                   _label(item),
                   style: TextStyle(
                     color: selected == item
-                        ? palette.labelPrimary
-                        : palette.background.withValues(alpha: .72),
+                        ? palette.tint
+                        : palette.labelSecondary,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -322,16 +470,14 @@ class _StudioPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(title, style: Theme.of(context).textTheme.displaySmall),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+        PrecisionPageHeading(
+          title: title,
+          subtitle: subtitle,
+          icon: Icons.science_outlined,
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 22),
         body,
+        const SizedBox(height: 42),
       ],
     );
   }
@@ -375,24 +521,28 @@ class _Stat extends StatelessWidget {
   final String label;
   final String value;
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 180,
-    height: 120,
-    child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(minHeight: 120),
+    child: SizedBox(
+      width: 180,
+      child: IntrinsicHeight(
+        child: PrecisionCard(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const Spacer(),
+                Text(value, style: Theme.of(context).textTheme.headlineSmall),
+              ],
             ),
-            const Spacer(),
-            Text(value, style: Theme.of(context).textTheme.headlineSmall),
-          ],
+          ),
         ),
       ),
     ),
@@ -409,7 +559,7 @@ class _EmptyInstrument extends StatelessWidget {
   final String title;
   final String detail;
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -445,7 +595,7 @@ class _CaptureSourcesView extends StatelessWidget {
             'Import or generate synthetic data. Captured frames can never be replayed to hardware.',
       ),
       const SizedBox(height: 14),
-      Card(
+      PrecisionCard(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -577,8 +727,11 @@ class _CaptureSourcesView extends StatelessWidget {
                 } else {
                   Navigator.pop(dialogContext);
                   onSessionImported?.call(result.session!);
-                  final message =
-                      'Loaded ${result.session!.frames.length} frames successfully.';
+                  final frameCount = localizedNumber(
+                    context,
+                    result.session!.frames.length,
+                  );
+                  final message = 'Loaded $frameCount frames successfully.';
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text(message)));
@@ -599,7 +752,7 @@ class _ProtocolSummary extends StatelessWidget {
   final ProtocolAnalysisReport report;
 
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -614,22 +767,25 @@ class _ProtocolSummary extends StatelessWidget {
             spacing: 12,
             runSpacing: 12,
             children: [
-              _MiniMetric(label: 'Pairs', value: '${report.pairs.length}'),
+              _MiniMetric(
+                label: 'Pairs',
+                value: localizedNumber(context, report.pairs.length),
+              ),
               _MiniMetric(
                 label: 'Polling',
-                value: '${report.pollingPatterns.length}',
+                value: localizedNumber(context, report.pollingPatterns.length),
               ),
               _MiniMetric(
                 label: 'Modbus frames',
-                value: '${report.modbusFrames.length}',
+                value: localizedNumber(context, report.modbusFrames.length),
               ),
               _MiniMetric(
                 label: 'Findings',
-                value: '${report.findings.length}',
+                value: localizedNumber(context, report.findings.length),
               ),
               _MiniMetric(
                 label: 'Clusters',
-                value: '${report.clusters.length}',
+                value: localizedNumber(context, report.clusters.length),
               ),
             ],
           ),
@@ -684,16 +840,16 @@ class _DifferentialView extends StatelessWidget {
     return Column(
       children: [
         for (final candidate in report.candidates)
-          Card(
+          PrecisionCard(
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
               leading: CircleAvatar(
-                child: TechnicalText('${(candidate.score * 100).round()}'),
+                child: TechnicalText(
+                  localizedNumber(context, (candidate.score * 100).round()),
+                ),
               ),
-              title: TechnicalText(
-                '0x${candidate.identifier.toRadixString(16).toUpperCase()} · byte ${candidate.byteOffset}${candidate.bitIndex == null ? '' : ' · bit ${candidate.bitIndex}'}',
-              ),
-              subtitle: Text(_differentialSummary(candidate)),
+              title: TechnicalText(_differentialLocation(context, candidate)),
+              subtitle: Text(_differentialSummary(context, candidate)),
               trailing: candidate.repeatedAba
                   ? const Chip(label: Text(_StudioCopy.aba))
                   : const Chip(label: Text(_StudioCopy.ab)),
@@ -711,14 +867,14 @@ class _FrameTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (frames.isEmpty) {
-      return const Card(
+      return const PrecisionCard(
         child: Padding(
           padding: EdgeInsets.all(32),
           child: Center(child: Text(_StudioCopy.noFrames)),
         ),
       );
     }
-    return Card(
+    return PrecisionCard(
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -822,29 +978,42 @@ class _AnalysisRow extends StatelessWidget {
   const _AnalysisRow({required this.stats});
   final IdentifierStatistics stats;
   @override
-  Widget build(BuildContext context) => Card(
-    child: ListTile(
-      contentPadding: const EdgeInsets.all(18),
-      leading: const SolarIcon(SolarIcons.frame),
-      title: TechnicalText(
-        '0x${stats.identifier.toRadixString(16).toUpperCase()}',
+  Widget build(BuildContext context) {
+    final frameCount = localizedNumber(
+      context,
+      stats.frameCount,
+      fractionDigits: 0,
+    );
+    final averagePeriod = stats.averagePeriodMicros == null
+        ? '—'
+        : localizedNumber(context, stats.averagePeriodMicros!);
+    final changedOffsets = stats.changedByteOffsets
+        .map((offset) => localizedNumber(context, offset, fractionDigits: 0))
+        .join(', ');
+    return PrecisionCard(
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(18),
+        leading: const SolarIcon(SolarIcons.frame),
+        title: TechnicalText(
+          '0x${stats.identifier.toRadixString(16).toUpperCase()}',
+        ),
+        subtitle: TechnicalText(
+          '$frameCount frames · $averagePeriod µs period',
+        ),
+        trailing: TechnicalText(
+          'Δ [$changedOffsets]',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
       ),
-      subtitle: TechnicalText(
-        '${localizedNumber(context, stats.frameCount)} frames · ${stats.averagePeriodMicros == null ? '—' : localizedNumber(context, stats.averagePeriodMicros!)} µs period',
-      ),
-      trailing: TechnicalText(
-        'Δ [${stats.changedByteOffsets.join(', ')}]',
-        style: const TextStyle(fontWeight: FontWeight.w800),
-      ),
-    ),
-  );
+    );
+  }
 }
 
 class _FindingView extends StatelessWidget {
   const _FindingView({required this.finding});
   final ProtocolFinding finding;
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: Padding(
       padding: const EdgeInsets.all(22),
       child: Column(
@@ -881,7 +1050,7 @@ class _IdentityCard extends StatelessWidget {
   const _IdentityCard({required this.draft});
   final StudioProfileDraft draft;
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: Padding(
       padding: const EdgeInsets.all(22),
       child: Column(
@@ -894,9 +1063,7 @@ class _IdentityCard extends StatelessWidget {
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
-          Text(
-            '${draft.mappings.length} evidenced mapping · ${draft.referenceIds.length} reference',
-          ),
+          Text(_mappingCountLabel(context, draft)),
         ],
       ),
     ),
@@ -907,13 +1074,15 @@ class _MappingRow extends StatelessWidget {
   const _MappingRow({required this.mapping});
   final FieldMapping mapping;
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: ListTile(
       contentPadding: const EdgeInsets.all(18),
       leading: const SolarIcon(SolarIcons.registerMap),
       title: Text(mapping.field),
       subtitle: Text(
-        '0x${mapping.frameIdentifier.toRadixString(16)} · offset ${mapping.offset} · ${mapping.dataType.name} · ×${mapping.scale} ${mapping.unit}',
+        '0x${mapping.frameIdentifier.toRadixString(16)} · '
+        'offset ${localizedNumber(context, mapping.offset)} · '
+        '${mapping.dataType.name} · ×${mapping.scale} ${mapping.unit}',
       ),
       trailing: SolarIcon(
         SolarIcons.verifiedDocument,
@@ -927,9 +1096,9 @@ class _ValidationView extends StatelessWidget {
   const _ValidationView({required this.result});
   final DraftValidationResult result;
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => PrecisionCard(
     child: Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 64),
       child: Row(
         children: [
           SolarIcon(
@@ -1137,7 +1306,41 @@ abstract final class _StudioCopy {
   static const noFrames = 'No frames recorded in this session.';
 }
 
-String _differentialSummary(DifferentialFieldCandidate candidate) =>
+String _differentialSummary(
+  BuildContext context,
+  DifferentialFieldCandidate candidate,
+) =>
     'A ${candidate.baselineValues.join('/')} → '
     'B ${candidate.comparisonValues.join('/')} · '
-    '${candidate.evidence.length} frame references';
+    '${localizedNumber(context, candidate.evidence.length)} frame references';
+
+String _differentialLocation(
+  BuildContext context,
+  DifferentialFieldCandidate candidate,
+) {
+  final identifier = candidate.identifier.toRadixString(16).toUpperCase();
+  final byteOffset = localizedNumber(
+    context,
+    candidate.byteOffset,
+    fractionDigits: 0,
+  );
+  final bitIndex = candidate.bitIndex;
+  final bit = bitIndex == null
+      ? ''
+      : ' · bit ${localizedNumber(context, bitIndex, fractionDigits: 0)}';
+  return '0x$identifier · byte $byteOffset$bit';
+}
+
+String _mappingCountLabel(BuildContext context, StudioProfileDraft draft) {
+  final mappingCount = localizedNumber(
+    context,
+    draft.mappings.length,
+    fractionDigits: 0,
+  );
+  final referenceCount = localizedNumber(
+    context,
+    draft.referenceIds.length,
+    fractionDigits: 0,
+  );
+  return '$mappingCount evidenced mapping · $referenceCount reference';
+}

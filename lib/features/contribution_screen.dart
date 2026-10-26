@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/precision_ui.dart';
 import '../app/theme.dart';
 import '../contribution/redaction.dart';
 import '../design/solar_icon.dart';
@@ -23,18 +24,12 @@ class _ContributionScreenState extends State<ContributionScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 64),
       children: [
-        Text(
-          l10n.contributeSafely,
-          style: Theme.of(context).textTheme.displaySmall,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          l10n.contributionPrivacy,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+        PrecisionPageHeading(
+          title: l10n.contributeSafely,
+          subtitle: l10n.contributionPrivacy,
+          icon: Icons.shield_outlined,
         ),
         const SizedBox(height: 24),
         Stepper(
@@ -103,7 +98,7 @@ class _ContributionScreenState extends State<ContributionScreen> {
           ],
         ),
         const SizedBox(height: 18),
-        Card(
+        PrecisionCard(
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Row(

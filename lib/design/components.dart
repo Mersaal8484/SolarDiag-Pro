@@ -41,13 +41,17 @@ class SolarSurface extends StatelessWidget {
       borderRadius: BorderRadius.circular(SolarRadius.card),
       side: BorderSide(
         color: t.palette.separator,
-        width: t.highContrast ? 2 : .5,
+        width: t.highContrast ? 2 : 1,
       ),
     );
     final surface = raised ? t.palette.surfaceRaised : t.palette.surface;
     final content = DecoratedBox(
       decoration: ShapeDecoration(
-        color: t.reduceTransparency ? surface : surface.withValues(alpha: .88),
+        gradient: LinearGradient(
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
+          colors: [(raised ? t.palette.surfaceRaised : surface), surface],
+        ),
         shape: shape,
       ),
       child: Padding(padding: padding, child: child),
@@ -104,10 +108,20 @@ class MetricTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text(
-                      value,
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()],
+                    Flexible(
+                      child: Text(
+                        value,
+                        softWrap: true,
+                        style: Theme.of(context).textTheme.displaySmall
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).extension<SolarTokens>()!.palette.tint,
+                              fontWeight: FontWeight.w800,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
                       ),
                     ),
                     const SizedBox(width: SolarSpace.xs),
@@ -247,9 +261,13 @@ class StatusPill extends StatelessWidget {
               ),
             ),
             const SizedBox(width: SolarSpace.sm),
-            Text(
-              label,
-              style: TextStyle(color: color, fontWeight: FontWeight.w700),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: color, fontWeight: FontWeight.w700),
+              ),
             ),
           ],
         ),
@@ -276,22 +294,23 @@ class ConnectionCapsule extends StatelessWidget {
         horizontal: SolarSpace.lg,
         vertical: SolarSpace.md,
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _segment(SolarIcons.gateway, gateway),
-            _arrow(),
-            _segment(SolarIcons.canBus, interfaceName),
-            _arrow(),
-            _segment(SolarIcons.battery, device),
-            _arrow(),
-            Text(profile),
-            const SizedBox(width: SolarSpace.sm),
-            ModeBadge(label: mode, status: SolarStatus.info),
-          ],
-        ),
+      child: Wrap(
+        spacing: SolarSpace.sm,
+        runSpacing: SolarSpace.xs,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          _segment(SolarIcons.gateway, gateway),
+          _arrow(),
+          _segment(SolarIcons.canBus, interfaceName),
+          _arrow(),
+          _segment(SolarIcons.battery, device),
+          _arrow(),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 160),
+            child: Text(profile, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          ModeBadge(label: mode, status: SolarStatus.info),
+        ],
       ),
     ),
   );
@@ -300,7 +319,7 @@ class ConnectionCapsule extends StatelessWidget {
     children: [
       SolarIcon(icon, size: 16),
       const SizedBox(width: SolarSpace.xs),
-      Text(text),
+      Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis)),
     ],
   );
   Widget _arrow() => const SolarIcon(SolarIcons.currentFlow, size: 16);
@@ -335,23 +354,29 @@ class CellTile extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Directionality(
-              textDirection: TextDirection.ltr,
-              child: Text(
-                localizedNumber(context, index),
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-            ),
-            Directionality(
-              textDirection: TextDirection.ltr,
-              child: Text(
-                value,
-                style: const TextStyle(
-                  fontFeatures: [FontFeature.tabularFigures()],
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(
+                  localizedNumber(context, index, fractionDigits: 0),
+                  style: Theme.of(context).textTheme.labelSmall,
                 ),
               ),
             ),
-            Text(l10n.voltageUnit),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+            ),
+            FittedBox(fit: BoxFit.scaleDown, child: Text(l10n.voltageUnit)),
           ],
         ),
       ),
