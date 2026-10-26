@@ -305,6 +305,42 @@ void main() {
       },
     );
 
+    testWidgets(
+      'R7 golden handoff controls fit narrow width at 200% text in '
+      '${locale.languageCode}',
+      (tester) async {
+        tester.view
+          ..physicalSize = const Size(390, 1200)
+          ..devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await _pumpAtDoubleTextScale(
+          tester,
+          locale,
+          const _GoldenHandoffControlsFixture(),
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'R7 report preview fits phone width in ${locale.languageCode}',
+      (tester) async {
+        tester.view
+          ..physicalSize = const Size(390, 844)
+          ..devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await _pumpLocalized(
+          tester,
+          locale,
+          const _GoldenReportPreviewFixture(),
+          textScale: 1,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('R6 battery card width scales in ${locale.languageCode}', (
       tester,
     ) async {
@@ -774,7 +810,14 @@ Future<void> _pumpAtDoubleTextScale(
   WidgetTester tester,
   Locale locale,
   Widget child,
-) async {
+) => _pumpLocalized(tester, locale, child, textScale: 2);
+
+Future<void> _pumpLocalized(
+  WidgetTester tester,
+  Locale locale,
+  Widget child, {
+  required double textScale,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       locale: locale,
@@ -789,11 +832,88 @@ Future<void> _pumpAtDoubleTextScale(
       builder: (context, content) => MediaQuery(
         data: MediaQuery.of(
           context,
-        ).copyWith(textScaler: TextScaler.linear(2.0)),
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
         child: content!,
       ),
       home: child,
     ),
   );
   await tester.pumpAndSettle();
+}
+
+class _GoldenHandoffControlsFixture extends StatelessWidget {
+  const _GoldenHandoffControlsFixture();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            SizedBox(
+              width: 280,
+              child: MetricTile(
+                label: s.packVoltage,
+                value: '51.24',
+                unit: 'V',
+                updatedLabel: s.updatedNow,
+                simulated: true,
+              ),
+            ),
+            const SizedBox(height: 24),
+            DiffReviewSheet(
+              title: s.simulatedWritePipeline,
+              items: [
+                DiffReviewItem(
+                  label: s.chargeVoltageLimit,
+                  before: '55.2 V',
+                  after: '54.8 V',
+                  validationMessage: s.writeFailedVerify,
+                ),
+              ],
+              confirmLabel: s.confirmSimulatedWrite,
+              cancelLabel: s.cancel,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GoldenReportPreviewFixture extends StatelessWidget {
+  const _GoldenReportPreviewFixture();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
+    return Scaffold(
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          ReportPreview(
+            title: s.reportPreview,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  s.appTitle,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 16),
+                Text(s.simulatorValuesNotice),
+                const SizedBox(height: 24),
+                ParameterRow(title: s.packVoltage, detail: '51.24', unit: 'V'),
+                ParameterRow(title: s.cellDelta, detail: '4.0', unit: 'mV'),
+                const Spacer(),
+                SimulatedBadge(label: s.simulated),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

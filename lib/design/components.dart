@@ -157,13 +157,15 @@ class MetricTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: SolarSpace.sm,
+              runSpacing: SolarSpace.xs,
               children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelSmall,
                 ),
                 if (simulated) const SimulatedBadge(label: 'SIMULATED'),
               ],
@@ -1298,6 +1300,21 @@ class DiffReviewSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
+    final cancelButton = TextButton(
+      onPressed: loading ? null : onCancel,
+      child: Text(cancelLabel),
+    );
+    final confirmButton = FilledButton(
+      onPressed: loading || items.any((item) => item.validationMessage != null)
+          ? null
+          : onConfirm,
+      child: loading
+          ? const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Text(confirmLabel, textAlign: TextAlign.center),
+    );
     return SolarLabeledPanel(
       title: title,
       child: Column(
@@ -1353,28 +1370,27 @@ class DiffReviewSheet extends StatelessWidget {
               ),
             ),
           const SizedBox(height: SolarSpace.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: loading ? null : onCancel,
-                child: Text(cancelLabel),
-              ),
-              const SizedBox(width: SolarSpace.sm),
-              FilledButton(
-                onPressed:
-                    loading ||
-                        items.any((item) => item.validationMessage != null)
-                    ? null
-                    : onConfirm,
-                child: loading
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(confirmLabel),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 480) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    cancelButton,
+                    const SizedBox(height: SolarSpace.sm),
+                    confirmButton,
+                  ],
+                );
+              }
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  cancelButton,
+                  const SizedBox(width: SolarSpace.sm),
+                  confirmButton,
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -1581,9 +1597,17 @@ class ReportPreview extends StatelessWidget {
               style: Theme.of(context).textTheme.labelSmall,
             ),
           ),
-        AspectRatio(
-          aspectRatio: 1 / math.sqrt(2),
-          child: SolarSurface(raised: true, child: child),
+        LayoutBuilder(
+          builder: (context, constraints) => AspectRatio(
+            aspectRatio: 1 / math.sqrt(2),
+            child: SolarSurface(
+              raised: true,
+              padding: EdgeInsets.all(
+                constraints.maxWidth < 360 ? SolarSpace.md : SolarSpace.lg,
+              ),
+              child: child,
+            ),
+          ),
         ),
       ],
     ),

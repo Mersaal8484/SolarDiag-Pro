@@ -46,10 +46,7 @@ void main() {
       (report['sessions'] as List).single['sessionDataHash'],
       session.dataHash,
     );
-    expect(
-      (report['gateway'] as Map<String, Object?>)['version'],
-      isNull,
-    );
+    expect((report['gateway'] as Map<String, Object?>)['version'], isNull);
     expect(report['parameterSnapshot'], {'charge_limit': 55.2});
   });
 

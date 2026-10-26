@@ -21,7 +21,10 @@
   and `engineering_report_test.dart`; report evidence must now be explicit.
 - Self-review: all `EngineeringReportData` callers were located and updated;
   no imports, schema fixtures, architecture patterns or ARB keys were added.
-- No `*.png`, generated localization, workflow or capability file was changed.
+- No `*.png`, generated localization, workflow or capability file was changed
+  by the implementer; the owner's regenerated PNGs remain unreviewed.
+- Owner golden run exposed 14 layout failures; follow-up source fixes make
+  metric headers, review actions and phone report previews responsive.
 - Uncertainty: owner must confirm formatting, compilation, report tests, full
   non-golden suite and all regenerated golden images.
 - NOT RUN — owner will verify. No Dart/Flutter/generator/build/CI command ran.
