@@ -91,8 +91,8 @@ builds or CI jobs were run.
 
 Hardware electrical safety, protocol provenance, firmware-specific behavior, write rollback behavior on real devices, key management, privacy false negatives, localization completeness and UI behavior across the Android device matrix.
 
-## Round 7 Batch J open input
+## Round 7 Batch J icon inventory
 
-- The supplied Round 7 text references the required icon inventory in §11.4
-  but does not include that inventory. The current 76 SVG assets cannot be
-  compared authoritatively until the owner supplies the list.
+- The authoritative §11.4 inventory represented by `design/icons.json` was
+  compared with `assets/icons`: all 76 required SVG symbols are present, with
+  no missing or extra assets.

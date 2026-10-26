@@ -441,7 +441,7 @@ class _SectionList extends StatelessWidget {
                   _icon(item),
                   color: selected == item
                       ? palette.labelPrimary
-                      : palette.background.withValues(alpha: .62),
+                      : palette.labelSecondary,
                 ),
                 title: Text(
                   _label(item),
@@ -765,10 +765,9 @@ class _CaptureSourcesView extends StatelessWidget {
                     context,
                     result.session!.frames.length,
                   );
-                  final message = AppLocalizations.of(context).framesLoaded(
-                    result.session!.frames.length,
-                    frameCount,
-                  );
+                  final message = AppLocalizations.of(
+                    context,
+                  ).framesLoaded(result.session!.frames.length, frameCount);
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text(message)));
@@ -1030,12 +1029,7 @@ class _AnalysisRow extends StatelessWidget {
           '0x${stats.identifier.toRadixString(16).toUpperCase()}',
         ),
         subtitle: TechnicalText(
-          '${localizedMeasurement(
-                context,
-                stats.frameCount,
-                'frames',
-                isolate: false,
-              )} · '
+          '${localizedMeasurement(context, stats.frameCount, 'frames', isolate: false)} · '
           '$averagePeriod',
         ),
         trailing: TechnicalText(
@@ -1357,10 +1351,7 @@ String _differentialSummary(
 ) =>
     'A ${candidate.baselineValues.join('/')} → '
     'B ${candidate.comparisonValues.join('/')} · '
-    '${AppLocalizations.of(context).frameReferences(
-      candidate.evidence.length,
-      localizedNumber(context, candidate.evidence.length),
-    )}';
+    '${AppLocalizations.of(context).frameReferences(candidate.evidence.length, localizedNumber(context, candidate.evidence.length))}';
 
 String _differentialLocation(
   BuildContext context,

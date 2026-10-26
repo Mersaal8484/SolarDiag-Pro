@@ -95,9 +95,7 @@ class _ReadingCard extends StatelessWidget {
         ? s.measurementStale
         : reading.timestamp == null
         ? s.updatedNow
-        : s.measurementCapturedAt(
-            reading.timestamp!.toUtc().toIso8601String(),
-          );
+        : s.measurementCapturedAt(reading.timestamp!.toUtc().toIso8601String());
     return SizedBox(
       width: 220,
       child: PrecisionReading(

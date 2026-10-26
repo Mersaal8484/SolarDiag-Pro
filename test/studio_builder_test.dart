@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:solardiag_pro/app/solardiag_app.dart';
 import 'package:solardiag_pro/config/feature_flags.dart';
 import 'package:solardiag_pro/design/components.dart';
+import 'package:solardiag_pro/features/studio_workspace.dart';
 import 'package:solardiag_pro/persistence/local_database.dart';
 import 'package:solardiag_pro/session/device_session.dart';
 import 'package:solardiag_pro/studio/capture_models.dart';
@@ -104,6 +105,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Protocol Discovery Studio'), findsOneWidget);
     expect(find.text('Sessions'), findsOneWidget);
+    // The section list is lazy; Export sits below the fold of a 900 px window.
+    await tester.scrollUntilVisible(
+      find.text('Export'),
+      100,
+      scrollable: find
+          .descendant(
+            of: find.byType(StudioWorkspace),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(find.text('Export'), findsOneWidget);
     expect(find.text('REPLAY LOCK'), findsOneWidget);
 

@@ -67,10 +67,7 @@ String localizedNumber(
   BuildContext context,
   num value, {
   int fractionDigits = 0,
-}) => _valueFormatter(context).number(
-  value,
-  fractionDigits: fractionDigits,
-);
+}) => _valueFormatter(context).number(value, fractionDigits: fractionDigits);
 
 String localizedValueWithUnit(
   BuildContext context,
@@ -87,14 +84,11 @@ String localizedValueWithUnit(
     fractionDigits: fractionDigits,
   );
   final localized = switch (unit) {
-    EngineeringUnit.cycles
-        when value == value.roundToDouble() =>
+    EngineeringUnit.cycles when value == value.roundToDouble() =>
       localizations.cycleValue(value.round(), formattedNumber),
-    EngineeringUnit.frames
-        when value == value.roundToDouble() =>
+    EngineeringUnit.frames when value == value.roundToDouble() =>
       localizations.frameValue(value.round(), formattedNumber),
-    EngineeringUnit.samples
-        when value == value.roundToDouble() =>
+    EngineeringUnit.samples when value == value.roundToDouble() =>
       localizations.sampleValue(value.round(), formattedNumber),
     _ => formatter.format(
       value,

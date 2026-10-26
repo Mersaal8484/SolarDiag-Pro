@@ -93,13 +93,12 @@ class GatewayScreen extends StatelessWidget {
                 _Status(
                   icon: SolarIcons.currentFlow,
                   label: s.observedBusLoad,
-                  value:
-                      localizedMeasurement(
-                        context,
-                        gateway.observedBusLoad * 100,
-                        '%',
-                        fractionDigits: 1,
-                      ),
+                  value: localizedMeasurement(
+                    context,
+                    gateway.observedBusLoad * 100,
+                    '%',
+                    fractionDigits: 1,
+                  ),
                 ),
                 _Status(
                   icon: SolarIcons.linkDiagnostics,
@@ -183,42 +182,48 @@ class _Status extends StatelessWidget {
         child: SizedBox(
           width: 215,
           child: PrecisionCard(
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: palette.tint.withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: SolarIcon(icon, color: palette.tint, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(label, style: Theme.of(context).textTheme.bodySmall),
-                    const SizedBox(height: 5),
-                    Text(
-                      value,
-                      softWrap: true,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: palette.tint.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ],
-                ),
+                    child: SolarIcon(icon, color: palette.tint, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          label,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          value,
+                          softWrap: true,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
           ),
         ),
       ),

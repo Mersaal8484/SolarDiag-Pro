@@ -17,9 +17,7 @@ enum EngineeringUnit {
 
 /// Pure-Dart formatter for localized engineering values and units.
 class ValueUnitFormatter {
-  const ValueUnitFormatter({
-    this.useArabicIndicDigits = false,
-  });
+  const ValueUnitFormatter({this.useArabicIndicDigits = false});
 
   final bool useArabicIndicDigits;
 
@@ -28,8 +26,7 @@ class ValueUnitFormatter {
     EngineeringUnit unit = EngineeringUnit.none,
     int? fractionDigits,
   }) {
-    final digits =
-        fractionDigits ?? _defaultPrecision(unit, value);
+    final digits = fractionDigits ?? _defaultPrecision(unit, value);
     return localizeDigits(value.toStringAsFixed(digits));
   }
 
@@ -40,11 +37,7 @@ class ValueUnitFormatter {
     int? fractionDigits,
     bool isolate = false,
   }) {
-    final formatted = number(
-      value,
-      unit: unit,
-      fractionDigits: fractionDigits,
-    );
+    final formatted = number(value, unit: unit, fractionDigits: fractionDigits);
     final unitText = unitLabel.isEmpty ? _unitSymbol(unit) : unitLabel;
     final joined = unitText.isEmpty ? formatted : '$formatted $unitText';
     return isolate ? '\u2066$joined\u2069' : joined;
@@ -77,21 +70,21 @@ class ValueUnitFormatter {
   };
 
   String _unitSymbol(EngineeringUnit unit) => switch (unit) {
-      EngineeringUnit.none ||
-      EngineeringUnit.count ||
-      EngineeringUnit.cycles ||
-      EngineeringUnit.frames ||
-      EngineeringUnit.samples => '',
-      EngineeringUnit.volts => 'V',
-      EngineeringUnit.amps => 'A',
-      EngineeringUnit.watts => 'W',
-      EngineeringUnit.percent => '%',
-      EngineeringUnit.celsius => '°C',
-      EngineeringUnit.millivolts => 'mV',
-      EngineeringUnit.milliseconds => 'ms',
-      EngineeringUnit.seconds => 's',
-      EngineeringUnit.hertz => 'Hz',
-    };
+    EngineeringUnit.none ||
+    EngineeringUnit.count ||
+    EngineeringUnit.cycles ||
+    EngineeringUnit.frames ||
+    EngineeringUnit.samples => '',
+    EngineeringUnit.volts => 'V',
+    EngineeringUnit.amps => 'A',
+    EngineeringUnit.watts => 'W',
+    EngineeringUnit.percent => '%',
+    EngineeringUnit.celsius => '°C',
+    EngineeringUnit.millivolts => 'mV',
+    EngineeringUnit.milliseconds => 'ms',
+    EngineeringUnit.seconds => 's',
+    EngineeringUnit.hertz => 'Hz',
+  };
 
   static EngineeringUnit fromSymbol(String? symbol) => switch (symbol) {
     'V' => EngineeringUnit.volts,

@@ -31,20 +31,82 @@ void main() {
 
   test('symbol inventory is complete and every SVG source exists', () {
     const required = {
-      'home', 'inverter', 'battery', 'link-diagnostics', 'library', 'history',
-      'gateway', 'can-bus', 'rs485', 'rs232', 'uart', 'ble', 'usb', 'wifi',
-      'cell', 'cell-grid', 'soc-ring', 'soh', 'cycle', 'balancing', 'mosfet',
-      'contactor', 'temperature', 'thermal-map', 'current-flow',
-      'parallel-bank', 'master-slave', 'healthy', 'warning', 'critical',
-      'stale', 'offline', 'locked', 'unlocked-verified', 'simulated',
-      'verified-hardware', 'verified-document', 'research', 'read-only',
-      'configure', 'calibrate', 'factory', 'backup', 'restore', 'compare',
-      'report', 'export', 'share', 'search', 'filter', 'record', 'solar',
-      'grid', 'load', 'battery-charge', 'battery-discharge', 'capture-record',
-      'passive-tap', 'hex-inspector', 'frame', 'request-response', 'diff',
-      'hypothesis', 'evidence', 'confirmed-check', 'profile-builder',
-      'register-map', 'replay-lock', 'contribute', 'redact', 'review-queue',
-      'signed-profile', 'revoked', 'library-sync', 'reward-points', 'role',
+      'home',
+      'inverter',
+      'battery',
+      'link-diagnostics',
+      'library',
+      'history',
+      'gateway',
+      'can-bus',
+      'rs485',
+      'rs232',
+      'uart',
+      'ble',
+      'usb',
+      'wifi',
+      'cell',
+      'cell-grid',
+      'soc-ring',
+      'soh',
+      'cycle',
+      'balancing',
+      'mosfet',
+      'contactor',
+      'temperature',
+      'thermal-map',
+      'current-flow',
+      'parallel-bank',
+      'master-slave',
+      'healthy',
+      'warning',
+      'critical',
+      'stale',
+      'offline',
+      'locked',
+      'unlocked-verified',
+      'simulated',
+      'verified-hardware',
+      'verified-document',
+      'research',
+      'read-only',
+      'configure',
+      'calibrate',
+      'factory',
+      'backup',
+      'restore',
+      'compare',
+      'report',
+      'export',
+      'share',
+      'search',
+      'filter',
+      'record',
+      'solar',
+      'grid',
+      'load',
+      'battery-charge',
+      'battery-discharge',
+      'capture-record',
+      'passive-tap',
+      'hex-inspector',
+      'frame',
+      'request-response',
+      'diff',
+      'hypothesis',
+      'evidence',
+      'confirmed-check',
+      'profile-builder',
+      'register-map',
+      'replay-lock',
+      'contribute',
+      'redact',
+      'review-queue',
+      'signed-profile',
+      'revoked',
+      'library-sync',
+      'reward-points',
+      'role',
     };
     expect(SolarIcons.all.map((icon) => icon.name).toSet(), required);
     for (final icon in SolarIcons.all) {
@@ -391,9 +453,7 @@ void main() {
 
   test('value and unit formatter applies precision, digits, and isolation', () {
     const western = ValueUnitFormatter();
-    const arabic = ValueUnitFormatter(
-      useArabicIndicDigits: true,
-    );
+    const arabic = ValueUnitFormatter(useArabicIndicDigits: true);
 
     expect(western.number(214.0), '214');
     expect(
@@ -401,25 +461,15 @@ void main() {
       '\u206651.20 V\u2069',
     );
     expect(
-      arabic.format(
-        214,
-        unit: EngineeringUnit.volts,
-        unitLabel: 'فولت',
-      ),
+      arabic.format(214, unit: EngineeringUnit.volts, unitLabel: 'فولت'),
       '٢١٤.٠٠ فولت',
     );
   });
 
   test('Arabic engineering quantities use ICU plural categories', () {
     final arabic = AppLocalizationsAr();
-    expect(
-      localizedUnitLabel(arabic, EngineeringUnit.volts),
-      'فولت',
-    );
-    expect(
-      localizedUnitLabel(arabic, EngineeringUnit.millivolts),
-      'ملي فولت',
-    );
+    expect(localizedUnitLabel(arabic, EngineeringUnit.volts), 'فولت');
+    expect(localizedUnitLabel(arabic, EngineeringUnit.millivolts), 'ملي فولت');
     expect(arabic.cycleValue(0, '٠'), 'لا دورات');
     expect(arabic.cycleValue(1, '١'), 'دورة واحدة');
     expect(arabic.cycleValue(2, '٢'), 'دورتان');
@@ -435,10 +485,7 @@ void main() {
     expect(arabic.frameValue(2, '٢'), 'إطاران');
     expect(arabic.frameValue(7, '٧'), '٧ إطارات');
     expect(arabic.frameValue(15, '١٥'), '١٥ إطارًا');
-    expect(
-      arabic.sampleCoverage(0, '٠', '١٠'),
-      'لا عينات مبلغ عنها من أصل ١٠',
-    );
+    expect(arabic.sampleCoverage(0, '٠', '١٠'), 'لا عينات مبلغ عنها من أصل ١٠');
     expect(arabic.sampleCoverage(1, '١', '١٠'), '١ من أصل ١٠ عينة');
     expect(arabic.sampleCoverage(2, '٢', '١٠'), '٢ من أصل ١٠ عينتين');
     expect(arabic.sampleCoverage(7, '٧', '١٠'), '٧ من أصل ١٠ عينات');
@@ -595,7 +642,6 @@ void main() {
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
     await tester.pumpWidget(
       MaterialApp(
         theme: solarTheme(brightness: Brightness.light),
@@ -615,20 +661,24 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      tester
-          .getSemantics(find.byType(StatusPill))
-          .flagsCollection
-          .isLiveRegion,
-      isTrue,
-    );
-    expect(
-      tester
-          .getSemantics(find.byType(AlarmCard))
-          .flagsCollection
-          .isLiveRegion,
-      isTrue,
-    );
+    try {
+      expect(
+        tester
+            .getSemantics(find.byType(StatusPill))
+            .flagsCollection
+            .isLiveRegion,
+        isTrue,
+      );
+      expect(
+        tester
+            .getSemantics(find.byType(AlarmCard))
+            .flagsCollection
+            .isLiveRegion,
+        isTrue,
+      );
+    } finally {
+      semantics.dispose();
+    }
   });
 
   for (final locale in const [Locale('en'), Locale('ar')]) {

@@ -41,9 +41,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final session = DeviceSessionScope.of(context);
     final entries = session.parameters.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
-    final selectedId = entries.any(
-      (entry) => entry.key == _selectedParameterId,
-    )
+    final selectedId = entries.any((entry) => entry.key == _selectedParameterId)
         ? _selectedParameterId
         : entries.firstOrNull?.key;
     final list = ListView(
@@ -96,13 +94,12 @@ class _ParametersScreenState extends State<ParametersScreen> {
         else
           for (final entry in entries)
             _ParameterTile(
+              id: entry.key,
               title: _label(s, entry.key),
               value: _value(context, entry.key, entry.value),
               range: _range(context, entry.key),
               selected: selectedId == entry.key,
-              onSelect: () => setState(
-                () => _selectedParameterId = entry.key,
-              ),
+              onSelect: () => setState(() => _selectedParameterId = entry.key),
               onEdit: entry.key == 'charge_limit'
                   ? () => _editParameter(
                       session: session,
@@ -168,7 +165,9 @@ class _ParametersScreenState extends State<ParametersScreen> {
             SizedBox(
               width: 340,
               child: _ParameterInspector(
-                title: selected == null ? s.noParametersReported : _label(s, selected.key),
+                title: selected == null
+                    ? s.noParametersReported
+                    : _label(s, selected.key),
                 value: selected == null
                     ? s.notAvailable
                     : _value(context, selected.key, selected.value),
@@ -397,8 +396,9 @@ class _ParametersScreenState extends State<ParametersScreen> {
                               definition.step)
                           .round(),
                   label: _value(context, id, requested),
-                  onChanged: (value) =>
-                      setDialogState(() => requested = (value * 10).round() / 10),
+                  onChanged: (value) => setDialogState(
+                    () => requested = (value * 10).round() / 10,
+                  ),
                 ),
                 Text(s.parameterRiskAdvanced),
                 CheckboxListTile(
@@ -543,22 +543,43 @@ class _ParameterInspector extends StatelessWidget {
       key: const Key('parameter-inspector'),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            PrecisionSectionHeading(
-              label: AppLocalizations.of(context).parameters,
-              icon: SolarIcons.configure,
-            ),
-            const SizedBox(height: 24),
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            TechnicalText(value, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 10),
-            TechnicalText(range),
-            const Spacer(),
-            StatusPill(label: writeStatus, status: SolarStatus.info),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Semantics(
+                key: const ValueKey('parameter-inspector-semantics'),
+                container: true,
+                label:
+                    '$title, $value, ${AppLocalizations.of(context).updatedNow}',
+                child: ExcludeSemantics(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PrecisionSectionHeading(
+                        label: AppLocalizations.of(context).parameters,
+                        icon: SolarIcons.configure,
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 10),
+                      TechnicalText(
+                        value,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 10),
+                      TechnicalText(range),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              StatusPill(label: writeStatus, status: SolarStatus.info),
+            ],
+          ),
         ),
       ),
     ),
@@ -629,6 +650,7 @@ class _PinDialogState extends State<_PinDialog> {
 
 class _ParameterTile extends StatelessWidget {
   const _ParameterTile({
+    required this.id,
     required this.title,
     required this.value,
     required this.range,
@@ -636,6 +658,7 @@ class _ParameterTile extends StatelessWidget {
     required this.onSelect,
     this.onEdit,
   });
+  final String id;
   final String title;
   final String value;
   final String range;
@@ -648,6 +671,8 @@ class _ParameterTile extends StatelessWidget {
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
     final freshness = AppLocalizations.of(context).updatedNow;
     return Semantics(
+      key: ValueKey('parameter-semantics-$id'),
+      container: true,
       selected: selected,
       button: true,
       label: '$title, $value, $freshness',
@@ -661,66 +686,69 @@ class _ParameterTile extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 4,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: onEdit == null ? palette.info : palette.warning,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(title, style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 6),
-                    Directionality(
-                      textDirection: TextDirection.ltr,
-                      child: Align(
-                        alignment: AlignmentDirectional.centerStart,
+                    Container(
+                      width: 4,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: onEdit == null ? palette.info : palette.warning,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 6),
+                          Directionality(
+                            textDirection: TextDirection.ltr,
+                            child: Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(
+                                range,
+                                softWrap: true,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      flex: 2,
+                      child: Directionality(
+                        textDirection: TextDirection.ltr,
                         child: Text(
-                          range,
+                          value,
+                          textAlign: TextAlign.end,
                           softWrap: true,
-                          style: Theme.of(context).textTheme.bodySmall,
+                          style: TextStyle(
+                            fontSize: 17,
+                            color: palette.tint,
+                            fontWeight: FontWeight.w800,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
                       ),
                     ),
+                    if (onEdit != null) ...[
+                      const SizedBox(width: 6),
+                      IconButton(
+                        key: const Key('edit-charge-limit'),
+                        tooltip: AppLocalizations.of(context).editParameter,
+                        onPressed: onEdit,
+                        icon: const SolarIcon(SolarIcons.configure),
+                      ),
+                    ],
                   ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Flexible(
-                flex: 2,
-                child: Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Text(
-                    value,
-                    textAlign: TextAlign.end,
-                    softWrap: true,
-                    style: TextStyle(
-                      fontSize: 17,
-                      color: palette.tint,
-                      fontWeight: FontWeight.w800,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ),
-              ),
-              if (onEdit != null) ...[
-                const SizedBox(width: 6),
-                IconButton(
-                  key: const Key('edit-charge-limit'),
-                  tooltip: AppLocalizations.of(context).editParameter,
-                  onPressed: onEdit,
-                  icon: const SolarIcon(SolarIcons.configure),
-                ),
-              ],
-            ],
                 ),
               ),
             ),

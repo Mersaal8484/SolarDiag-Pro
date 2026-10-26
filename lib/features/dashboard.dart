@@ -66,10 +66,7 @@ class Dashboard extends StatelessWidget {
                           label: s.simulatedScenario,
                           options: [
                             for (final item in SimulationScenario.values)
-                              SolarSelectOption(
-                                value: item,
-                                label: item.name,
-                              ),
+                              SolarSelectOption(value: item, label: item.name),
                           ],
                           onChanged: session.selectScenario,
                         ),
@@ -274,6 +271,9 @@ class _RecentSessions extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     final recent = session.history.take(3).toList();
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final scaleAdjustment = (textScale - 1).clamp(0.0, 1.0).toDouble();
+    final cardHeight = 176.0 + (scaleAdjustment * 64);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -291,7 +291,7 @@ class _RecentSessions extends StatelessWidget {
           )
         else
           SizedBox(
-            height: 160,
+            height: cardHeight,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: recent.length,
@@ -436,10 +436,7 @@ class _Header extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 7),
-        PrecisionPageHeading(
-          title: s.tagline,
-          icon: SolarIcons.solar,
-        ),
+        PrecisionPageHeading(title: s.tagline, icon: SolarIcons.solar),
       ],
     );
   }
@@ -483,16 +480,11 @@ class _Hero extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  switch (linkState) {
-                    DeviceSessionLinkState.connecting => s.connecting,
-                    DeviceSessionLinkState.online => s.online,
-                    DeviceSessionLinkState.unavailable => s.linkUnavailable,
-                  },
-                  style: TextStyle(
-                    color: palette.labelSecondary,
-                  ),
-                ),
+                Text(switch (linkState) {
+                  DeviceSessionLinkState.connecting => s.connecting,
+                  DeviceSessionLinkState.online => s.online,
+                  DeviceSessionLinkState.unavailable => s.linkUnavailable,
+                }, style: TextStyle(color: palette.labelSecondary)),
               ],
             ),
           ),
@@ -536,33 +528,33 @@ class _BigMetric extends StatelessWidget {
       label: '$label, $valueLabel, $freshness',
       child: ExcludeSemantics(
         child: SizedBox(
-        width: 180,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: palette.labelSecondary,
-                fontSize: 11,
-                letterSpacing: 1.1,
-              ),
-            ),
-            const SizedBox(height: 7),
-            Directionality(
-              textDirection: TextDirection.ltr,
-              child: Text(
-                valueLabel,
+          width: 180,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
                 style: TextStyle(
-                  color: palette.labelPrimary,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: [FontFeature.tabularFigures()],
+                  color: palette.labelSecondary,
+                  fontSize: 11,
+                  letterSpacing: 1.1,
                 ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(height: 7),
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(
+                  valueLabel,
+                  style: TextStyle(
+                    color: palette.labelPrimary,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -634,55 +626,57 @@ class _MetricCard extends StatelessWidget {
       label: '$title, $valueLabel, $freshness',
       child: ExcludeSemantics(
         child: SizedBox(
-        width: 230,
-        child: PrecisionCard(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    SolarIcon(
-                      icon,
-                      size: 20,
-                      color: Theme.of(
-                        context,
-                      ).extension<SolarTokens>()!.palette.tint,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        title,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.end,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+          width: 230,
+          child: PrecisionCard(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      SolarIcon(
+                        icon,
+                        size: 20,
+                        color: Theme.of(
+                          context,
+                        ).extension<SolarTokens>()!.palette.tint,
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Text(
-                    valueLabel,
-                    style: value.isReported
-                        ? Theme.of(context).textTheme.headlineSmall
-                        : TextStyle(
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          title,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: TextStyle(
                             color: Theme.of(
                               context,
                             ).colorScheme.onSurfaceVariant,
-                            fontStyle: FontStyle.italic,
                           ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 24),
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      valueLabel,
+                      style: value.isReported
+                          ? Theme.of(context).textTheme.headlineSmall
+                          : TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontStyle: FontStyle.italic,
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         ),
       ),
     );

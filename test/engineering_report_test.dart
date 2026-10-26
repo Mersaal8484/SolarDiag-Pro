@@ -96,20 +96,25 @@ void main() {
     expect(bytes.length, greaterThan(1000));
   });
 
-  test('Arabic PDF extraction preserves logical label then value order', () async {
-    final bytes = await const EngineeringReportService().buildPdf(
-      data([record()]),
-      language: ReportLanguage.arabic,
-    );
-    final extracted = _extractUncompressedPdfText(bytes);
-    final section = extracted.indexOf('التعريف');
-    final label = extracted.indexOf('الجهاز');
-    final value = extracted.indexOf('SOLARDIAG-SIM-BMS');
+  test(
+    'Arabic PDF extraction preserves logical label then value order',
+    () async {
+      final bytes = await const EngineeringReportService().buildPdf(
+        data([record()]),
+        language: ReportLanguage.arabic,
+      );
+      final extracted = _normalizeExtractedArabic(
+        _extractUncompressedPdfText(bytes),
+      );
+      final section = extracted.indexOf('التعريف');
+      final label = extracted.indexOf('الجهاز');
+      final value = extracted.indexOf('SOLARDIAG-SIM-BMS');
 
-    expect(section, greaterThanOrEqualTo(0), reason: extracted);
-    expect(label, greaterThan(section), reason: extracted);
-    expect(value, greaterThan(label), reason: extracted);
-  });
+      expect(section, greaterThanOrEqualTo(0), reason: extracted);
+      expect(label, greaterThan(section), reason: extracted);
+      expect(value, greaterThan(label), reason: extracted);
+    },
+  );
 
   test('JSON report includes ALL sessions (multi-session)', () {
     final snapshot2 = '{"soc":{"value":65,"unit":"%","quality":"fair"}}';
@@ -216,53 +221,58 @@ void main() {
 
 String _extractUncompressedPdfText(List<int> bytes) {
   final source = latin1.decode(bytes, allowInvalid: true);
-  final unicodeByCid = <int, String>{};
-
-  for (final block in RegExp(
-    r'beginbfchar(.*?)endbfchar',
-    dotAll: true,
-  ).allMatches(source)) {
-    for (final mapping in RegExp(
-      r'<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>',
-    ).allMatches(block.group(1)!)) {
-      unicodeByCid[int.parse(mapping.group(1)!, radix: 16)] =
-          _decodeUtf16Hex(mapping.group(2)!);
+  final objects = <int, String>{
+    for (final object in RegExp(
+      r'(\d+)\s+\d+\s+obj(.*?)endobj',
+      dotAll: true,
+    ).allMatches(source))
+      int.parse(object.group(1)!): object.group(2)!,
+  };
+  final fontObjectByResource = <String, int>{};
+  for (final body in objects.values) {
+    for (final reference in RegExp(
+      r'/(F\d+)\s+(\d+)\s+\d+\s+R',
+    ).allMatches(body)) {
+      fontObjectByResource[reference.group(1)!] = int.parse(
+        reference.group(2)!,
+      );
     }
   }
-
-  for (final block in RegExp(
-    r'beginbfrange(.*?)endbfrange',
-    dotAll: true,
-  ).allMatches(source)) {
-    for (final mapping in RegExp(
-      r'<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>',
-    ).allMatches(block.group(1)!)) {
-      final first = int.parse(mapping.group(1)!, radix: 16);
-      final last = int.parse(mapping.group(2)!, radix: 16);
-      final destination = int.parse(mapping.group(3)!, radix: 16);
-      for (var cid = first; cid <= last; cid++) {
-        unicodeByCid[cid] = String.fromCharCode(destination + cid - first);
-      }
+  final unicodeByFont = <String, Map<int, String>>{};
+  for (final entry in fontObjectByResource.entries) {
+    final fontBody = objects[entry.value];
+    if (fontBody == null) continue;
+    final toUnicode = RegExp(
+      r'/ToUnicode\s+(\d+)\s+\d+\s+R',
+    ).firstMatch(fontBody);
+    if (toUnicode == null) continue;
+    final cmapBody = objects[int.parse(toUnicode.group(1)!)];
+    if (cmapBody != null) {
+      unicodeByFont[entry.key] = _parseToUnicodeCMap(cmapBody);
     }
   }
 
   final output = StringBuffer();
+  Map<int, String> currentMap = const {};
   for (final operator in RegExp(
-    r'(?:<([0-9A-Fa-f]+)>\s*Tj)|(?:\[(.*?)\]\s*TJ)',
+    r'/(F\d+)\s+[-+]?\d*\.?\d+\s+Tf|<([0-9A-Fa-f]+)>\s*Tj|\[(.*?)\]\s*TJ',
     dotAll: true,
   ).allMatches(source)) {
+    final fontResource = operator.group(1);
+    if (fontResource != null) {
+      currentMap = unicodeByFont[fontResource] ?? const {};
+      continue;
+    }
     final chunks = <String>[
-      ?operator.group(1),
-      if (operator.group(2) case final array?)
-        for (final item in RegExp(
-          r'<([0-9A-Fa-f]+)>',
-        ).allMatches(array))
+      ?operator.group(2),
+      if (operator.group(3) case final array?)
+        for (final item in RegExp(r'<([0-9A-Fa-f]+)>').allMatches(array))
           item.group(1)!,
     ];
     for (final chunk in chunks) {
       for (var offset = 0; offset + 4 <= chunk.length; offset += 4) {
         final cid = int.parse(chunk.substring(offset, offset + 4), radix: 16);
-        output.write(unicodeByCid[cid] ?? '');
+        output.write(currentMap[cid] ?? '');
       }
     }
     output.writeln();
@@ -270,7 +280,199 @@ String _extractUncompressedPdfText(List<int> bytes) {
   return output.toString();
 }
 
+Map<int, String> _parseToUnicodeCMap(String source) {
+  final result = <int, String>{};
+  for (final block in RegExp(
+    r'beginbfchar(.*?)endbfchar',
+    dotAll: true,
+  ).allMatches(source)) {
+    for (final mapping in RegExp(
+      r'<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>',
+    ).allMatches(block.group(1)!)) {
+      result[int.parse(mapping.group(1)!, radix: 16)] = _decodeUtf16Hex(
+        mapping.group(2)!,
+      );
+    }
+  }
+  for (final block in RegExp(
+    r'beginbfrange(.*?)endbfrange',
+    dotAll: true,
+  ).allMatches(source)) {
+    final contents = block.group(1)!;
+    for (final mapping in RegExp(
+      r'<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>',
+    ).allMatches(contents)) {
+      final first = int.parse(mapping.group(1)!, radix: 16);
+      final last = int.parse(mapping.group(2)!, radix: 16);
+      final destination = int.parse(mapping.group(3)!, radix: 16);
+      for (var cid = first; cid <= last; cid++) {
+        result[cid] = String.fromCharCode(destination + cid - first);
+      }
+    }
+    for (final mapping in RegExp(
+      r'<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*\[(.*?)\]',
+      dotAll: true,
+    ).allMatches(contents)) {
+      final first = int.parse(mapping.group(1)!, radix: 16);
+      final last = int.parse(mapping.group(2)!, radix: 16);
+      final destinations = RegExp(
+        r'<([0-9A-Fa-f]+)>',
+      ).allMatches(mapping.group(3)!).toList();
+      for (
+        var cid = first;
+        cid <= last && cid - first < destinations.length;
+        cid++
+      ) {
+        result[cid] = _decodeUtf16Hex(destinations[cid - first].group(1)!);
+      }
+    }
+  }
+  return result;
+}
+
 String _decodeUtf16Hex(String value) => String.fromCharCodes([
   for (var offset = 0; offset + 4 <= value.length; offset += 4)
     int.parse(value.substring(offset, offset + 4), radix: 16),
 ]);
+
+String _normalizeExtractedArabic(String source) => source
+    .split('\n')
+    .map((line) {
+      final hasPresentationForms = line.runes.any(
+        (codePoint) => codePoint >= 0xFE70 && codePoint <= 0xFEFF,
+      );
+      if (!hasPresentationForms) return line;
+      final normalized = line.runes
+          .map((codePoint) => _arabicPresentationForms[codePoint] ?? '')
+          .join();
+      return String.fromCharCodes(normalized.runes.toList().reversed);
+    })
+    .join('\n');
+
+const _arabicPresentationForms = <int, String>{
+  0xFE80: 'ء',
+  0xFE81: 'آ',
+  0xFE82: 'آ',
+  0xFE83: 'أ',
+  0xFE84: 'أ',
+  0xFE85: 'ؤ',
+  0xFE86: 'ؤ',
+  0xFE87: 'إ',
+  0xFE88: 'إ',
+  0xFE89: 'ئ',
+  0xFE8A: 'ئ',
+  0xFE8B: 'ئ',
+  0xFE8C: 'ئ',
+  0xFE8D: 'ا',
+  0xFE8E: 'ا',
+  0xFE8F: 'ب',
+  0xFE90: 'ب',
+  0xFE91: 'ب',
+  0xFE92: 'ب',
+  0xFE93: 'ة',
+  0xFE94: 'ة',
+  0xFE95: 'ت',
+  0xFE96: 'ت',
+  0xFE97: 'ت',
+  0xFE98: 'ت',
+  0xFE99: 'ث',
+  0xFE9A: 'ث',
+  0xFE9B: 'ث',
+  0xFE9C: 'ث',
+  0xFE9D: 'ج',
+  0xFE9E: 'ج',
+  0xFE9F: 'ج',
+  0xFEA0: 'ج',
+  0xFEA1: 'ح',
+  0xFEA2: 'ح',
+  0xFEA3: 'ح',
+  0xFEA4: 'ح',
+  0xFEA5: 'خ',
+  0xFEA6: 'خ',
+  0xFEA7: 'خ',
+  0xFEA8: 'خ',
+  0xFEA9: 'د',
+  0xFEAA: 'د',
+  0xFEAB: 'ذ',
+  0xFEAC: 'ذ',
+  0xFEAD: 'ر',
+  0xFEAE: 'ر',
+  0xFEAF: 'ز',
+  0xFEB0: 'ز',
+  0xFEB1: 'س',
+  0xFEB2: 'س',
+  0xFEB3: 'س',
+  0xFEB4: 'س',
+  0xFEB5: 'ش',
+  0xFEB6: 'ش',
+  0xFEB7: 'ش',
+  0xFEB8: 'ش',
+  0xFEB9: 'ص',
+  0xFEBA: 'ص',
+  0xFEBB: 'ص',
+  0xFEBC: 'ص',
+  0xFEBD: 'ض',
+  0xFEBE: 'ض',
+  0xFEBF: 'ض',
+  0xFEC0: 'ض',
+  0xFEC1: 'ط',
+  0xFEC2: 'ط',
+  0xFEC3: 'ط',
+  0xFEC4: 'ط',
+  0xFEC5: 'ظ',
+  0xFEC6: 'ظ',
+  0xFEC7: 'ظ',
+  0xFEC8: 'ظ',
+  0xFEC9: 'ع',
+  0xFECA: 'ع',
+  0xFECB: 'ع',
+  0xFECC: 'ع',
+  0xFECD: 'غ',
+  0xFECE: 'غ',
+  0xFECF: 'غ',
+  0xFED0: 'غ',
+  0xFED1: 'ف',
+  0xFED2: 'ف',
+  0xFED3: 'ف',
+  0xFED4: 'ف',
+  0xFED5: 'ق',
+  0xFED6: 'ق',
+  0xFED7: 'ق',
+  0xFED8: 'ق',
+  0xFED9: 'ك',
+  0xFEDA: 'ك',
+  0xFEDB: 'ك',
+  0xFEDC: 'ك',
+  0xFEDD: 'ل',
+  0xFEDE: 'ل',
+  0xFEDF: 'ل',
+  0xFEE0: 'ل',
+  0xFEE1: 'م',
+  0xFEE2: 'م',
+  0xFEE3: 'م',
+  0xFEE4: 'م',
+  0xFEE5: 'ن',
+  0xFEE6: 'ن',
+  0xFEE7: 'ن',
+  0xFEE8: 'ن',
+  0xFEE9: 'ه',
+  0xFEEA: 'ه',
+  0xFEEB: 'ه',
+  0xFEEC: 'ه',
+  0xFEED: 'و',
+  0xFEEE: 'و',
+  0xFEEF: 'ى',
+  0xFEF0: 'ى',
+  0xFEF1: 'ي',
+  0xFEF2: 'ي',
+  0xFEF3: 'ي',
+  0xFEF4: 'ي',
+  0xFEF5: 'آل',
+  0xFEF6: 'آل',
+  0xFEF7: 'أل',
+  0xFEF8: 'أل',
+  0xFEF9: 'إل',
+  0xFEFA: 'إل',
+  0xFEFB: 'ال',
+  0xFEFC: 'ال',
+};

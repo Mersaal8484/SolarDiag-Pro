@@ -13,6 +13,10 @@ import 'package:solardiag_pro/persistence/local_database.dart';
 import 'package:solardiag_pro/transport/safe_frame_transport.dart';
 import 'support/test_secret_store.dart';
 
+/// Measurements show either the generic freshness label or an explicit
+/// capture timestamp; both are honest freshness statements.
+const _fresh = '(Updated now|Captured at .*)';
+
 void main() {
   testWidgets('missing audit key preserves reads and shows a warning', (
     tester,
@@ -104,34 +108,21 @@ void main() {
   });
 
   final primaryReadingSemantics = <({String route, RegExp label})>[
-    (route: '/', label: RegExp(r'PACK VOLTAGE, .*V.*, Updated now')),
-    (
-      route: '/battery',
-      label: RegExp(r'State of charge, .*%.*, Updated now'),
-    ),
-    (
-      route: '/inverter',
-      label: RegExp(r'DC voltage, .*V.*, Updated now'),
-    ),
-    (
-      route: '/gateway',
-      label: RegExp(r'Observed bus load, .*%.*, Updated now'),
-    ),
+    (route: '/', label: RegExp('PACK VOLTAGE, .*V.*, $_fresh')),
+    (route: '/battery', label: RegExp('State of charge, .*%.*, $_fresh')),
+    (route: '/inverter', label: RegExp('DC voltage, .*V.*, $_fresh')),
+    (route: '/gateway', label: RegExp('Observed bus load, .*%.*, $_fresh')),
     (
       route: '/parameters',
-      label: RegExp(r'Charge voltage limit, .*V.*, Updated now'),
+      label: RegExp('Charge voltage limit, .*V.*, $_fresh'),
     ),
-    (
-      route: '/link',
-      label: RegExp(r'message delivery, .*, Updated now'),
-    ),
+    (route: '/link', label: RegExp('message delivery, .*, $_fresh')),
   ];
   for (final screen in primaryReadingSemantics) {
     testWidgets('${screen.route} exposes its primary value to semantics', (
       tester,
     ) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       final session = DeviceSession(
         scenario: SimulationScenario.healthy,
         autoStart: false,
@@ -146,7 +137,20 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.bySemanticsLabel(screen.label), findsOneWidget);
+      try {
+        if (screen.route == '/parameters') {
+          final semanticsWidget = tester.widget<Semantics>(
+            find.byKey(const ValueKey('parameter-inspector-semantics')),
+          );
+          expect(semanticsWidget.properties.label, matches(screen.label));
+        } else {
+          expect(find.bySemanticsLabel(screen.label), findsOneWidget);
+        }
+      } finally {
+        // Must be disposed inside the test body: tear-downs run after the
+        // framework's leaked-handle verification.
+        semantics.dispose();
+      }
     });
   }
 
@@ -195,6 +199,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('workspace-nav-library')));
     await tester.pumpAndSettle();
     expect(find.text('Device library'), findsOneWidget);
+    // Checked before scrolling: lazily built list items above the fold are
+    // unmounted once scrolled away.
+    expect(find.text('SolarDiag deterministic BMS'), findsOneWidget);
     final libraryScroll = find.descendant(
       of: find.byType(DeviceLibraryScreen),
       matching: find.byType(Scrollable),
@@ -205,7 +212,6 @@ void main() {
       scrollable: libraryScroll,
     );
     expect(find.text('Pylontech'), findsOneWidget);
-    expect(find.text('SolarDiag deterministic BMS'), findsOneWidget);
   });
 
   testWidgets('home destination opens adapter-backed inverter diagnostics', (
@@ -360,7 +366,8 @@ void main() {
     await tester.tap(find.text('Parameters'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('55.2 V'), findsOneWidget);
+    // The value is shown in the parameter row and in the inspector pane.
+    expect(find.textContaining('55.2 V'), findsNWidgets(2));
     final parametersScroll = find.descendant(
       of: find.byType(ListView).first,
       matching: find.byType(Scrollable),
@@ -465,6 +472,8 @@ void main() {
     await tester.tap(find.text('Parameters'));
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.byKey(const Key('edit-charge-limit')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('edit-charge-limit')));
     await tester.pumpAndSettle();
     expect(find.text('Review changes'), findsOneWidget);

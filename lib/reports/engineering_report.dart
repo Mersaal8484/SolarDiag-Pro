@@ -456,8 +456,7 @@ class EngineeringReportService {
           headerStyle: pw.TextStyle(font: bold),
           headerCount: 0,
           data: [
-            for (final entry in values.entries)
-              [entry.key, entry.value],
+            for (final entry in values.entries) [entry.key, entry.value],
           ],
           tableDirection: language == ReportLanguage.arabic
               ? pw.TextDirection.rtl

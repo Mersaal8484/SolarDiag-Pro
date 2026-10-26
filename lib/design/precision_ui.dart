@@ -157,65 +157,66 @@ class PrecisionReading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = Theme.of(context).extension<SolarTokens>()!.palette;
-    final semanticsLabel = '$label, $value, '
+    final semanticsLabel =
+        '$label, $value, '
         '${freshness ?? AppLocalizations.of(context).updatedNow}';
     return Semantics(
       container: true,
       label: semanticsLabel,
       child: ExcludeSemantics(
         child: Container(
-      constraints: const BoxConstraints(minHeight: 110),
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [palette.surfaceRaised, palette.surface],
-        ),
-        borderRadius: BorderRadius.circular(19),
-        border: Border.all(color: palette.separator),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
+          constraints: const BoxConstraints(minHeight: 110),
+          padding: const EdgeInsets.all(17),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [palette.surfaceRaised, palette.surface],
+            ),
+            borderRadius: BorderRadius.circular(19),
+            border: Border.all(color: palette.separator),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: accent ?? palette.tint,
-                  shape: BoxShape.circle,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: accent ?? palette.tint,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodySmall,
+              const SizedBox(height: 11),
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    value,
+                    softWrap: true,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: accent ?? palette.labelPrimary,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 11),
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: Text(
-                value,
-                softWrap: true,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: accent ?? palette.labelPrimary,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
         ),
       ),
     );

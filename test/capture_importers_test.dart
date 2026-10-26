@@ -95,8 +95,7 @@ bad frame
   });
 
   test('PEAK TRC importer does not repair malformed payloads', () {
-    const source =
-        r'''
+    const source = r'''
 ;$FILEVERSION=1.1
 1) 0.100 Rx 0351 4 01 02 03 04
 2) 0.200 Tx 0352 3 AA BB

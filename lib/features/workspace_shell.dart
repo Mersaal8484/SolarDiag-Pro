@@ -95,136 +95,150 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
         policy: OrderedTraversalPolicy(),
         child: SafeArea(
           child: Row(
-          children: [
-            if (wide)
-              Container(
-                width: 112,
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).extension<SolarTokens>()!.palette.surface,
-                  border: BorderDirectional(
-                    end: BorderSide(
-                      color: Theme.of(
-                        context,
-                      ).extension<SolarTokens>()!.palette.separator,
-                    ),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 22),
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [palette.tint, palette.surfaceRaised],
-                        ),
-                        border: Border.all(color: palette.separator),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: SolarIcon(
-                        SolarIcons.solar,
+            children: [
+              if (wide)
+                Container(
+                  width: 112,
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).extension<SolarTokens>()!.palette.surface,
+                    border: BorderDirectional(
+                      end: BorderSide(
                         color: Theme.of(
                           context,
-                        ).extension<SolarTokens>()!.palette.background,
+                        ).extension<SolarTokens>()!.palette.separator,
                       ),
                     ),
-                    const SizedBox(height: 28),
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        children: [
-                          for (var i = 0; i < destinations.length; i++)
-                            FocusTraversalOrder(
-                              order: NumericFocusOrder(i.toDouble()),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 3,
-                                  horizontal: 10,
-                                ),
-                                child: _RailButton(
-                                  key: ValueKey(
-                                    'workspace-nav-${destinations[i].$1}',
+                  ),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 22),
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [palette.tint, palette.surfaceRaised],
+                          ),
+                          border: Border.all(color: palette.separator),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: SolarIcon(
+                          SolarIcons.solar,
+                          color: Theme.of(
+                            context,
+                          ).extension<SolarTokens>()!.palette.background,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          children: [
+                            for (var i = 0; i < destinations.length; i++)
+                              FocusTraversalOrder(
+                                order: NumericFocusOrder(i.toDouble()),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 3,
+                                    horizontal: 10,
                                   ),
-                                  icon: destinations[i].$2,
-                                  label: destinations[i].$3,
-                                  selected: index == i,
-                                  onTap: () => setState(() => index = i),
+                                  child: _RailButton(
+                                    key: ValueKey(
+                                      'workspace-nav-${destinations[i].$1}',
+                                    ),
+                                    icon: destinations[i].$2,
+                                    label: destinations[i].$3,
+                                    selected: index == i,
+                                    onTap: () => setState(() => index = i),
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    FocusTraversalOrder(
-                      order: NumericFocusOrder(destinations.length.toDouble()),
-                      child: IconButton(
-                        onPressed: widget.onOpenDesignLab,
-                        tooltip: s.designLab,
-                        icon: SolarIcon(
-                          SolarIcons.research,
-                          color: Theme.of(
-                            context,
-                          ).extension<SolarTokens>()!.palette.tint,
+                          ],
                         ),
                       ),
-                    ),
-                    FocusTraversalOrder(
-                      order: NumericFocusOrder(
-                        destinations.length.toDouble() + 1,
-                      ),
-                      child: IconButton(
-                        onPressed: widget.onOpenSettings,
-                        tooltip: s.settings,
-                        icon: SolarIcon(
-                          SolarIcons.configure,
-                          color: Theme.of(
-                            context,
-                          ).extension<SolarTokens>()!.palette.tint,
+                      FocusTraversalOrder(
+                        order: NumericFocusOrder(
+                          destinations.length.toDouble(),
+                        ),
+                        child: IconButton(
+                          onPressed: widget.onOpenDesignLab,
+                          tooltip: s.designLab,
+                          icon: SolarIcon(
+                            SolarIcons.research,
+                            color: Theme.of(
+                              context,
+                            ).extension<SolarTokens>()!.palette.tint,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 18),
-                  ],
+                      FocusTraversalOrder(
+                        order: NumericFocusOrder(
+                          destinations.length.toDouble() + 1,
+                        ),
+                        child: IconButton(
+                          onPressed: widget.onOpenSettings,
+                          tooltip: s.settings,
+                          icon: SolarIcon(
+                            SolarIcons.configure,
+                            color: Theme.of(
+                              context,
+                            ).extension<SolarTokens>()!.palette.tint,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                    ],
+                  ),
+                ),
+              Expanded(
+                child: FocusTraversalOrder(
+                  order: const NumericFocusOrder(100),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsetsDirectional.fromSTEB(
+                          16,
+                          12,
+                          16,
+                          4,
+                        ),
+                        child: ConnectionCapsule(
+                          key: const Key('connection-capsule'),
+                          gateway: s.simulatedGateway,
+                          interfaceName: s.virtualInterface,
+                          device: s.simulatedBms,
+                          profile: s.simulatedProfile,
+                          status: switch (session.linkState) {
+                            DeviceSessionLinkState.online => SolarStatus.ok,
+                            DeviceSessionLinkState.connecting =>
+                              SolarStatus.warning,
+                            DeviceSessionLinkState.unavailable =>
+                              SolarStatus.critical,
+                          },
+                          mode:
+                              '${s.readOnlyMode} · ${_linkLabel(s, session.linkState)}',
+                        ),
+                      ),
+                      Expanded(
+                        child: PrecisionCanvas(
+                          // Only the visible page is built: an IndexedStack rebuilt every hidden
+                          // page on each 500 ms session notification.
+                          child: KeyedSubtree(
+                            key: ValueKey(index),
+                            child: pages[index < pages.length ? index : 0],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            Expanded(
-              child: FocusTraversalOrder(
-                order: const NumericFocusOrder(100),
-                child: Column(
-                  children: [
-                  Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(
-                      16,
-                      12,
-                      16,
-                      4,
-                    ),
-                    child: ConnectionCapsule(
-                      key: const Key('connection-capsule'),
-                      gateway: s.simulatedGateway,
-                      interfaceName: s.virtualInterface,
-                      device: s.simulatedBms,
-                      profile: s.simulatedProfile,
-                      mode:
-                          '${s.readOnlyMode} · ${_linkLabel(s, session.linkState)}',
-                    ),
-                  ),
-                  Expanded(
-                    child: PrecisionCanvas(
-                      child: IndexedStack(index: index, children: pages),
-                    ),
-                  ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: !wide

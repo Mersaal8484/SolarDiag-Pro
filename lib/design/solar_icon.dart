@@ -23,6 +23,12 @@ class SolarIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // SVG strokes use currentColor, which renders black without a filter and
+    // disappears on dark surfaces; always resolve a theme-aware color.
+    final resolved =
+        color ??
+        IconTheme.of(context).color ??
+        Theme.of(context).colorScheme.onSurface;
     final picture = SvgPicture.asset(
       icon.asset,
       width: size,
@@ -30,9 +36,7 @@ class SolarIcon extends StatelessWidget {
       fit: BoxFit.contain,
       semanticsLabel: semanticLabel,
       excludeFromSemantics: semanticLabel == null,
-      colorFilter: color == null
-          ? null
-          : ColorFilter.mode(color!, BlendMode.srcIn),
+      colorFilter: ColorFilter.mode(resolved, BlendMode.srcIn),
     );
     final mirror =
         icon.directional &&

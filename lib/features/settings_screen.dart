@@ -32,10 +32,7 @@ class SettingsScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            PrecisionPageHeading(
-              title: s.settings,
-              icon: SolarIcons.configure,
-            ),
+            PrecisionPageHeading(title: s.settings, icon: SolarIcons.configure),
             const SizedBox(height: 20),
             SolarLabeledPanel(
               title: s.language,

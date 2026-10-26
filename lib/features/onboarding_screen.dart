@@ -136,11 +136,7 @@ class _OnboardingPage extends StatelessWidget {
                   border: Border.all(color: palette.separator),
                   borderRadius: BorderRadius.circular(30),
                 ),
-                child: SolarIcon(
-                  icon,
-                  size: 46,
-                  color: palette.labelPrimary,
-                ),
+                child: SolarIcon(icon, size: 46, color: palette.labelPrimary),
               ),
               const SizedBox(height: 30),
               Text(
